@@ -631,7 +631,6 @@
     const links = [
       ["home", "Home"],
       ["data", "Data"],
-      ["benchmark", "Benchmark"],
       ["evaluation", "Evaluation"],
       ["leaderboard", "Leaderboard"],
     ];
@@ -722,7 +721,6 @@
             <div class="cta-row">
               <a href="${routeHref("evaluation")}" class="button button-primary">Submit a policy</a>
               <a href="${routeHref("data")}" class="button button-secondary">Explore datasets</a>
-              <a href="${routeHref("benchmark")}" class="button button-secondary">View benchmark</a>
               <a href="${PAPER_URL}" class="button button-ghost" target="_blank" rel="noreferrer">Read benchmark PDF</a>
             </div>
           </div>
@@ -870,7 +868,7 @@
         <div class="shell">
           <div class="section-heading">
             <span class="eyebrow">Leaderboard preview</span>
-            <h2>Baseline placeholders are already wired into the public ranking flow.</h2>
+            <h2>Official baseline benchmark results are already integrated into the public ranking flow.</h2>
           </div>
           <div class="table-shell">
             <table class="leaderboard-table">
@@ -906,7 +904,6 @@
             </table>
           </div>
           <div class="section-actions">
-            <a href="${routeHref("benchmark")}" class="button button-secondary">Open benchmark tables</a>
             <a href="${routeHref("leaderboard")}" class="button button-primary">Open full leaderboard</a>
           </div>
         </div>
@@ -1740,8 +1737,8 @@
         <span class="eyebrow">Public ranking</span>
         <h1>Success rate first, then action efficiency, then real-world time.</h1>
         <p class="lead narrow">
-          The leaderboard is automatically refreshed from published evaluations. Baseline placeholders
-          are seeded now so the interface is usable before the first public submissions arrive.
+          The leaderboard is automatically refreshed from published evaluations and includes the official
+          baseline benchmark entries for pi0, pi0.5, and Motus across sim-only and real-only tracks.
         </p>
       </section>
 
@@ -2282,7 +2279,7 @@
   function parseRoute(route) {
     if (route === "home") return { name: "home" };
     if (route === "data") return { name: "data" };
-    if (route === "benchmark") return { name: "benchmark" };
+    if (route === "benchmark") return { name: "leaderboard" };
     if (route === "login") return { name: "login" };
     if (route === "register") return { name: "register" };
     if (route === "evaluation") return { name: "evaluation" };
@@ -2304,9 +2301,6 @@
         break;
       case "data":
         renderSection(renderDataPage(), "Data");
-        break;
-      case "benchmark":
-        renderSection(renderBenchmarkPage(), "Benchmark");
         break;
       case "login":
         renderSection(renderLoginPage(), "Sign In");
