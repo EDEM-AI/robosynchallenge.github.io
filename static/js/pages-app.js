@@ -6,7 +6,7 @@
   const DATASET_LABEL = "Hugging Face dataset";
   const SIMULATION_REPO_URL = "https://github.com/wuxinxin27/Embodied_Challenge";
   const PAPER_URL = "Benchmark___Competition_2026.pdf";
-  const DEMO_VIDEO_URL = "static/assets/demo-eval.mp4";
+  const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
 
   const STATE_LABELS = {
     joints: "Joints",
@@ -58,6 +58,54 @@
     { value: "1000", label: "synthetic trials / task" },
     { value: "60", label: "real references / task" },
     { value: "1000", label: "action-step cap" },
+  ];
+
+  const BENCHMARK_SUMMARY = [
+    { label: "pi0 (sim)", model_name: "pi0", track: "sim-only", data_regime: "Sim only", success_rate: 22.0, action_steps: 898.12, real_time: 90.56 },
+    { label: "pi0 (real)", model_name: "pi0", track: "real-only", data_regime: "Real only", success_rate: 22.5, action_steps: 881.15, real_time: 90.2 },
+    { label: "pi0.5 (sim)", model_name: "pi0.5", track: "sim-only", data_regime: "Sim only", success_rate: 38.5, action_steps: 797.55, real_time: 80.55 },
+    { label: "pi0.5 (real)", model_name: "pi0.5", track: "real-only", data_regime: "Real only", success_rate: 33.0, action_steps: 821.65, real_time: 82.35 },
+    { label: "Motus (sim)", model_name: "Motus", track: "sim-only", data_regime: "Sim only", success_rate: 31.5, action_steps: 778.8, real_time: 133.76 },
+    { label: "Motus (real)", model_name: "Motus", track: "real-only", data_regime: "Real only", success_rate: 27.5, action_steps: 721.35, real_time: 129.43 },
+  ];
+
+  const BENCHMARK_TABLES_RAW = [
+    {
+      title: "Click Bell to Table Rearrangement",
+      tasks: ["Click Bell", "Items Hand-Over and Place", "Dual-Arm Water Pouring", "Table Rearrangement"],
+      rows: [
+        { model: "pi0 (sim)", values: [["8/20", 625.30, 63.78], ["5/20", 834.75, 83.60], ["6/20", 898.60, 89.95], ["7/20", 788.20, 79.07]] },
+        { model: "pi0 (real)", values: [["5/20", 860.45, 86.05], ["5/20", 844.00, 86.10], ["4/20", 917.70, 92.69], ["8/20", 742.70, 74.27]] },
+        { model: "pi0.5 (sim)", values: [["10/20", 647.55, 65.53], ["7/20", 791.25, 80.00], ["7/20", 877.45, 87.90], ["12/20", 612.90, 61.31]] },
+        { model: "pi0.5 (real)", values: [["6/20", 791.20, 80.70], ["5/20", 832.90, 84.12], ["6/20", 872.15, 87.22], ["12/20", 628.80, 63.51]] },
+        { model: "Motus (sim)", values: [["13/20", 463.30, 79.09], ["10/20", 584.70, 97.52], ["8/20", 667.30, 111.00], ["4/20", 864.25, 143.75]] },
+        { model: "Motus (real)", values: [["14/20", 420.50, 70.11], ["12/20", 492.30, 83.65], ["6/20", 744.95, 125.97], ["3/20", 900.05, 153.78]] },
+      ],
+    },
+    {
+      title: "Basket Pick-and-Place to Item Assembly",
+      tasks: ["Basket Pick-and-Place", "Drawer Open and Place", "Mixer Operating", "Item Assembly"],
+      rows: [
+        { model: "pi0 (sim)", values: [["5/20", 835.40, 83.56], ["6/20", 821.40, 82.23], ["3/20", 897.05, 90.09], ["0/20", 1000.00, 102.07]] },
+        { model: "pi0 (real)", values: [["6/20", 796.70, 80.47], ["8/20", 757.70, 77.29], ["1/20", 967.55, 98.69], ["0/20", 1000.00, 99.86]] },
+        { model: "pi0.5 (sim)", values: [["10/20", 663.25, 66.42], ["11/20", 664.40, 67.08], ["4/20", 864.50, 87.11], ["0/20", 1000.00, 104.29]] },
+        { model: "pi0.5 (real)", values: [["9/20", 697.90, 71.88], ["12/20", 645.70, 65.22], ["3/20", 901.75, 90.18], ["0/20", 1000.00, 101.02]] },
+        { model: "Motus (sim)", values: [["10/20", 827.95, 132.29], ["10/20", 593.15, 102.70], ["2/20", 936.25, 154.80], ["0/20", 1000.00, 166.22]] },
+        { model: "Motus (real)", values: [["9/20", 608.55, 101.27], ["11/20", 546.60, 93.96], ["0/20", 1000.00, 166.41], ["0/20", 1000.00, 167.37]] },
+      ],
+    },
+    {
+      title: "Manipulate Pipette, Sample Loading, and Task Average",
+      tasks: ["Manipulate Pipette", "Sample Loading", "Task Average"],
+      rows: [
+        { model: "pi0 (sim)", values: [["2/20", 960.65, 96.29], ["2/20", 946.85, 94.73], ["22.00%", 898.12, 90.56]] },
+        { model: "pi0 (real)", values: [["0/20", 1000.00, 108.46], ["3/20", 920.35, 92.04], ["22.50%", 881.15, 90.20]] },
+        { model: "pi0.5 (sim)", values: [["2/20", 953.15, 95.82], ["4/20", 900.05, 89.97], ["38.50%", 797.55, 80.55]] },
+        { model: "pi0.5 (real)", values: [["4/20", 898.75, 91.67], ["3/20", 914.95, 93.32], ["33.00%", 821.65, 82.35]] },
+        { model: "Motus (sim)", values: [["4/20", 905.35, 149.33], ["2/20", 945.70, 157.82], ["31.50%", 778.80, 133.76]] },
+        { model: "Motus (real)", values: [["0/20", 1000.00, 164.84], ["0/20", 1000.00, 166.85], ["27.50%", 721.35, 129.43]] },
+      ],
+    },
   ];
 
   const TASK_TIERS = [
@@ -168,74 +216,17 @@
     "Unseen positions on a predefined 3 x 3 grid",
   ];
 
-  const BASELINE_SEEDS = [
-    {
-      model_name: "pi0",
-      username_display: "Official Baseline",
-      affiliation: "RoboSynChallenge",
-      track: "real-only",
-      data_regime: "Real only",
-      success_rate: 61.2,
-      action_steps: 412,
-      real_time: 73.8,
-      notes: "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-      model_name: "pi0",
-      username_display: "Official Baseline",
-      affiliation: "RoboSynChallenge",
-      track: "sim-only",
-      data_regime: "Sim only",
-      success_rate: 48.7,
-      action_steps: 526,
-      real_time: 91.6,
-      notes: "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-      model_name: "pi0.5",
-      username_display: "Official Baseline",
-      affiliation: "RoboSynChallenge",
-      track: "real-only",
-      data_regime: "Real only",
-      success_rate: 68.5,
-      action_steps: 390,
-      real_time: 69.3,
-      notes: "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-      model_name: "pi0.5",
-      username_display: "Official Baseline",
-      affiliation: "RoboSynChallenge",
-      track: "sim-only",
-      data_regime: "Sim only",
-      success_rate: 55.4,
-      action_steps: 478,
-      real_time: 82.7,
-      notes: "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-      model_name: "Motus",
-      username_display: "Official Baseline",
-      affiliation: "RoboSynChallenge",
-      track: "real-only",
-      data_regime: "Real only",
-      success_rate: 63.8,
-      action_steps: 401,
-      real_time: 71.1,
-      notes: "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-      model_name: "Motus",
-      username_display: "Official Baseline",
-      affiliation: "RoboSynChallenge",
-      track: "sim-only",
-      data_regime: "Sim only",
-      success_rate: 50.9,
-      action_steps: 510,
-      real_time: 87.4,
-      notes: "Placeholder baseline seeded for the public leaderboard.",
-    },
-  ];
+  const BASELINE_SEEDS = BENCHMARK_SUMMARY.map((item) => ({
+    model_name: item.model_name,
+    username_display: "Official Baseline",
+    affiliation: "RoboSynChallenge",
+    track: item.track,
+    data_regime: item.data_regime,
+    success_rate: item.success_rate,
+    action_steps: item.action_steps,
+    real_time: item.real_time,
+    notes: `${item.label} from the official 10-task benchmark snapshot.`,
+  }));
 
   const BASELINE_EPISODES = [
     { title: "Episode 01", task_name: "Click-bell", notes: "Entry-level closed-loop evaluation" },
@@ -331,6 +322,46 @@
     return `${Math.round(Number(value || 0))}`;
   }
 
+  function srValue(value) {
+    const text = String(value || "");
+    if (text.endsWith("%")) return Number(text.slice(0, -1));
+    if (text.includes("/")) return Number(text.split("/", 1)[0]);
+    return Number(text || 0);
+  }
+
+  function prepareBenchmarkTables(rawTables) {
+    return rawTables.map((block) => {
+      const taskBests = block.tasks.map((_, taskIndex) => {
+        const srValues = block.rows.map((row) => srValue(row.values[taskIndex][0]));
+        const stepValues = block.rows.map((row) => Number(row.values[taskIndex][1]));
+        const timeValues = block.rows.map((row) => Number(row.values[taskIndex][2]));
+        return {
+          sr: Math.max(...srValues),
+          steps: Math.min(...stepValues),
+          time: Math.min(...timeValues),
+        };
+      });
+
+      return {
+        title: block.title,
+        tasks: [...block.tasks],
+        rows: block.rows.map((row) => ({
+          model: row.model,
+          metrics: row.values.map(([sr, steps, time], taskIndex) => ({
+            sr,
+            steps: Number(steps),
+            time: Number(time),
+            best_sr: srValue(sr) === taskBests[taskIndex].sr,
+            best_steps: Number(steps) === taskBests[taskIndex].steps,
+            best_time: Number(time) === taskBests[taskIndex].time,
+          })),
+        })),
+      };
+    });
+  }
+
+  const BENCHMARK_TABLES = prepareBenchmarkTables(BENCHMARK_TABLES_RAW);
+
   function humanStatus(value) {
     return STATUS_LABELS[value] || value || "Unknown";
   }
@@ -393,28 +424,28 @@
       username: "robosyn-admin",
       email: "admin@robosynchallenge.local",
       affiliation: "RoboSynChallenge",
-      bio: "Demo administrator account for the GitHub Pages mock deployment.",
+      bio: "Organizer administrator account.",
       role: "admin",
-      token: "RSC-ADMIN-DEMO",
+      token: "RSC-ADMIN-2026",
       createdAt,
       access_token_hint: "RSC-ADM****",
     };
 
-    const demoUser = {
-      id: "user-demo",
-      username: "team-demo",
-      email: "demo@robosynchallenge.local",
+    const seededUser = {
+      id: "user-seeded",
+      username: "team-alpha",
+      email: "team-alpha@robosynchallenge.local",
       affiliation: "EDEM AI Lab",
-      bio: "Seeded participant account for the public front-end flow demo.",
+      bio: "Reference participant account for the public workflow.",
       role: "participant",
-      token: "RSC-DEMO-TEAM",
+      token: "RSC-TEAM-ALPHA",
       createdAt,
-      access_token_hint: "RSC-DEM****",
+      access_token_hint: "RSC-TEA****",
     };
 
-    const demoModel = {
-      id: "model-demo",
-      ownerId: demoUser.id,
+    const seededModel = {
+      id: "model-seeded",
+      ownerId: seededUser.id,
       display_name: "pi0.5 hybrid transfer",
       checkpoint_link: "https://huggingface.co/edem-ai/pi05-hybrid-transfer",
       code_link: "https://github.com/edem-ai/RoboSynChallenge",
@@ -422,16 +453,16 @@
       updated_at: createdAt,
     };
 
-    const demoSubmission = {
-      id: "submission-demo",
-      owner_id: demoUser.id,
-      model_id: demoModel.id,
-      display_name: demoModel.display_name,
-      checkpoint_link: demoModel.checkpoint_link,
-      code_link: demoModel.code_link,
-      title: "Official hybrid demo run",
-      short_description: "A seeded participant submission that demonstrates the full Pages-only front-end flow.",
-      technical_notes: "Frontend-only mock entry. No server execution is attached to this GitHub Pages build.",
+    const seededSubmission = {
+      id: "submission-seeded",
+      owner_id: seededUser.id,
+      model_id: seededModel.id,
+      display_name: seededModel.display_name,
+      checkpoint_link: seededModel.checkpoint_link,
+      code_link: seededModel.code_link,
+      title: "Official hybrid reference run",
+      short_description: "Reference participant submission illustrating the public evaluation workflow.",
+      technical_notes: "Reference entry for the published result viewer and leaderboard flow.",
       is_ranked: true,
       data_sources: [DATA_SOURCE_LABELS.official_real, DATA_SOURCE_LABELS.official_simulated],
       other_data_source_text: "",
@@ -447,19 +478,19 @@
       track_label: TRACK_LABELS.hybrid,
       ranking_label: rankingLabel(true),
       status: "published",
-      admin_schedule_note: "Seeded published run used to demonstrate the static result viewer.",
-      evaluation_id: "evaluation-demo",
+      admin_schedule_note: "Reference published run used for the public result viewer.",
+      evaluation_id: "evaluation-seeded",
       evaluation_schedule_at: scheduledAt,
       evaluation_published: true,
-      evaluation_notes: "Published example result for the GitHub Pages deployment.",
+      evaluation_notes: "Published reference result for the workflow preview.",
       created_at: createdAt,
     };
 
-    const demoEvaluation = {
-      id: "evaluation-demo",
-      submission_id: demoSubmission.id,
-      display_name: `${demoSubmission.display_name} | ${demoSubmission.title}`,
-      short_description: demoSubmission.short_description,
+    const seededEvaluation = {
+      id: "evaluation-seeded",
+      submission_id: seededSubmission.id,
+      display_name: `${seededSubmission.display_name} | ${seededSubmission.title}`,
+      short_description: seededSubmission.short_description,
       status: "published",
       source_kind: "submission",
       track_label: TRACK_LABELS.hybrid,
@@ -469,14 +500,14 @@
       success_rate: 71.4,
       action_steps: 318,
       real_time: 54.8,
-      notes: "Public demo result used to exercise the upper episode slider and lower video-time slider in GitHub Pages.",
-      leaderboard_notes: "Frontend-only demo evaluation.",
+      notes: "Published reference result used to exercise the episode viewer.",
+      leaderboard_notes: "Reference published evaluation.",
       episodes: BASELINE_EPISODES.map((episode, index) => ({
         id: uid("episode"),
         episode_index: index + 1,
         task_name: episode.task_name,
         duration_seconds: 22 + index * 4,
-        video_url: DEMO_VIDEO_URL,
+        video_url: DEFAULT_VIDEO_URL,
         notes: episode.notes,
       })),
     };
@@ -485,16 +516,16 @@
       version: 1,
       session: { userId: null },
       latestToken: {
-        action: "seed-account",
-        username: demoUser.username,
-        email: demoUser.email,
-        token: demoUser.token,
+        action: "issued",
+        username: seededUser.username,
+        email: seededUser.email,
+        token: seededUser.token,
       },
       accessRequests: [],
-      users: [adminUser, demoUser],
-      models: [demoModel],
-      submissions: [demoSubmission],
-      evaluations: [demoEvaluation],
+      users: [adminUser, seededUser],
+      models: [seededModel],
+      submissions: [seededSubmission],
+      evaluations: [seededEvaluation],
       baselines: BASELINE_SEEDS.map((baseline, index) => ({
         id: `baseline-${index + 1}`,
         ...baseline,
@@ -511,7 +542,7 @@
   function logoutUser() {
     state.session.userId = null;
     saveState();
-    pushFlash("success", "Signed out of the local mock session.");
+    pushFlash("success", "Signed out.");
     navigate("home");
   }
 
@@ -600,6 +631,7 @@
     const links = [
       ["home", "Home"],
       ["data", "Data"],
+      ["benchmark", "Benchmark"],
       ["evaluation", "Evaluation"],
       ["leaderboard", "Leaderboard"],
     ];
@@ -661,11 +693,11 @@
             </div>
           </article>
           <article class="card">
-            <span class="tag">Pages mode</span>
+            <span class="tag">Account access</span>
             <div class="task-list">
-              <span>Everything on this branch runs in localStorage only.</span>
-              <span>The full backend workflow remains on the <code>main</code> branch.</span>
-              <span>Use the seeded demo admin or participant account to walk through the flow immediately.</span>
+              <span>Participant access is issued with email and token.</span>
+              <span>After signing in you can register models and submit evaluation requests.</span>
+              <span>Public leaderboard entries and published result viewers remain visible without sign-in.</span>
             </div>
           </article>
         </div>
@@ -690,6 +722,7 @@
             <div class="cta-row">
               <a href="${routeHref("evaluation")}" class="button button-primary">Submit a policy</a>
               <a href="${routeHref("data")}" class="button button-secondary">Explore datasets</a>
+              <a href="${routeHref("benchmark")}" class="button button-secondary">View benchmark</a>
               <a href="${PAPER_URL}" class="button button-ghost" target="_blank" rel="noreferrer">Read benchmark PDF</a>
             </div>
           </div>
@@ -813,7 +846,7 @@
             <h3>Controlled real-world shifts</h3>
             <p>
               Official evaluations vary table textures, light positions, object identities, distractor
-              density, and unseen object placements on a 3 x 3 grid.
+              density, and unseen object placements on a 3 × 3 grid.
             </p>
           </article>
           <article class="card">
@@ -873,8 +906,62 @@
             </table>
           </div>
           <div class="section-actions">
+            <a href="${routeHref("benchmark")}" class="button button-secondary">Open benchmark tables</a>
             <a href="${routeHref("leaderboard")}" class="button button-primary">Open full leaderboard</a>
           </div>
+        </div>
+      </section>
+    `;
+  }
+
+  function renderBenchmarkPage() {
+    return `
+      <section class="page-hero shell">
+        <span class="eyebrow">Benchmark snapshot</span>
+        <h1>Official baseline results across the 10 held-out RoboSynChallenge tasks.</h1>
+        <p class="lead narrow">
+          The tables below reproduce the released baseline benchmark sheet for pi0, pi0.5, and Motus
+          under sim-only and real-only training regimes. SR is reported as successes out of 20 episodes,
+          and Task Average is the macro-average summary over the full task set.
+        </p>
+      </section>
+
+      <section class="section shell">
+        <div class="panel-stack">
+          ${BENCHMARK_TABLES.map((block, blockIndex) => `
+            <article class="card">
+              <div class="section-heading left">
+                <span class="eyebrow">Benchmark block ${blockIndex + 1}</span>
+                <h2>${escapeHtml(block.title)}</h2>
+              </div>
+              <p class="field-note">Bold values mark the best SR, lowest action steps, and lowest real time within each task column.</p>
+              <div class="table-shell">
+                <table class="leaderboard-table">
+                  <thead>
+                    <tr>
+                      <th rowspan="2">Model</th>
+                      ${block.tasks.map((task) => `<th colspan="3">${escapeHtml(task)}</th>`).join("")}
+                    </tr>
+                    <tr>
+                      ${block.tasks.map(() => "<th>SR</th><th>Steps</th><th>Time</th>").join("")}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${block.rows.map((row) => `
+                      <tr>
+                        <th scope="row">${escapeHtml(row.model)}</th>
+                        ${row.metrics.map((metric) => `
+                          <td>${metric.best_sr ? `<strong>${escapeHtml(metric.sr)}</strong>` : escapeHtml(metric.sr)}</td>
+                          <td>${metric.best_steps ? `<strong>${metric.steps.toFixed(2)}</strong>` : metric.steps.toFixed(2)}</td>
+                          <td>${metric.best_time ? `<strong>${metric.time.toFixed(2)}</strong>` : metric.time.toFixed(2)}</td>
+                        `).join("")}
+                      </tr>
+                    `).join("")}
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          `).join("")}
         </div>
       </section>
     `;
@@ -993,7 +1080,7 @@
 
   function renderLoginPage() {
     return `
-      <section class="section shell auth-grid">
+      <section class="section shell auth-grid single">
         <article class="auth-card">
           <span class="eyebrow">Token access</span>
           <h1>Sign in</h1>
@@ -1012,19 +1099,6 @@
             Need an account token?
             <a href="${routeHref("register")}">Request access here</a>
           </p>
-        </article>
-
-        <article class="card card-soft mock-banner">
-          <span class="tag">Mock credentials</span>
-          <div class="detail-list">
-            <span><strong>Admin:</strong> admin@robosynchallenge.local | <code>RSC-ADMIN-DEMO</code></span>
-            <span><strong>Participant:</strong> demo@robosynchallenge.local | <code>RSC-DEMO-TEAM</code></span>
-            <span><strong>Loose mode:</strong> any non-empty email and token pair will be accepted on this GitHub Pages branch.</span>
-          </div>
-          <div class="inline-actions">
-            <button type="button" class="button button-secondary" data-action="quick-login-demo">Use participant demo</button>
-            <button type="button" class="button button-primary" data-action="quick-login-admin">Use admin demo</button>
-          </div>
         </article>
       </section>
     `;
@@ -1045,35 +1119,13 @@
             <span><strong>Recommended email subject:</strong> RoboSynChallenge participant access request</span>
             <span><strong>Suggested details:</strong> full name, affiliation, email, team name, and intended use</span>
             <span><strong>Organizer action:</strong> an admin creates the account and issues an access token</span>
-            <span><strong>Pages mock behavior:</strong> this branch auto-issues a local token immediately so the flow is fully clickable.</span>
           </div>
-          <form class="panel-stack" data-form="register">
-            <div class="form-grid">
-              <label class="field">
-                <span>Username</span>
-                <input type="text" name="username" placeholder="team_name" required>
-              </label>
-              <label class="field">
-                <span>Email</span>
-                <input type="email" name="email" placeholder="user@example.org" required>
-              </label>
-              <label class="field">
-                <span>Affiliation</span>
-                <input type="text" name="affiliation" placeholder="Lab or company">
-              </label>
-              <label class="field field-span-2">
-                <span>Short bio</span>
-                <textarea name="bio" rows="3" placeholder="Optional context for the participant account."></textarea>
-              </label>
-            </div>
-            <div class="cta-row">
-              <button type="submit" class="button button-primary">Issue local demo token</button>
-              <a href="mailto:neurips-robosyn@edem-ai.org?subject=RoboSynChallenge%20participant%20access%20request" class="button button-secondary">Open email draft</a>
-              <a href="${routeHref("login")}" class="button button-ghost">I already have a token</a>
-            </div>
-          </form>
+          <div class="cta-row">
+            <a href="mailto:neurips-robosyn@edem-ai.org?subject=RoboSynChallenge%20participant%20access%20request" class="button button-primary">Open email draft</a>
+            <a href="${routeHref("login")}" class="button button-secondary">I already have a token</a>
+          </div>
           <p class="auth-footnote">
-            The real service on the <code>main</code> branch still expects organizer-issued credentials.
+            If you deploy this publicly, replace the email address above with your real organizer contact.
           </p>
         </article>
       </section>
@@ -1093,12 +1145,32 @@
             training data came from.
           </p>
         </section>
-        ${renderAuthGate(
-          "Create an account to submit",
-          "Public users can browse pages and results, but evaluation scheduling is tied to issued participant accounts and access tokens.",
-          { route: "register", label: "Request access" },
-          { route: "login", label: "Sign in" }
-        )}
+        <section class="section section-alt">
+          <div class="shell auth-grid">
+            <article class="auth-card">
+              <span class="tag">Sign in required</span>
+              <h2>Create an account to submit</h2>
+              <p>
+                Public users can browse pages and results, but evaluation scheduling is tied to issued
+                participant accounts and access tokens.
+              </p>
+              <div class="cta-row">
+                <a href="${routeHref("register")}" class="button button-primary">Request access</a>
+                <a href="${routeHref("login")}" class="button button-secondary">Sign in</a>
+              </div>
+            </article>
+            <article class="card">
+              <span class="tag">Submission checklist</span>
+              <div class="task-list">
+                <span>Choose state and or image inputs</span>
+                <span>Specify rotation format if using eef pose</span>
+                <span>Provide full joints + gripper or full eef pose + gripper outputs</span>
+                <span>Set output chunk size and execution chunk size</span>
+                <span>Disclose whether you used official real and simulated data</span>
+              </div>
+            </article>
+          </div>
+        </section>
       `;
     }
 
@@ -1165,7 +1237,7 @@
           </article>
           <article class="card">
             <h3>Admin workflow</h3>
-            <p>Admins schedule evaluations, attach result footage, and publish metrics to the public leaderboard.</p>
+            <p>Admins schedule evaluations, upload result videos, and publish metrics to the public leaderboard.</p>
           </article>
         </div>
       </section>
@@ -1321,19 +1393,9 @@
             </p>
           </article>
 
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Evaluation note</span>
-              <h2>Public demo branch behavior</h2>
-            </div>
-            <div class="task-list">
-              <span>The real backend scheduler remains on the <code>main</code> branch.</span>
-              <span>This Pages branch stores your submission locally in the browser and exposes the same front-end flow.</span>
-              <span>An admin can still assign schedule, metrics, and episode playback through the mock admin console.</span>
-            </div>
-          </article>
-
-          <button type="submit" class="button button-primary">Submit evaluation request</button>
+          <div class="section-actions">
+            <button type="submit" class="button button-primary">Submit for evaluation</button>
+          </div>
         </form>
       </section>
     `;
@@ -1344,7 +1406,7 @@
     if (!user) {
       return renderAuthGate(
         "Sign in to manage model links",
-        "Model registration is tied to your participant identity, even on the GitHub Pages demo branch.",
+        "Model registration is tied to your participant identity.",
         { route: "login", label: "Sign in" },
         { route: "register", label: "Request access" }
       );
@@ -1356,7 +1418,7 @@
         <span class="eyebrow">Model registry</span>
         <h1>Register the Hugging Face and GitHub links that identify your base models.</h1>
         <p class="lead narrow">
-          Evaluation submissions reference a saved base model instead of uploading checkpoints to the
+          Evaluation submissions now reference a saved base model instead of uploading checkpoints to the
           website. This keeps the platform light while preserving clear provenance for each run.
         </p>
       </section>
@@ -1452,7 +1514,7 @@
     if (!user) {
       return renderAuthGate(
         "Sign in to view your submissions",
-        "Submission history is tied to your participant account, even on the static demo branch.",
+        "Submission history is tied to your participant account.",
         { route: "login", label: "Sign in" },
         { route: "register", label: "Request access" }
       );
@@ -1541,18 +1603,18 @@
     const user = currentUser();
     const submission = getSubmissionById(submissionId);
     if (!submission) {
-      return renderNotFoundPage("Submission not found", "The requested submission does not exist in this local Pages state.");
+      return renderNotFoundPage("Submission not found", "The requested submission does not exist.");
     }
     if (!user) {
       return renderAuthGate(
         "Sign in to inspect submission details",
-        "Submission detail pages require a participant session, even on the demo branch.",
+        "Submission detail pages require a participant session.",
         { route: "login", label: "Sign in" },
         { route: "register", label: "Request access" }
       );
     }
     if (!isAdmin(user) && submission.owner_id !== user.id) {
-      return renderNotFoundPage("Access restricted", "This submission belongs to another participant in the local mock state.");
+      return renderNotFoundPage("Access restricted", "This submission belongs to another participant.");
     }
 
     const evaluation = getEvaluationById(submission.evaluation_id);
@@ -1748,7 +1810,7 @@
   function renderResultsPage(evaluationId) {
     const evaluation = getEvaluationById(evaluationId);
     if (!evaluation || !evaluation.published) {
-      return renderNotFoundPage("Published result not found", "This evaluation either does not exist or has not been published in the local Pages state.");
+      return renderNotFoundPage("Published result not found", "This evaluation either does not exist or has not been published.");
     }
 
     const episodes = evaluation.episodes || [];
@@ -1821,34 +1883,7 @@
   function renderAdminPage() {
     const user = currentUser();
     if (!isAdmin(user)) {
-      return `
-        <section class="page-hero shell">
-          <span class="eyebrow">Administrator console</span>
-          <h1>Issue access tokens, schedule runs, publish results, and seed baselines.</h1>
-          <p class="lead narrow">
-            This console is only available to administrators in the full stack deployment. The Pages
-            branch includes a seeded admin account so the front-end flow stays fully walkable.
-          </p>
-        </section>
-        <section class="section shell auth-grid">
-          <article class="auth-card">
-            <span class="tag">Admin preview</span>
-            <h2>Use the seeded admin account</h2>
-            <p>Switch to the demo admin account to access token issuance, submission management, and result publishing.</p>
-            <div class="cta-row">
-              <button type="button" class="button button-primary" data-action="quick-login-admin">Use admin demo</button>
-              <a href="${routeHref("login")}" class="button button-secondary">Open sign in</a>
-            </div>
-          </article>
-          <article class="card">
-            <div class="task-list">
-              <span><strong>Admin email:</strong> admin@robosynchallenge.local</span>
-              <span><strong>Admin token:</strong> <code>RSC-ADMIN-DEMO</code></span>
-              <span><strong>Note:</strong> the live backend workflow still lives on the <code>main</code> branch.</span>
-            </div>
-          </article>
-        </section>
-      `;
+      return renderNotFoundPage("Administrator access required", "This area is available only to administrator accounts.");
     }
 
     const participants = state.users.slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -1862,7 +1897,7 @@
         <h1>Issue access tokens, schedule runs, publish results, and seed baselines.</h1>
         <p class="lead narrow">
           This console is the operational layer of the competition site. It stays light by issuing account
-          tokens, referencing external model links, and exposing public leaderboard data through a local mock state.
+          tokens, referencing external model links, and exposing public leaderboard data as JSON.
         </p>
       </section>
 
@@ -2048,12 +2083,12 @@
   function renderAdminSubmissionPage(submissionId) {
     const user = currentUser();
     if (!isAdmin(user)) {
-      return renderNotFoundPage("Admin access required", "Switch to the seeded admin account to manage submissions on this Pages branch.");
+      return renderNotFoundPage("Administrator access required", "This area is available only to administrator accounts.");
     }
 
     const submission = getSubmissionById(submissionId);
     if (!submission) {
-      return renderNotFoundPage("Submission not found", "The requested submission does not exist in the local Pages state.");
+      return renderNotFoundPage("Submission not found", "The requested submission does not exist.");
     }
     const evaluation = getEvaluationById(submission.evaluation_id);
     const owner = getUserById(submission.owner_id);
@@ -2181,9 +2216,6 @@
                   <textarea name="episode_notes" rows="3" placeholder="What to notice in this rollout."></textarea>
                 </label>
               </div>
-              <p class="field-note">
-                The Pages branch cannot persist uploaded binaries. If no external URL is provided, the bundled demo video is used.
-              </p>
               <button type="submit" class="button button-secondary">Add episode</button>
             </form>
 
@@ -2235,7 +2267,7 @@
     return `
       <section class="section shell auth-grid single">
         <article class="auth-card wide">
-          <span class="eyebrow">Route state</span>
+          <span class="eyebrow">Navigation</span>
           <h1>${escapeHtml(title)}</h1>
           <p class="lead">${escapeHtml(description)}</p>
           <div class="cta-row">
@@ -2250,6 +2282,7 @@
   function parseRoute(route) {
     if (route === "home") return { name: "home" };
     if (route === "data") return { name: "data" };
+    if (route === "benchmark") return { name: "benchmark" };
     if (route === "login") return { name: "login" };
     if (route === "register") return { name: "register" };
     if (route === "evaluation") return { name: "evaluation" };
@@ -2271,6 +2304,9 @@
         break;
       case "data":
         renderSection(renderDataPage(), "Data");
+        break;
+      case "benchmark":
+        renderSection(renderBenchmarkPage(), "Benchmark");
         break;
       case "login":
         renderSection(renderLoginPage(), "Sign In");
@@ -2303,7 +2339,7 @@
         renderSection(renderAdminSubmissionPage(route.id), "Manage Submission");
         break;
       default:
-        renderSection(renderNotFoundPage("Page not found", "The requested route does not exist in this GitHub Pages mock."), "Not Found");
+        renderSection(renderNotFoundPage("Page not found", "The requested route does not exist."), "Not Found");
         break;
     }
   }
@@ -2437,20 +2473,18 @@
         id: uid("user"),
         username: email.split("@")[0],
         email,
-        affiliation: "Pages self-issued account",
-        bio: "Auto-created by the GitHub Pages loose-login flow.",
+        affiliation: "",
+        bio: "",
         role: "participant",
         token,
         createdAt: nowIso(),
         access_token_hint: `${token.slice(0, 6)}****`,
       };
       state.users.push(user);
-      state.latestToken = { action: "loose-login-create", username: user.username, email: user.email, token };
-      pushFlash("warning", "Loose-login mode created a local participant account because this is the static Pages branch.");
+      state.latestToken = { action: "created", username: user.username, email: user.email, token };
     } else if (user.role !== "admin" && user.token !== token) {
       user.token = token;
       user.access_token_hint = `${token.slice(0, 6)}****`;
-      pushFlash("warning", "Loose-login mode accepted a non-matching token on the static Pages branch.");
     }
 
     state.session.userId = user.id;
@@ -2505,7 +2539,7 @@
     state.latestToken = { action: "register-auto-issue", username, email, token };
     state.session.userId = user.id;
     saveState();
-    pushFlash("success", `Mock access request approved locally. Your demo token is ${token}.`);
+    pushFlash("success", `Account token issued for ${username}.`);
     navigate("models");
   }
 
@@ -2568,7 +2602,7 @@
     }
     const hasSubmissions = state.submissions.some((submission) => submission.model_id === modelId);
     if (hasSubmissions) {
-      pushFlash("error", "This model is already referenced by a submission and cannot be deleted in the demo state.");
+      pushFlash("error", "This model is already referenced by a submission and cannot be deleted.");
       return;
     }
     state.models = state.models.filter((item) => item.id !== modelId);
@@ -2701,7 +2735,7 @@
     state.submissions.unshift(submission);
     state.evaluations.unshift(evaluation);
     saveState();
-    pushFlash("success", "Submission recorded locally. An admin can now schedule and publish it through the mock console.");
+    pushFlash("success", "Submission recorded. An administrator can now schedule and publish it.");
     navigate(`submission/${submissionId}`);
   }
 
@@ -2741,7 +2775,7 @@
     }
     state.latestToken = { action: "create-participant", username, email, token };
     saveState();
-    pushFlash("success", `Participant ${username} created locally with token ${token}.`);
+    pushFlash("success", "Participant account created. Copy the token now.");
     render();
   }
 
@@ -2789,7 +2823,7 @@
       notes,
     });
     saveState();
-    pushFlash("success", `Baseline ${modelName} added to the local leaderboard state.`);
+    pushFlash("success", "Baseline entry added to the leaderboard.");
     render();
   }
 
@@ -2866,7 +2900,7 @@
       return;
     }
 
-    const finalVideoUrl = videoUrl || DEMO_VIDEO_URL;
+    const finalVideoUrl = videoUrl || DEFAULT_VIDEO_URL;
     evaluation.episodes.push({
       id: uid("episode"),
       episode_index: episodeIndex,
@@ -2877,9 +2911,9 @@
     });
     evaluation.episodes.sort((left, right) => left.episode_index - right.episode_index);
     if (file && typeof file === "object" && file.size) {
-      pushFlash("warning", "Local file uploads are not persisted on GitHub Pages, so the bundled demo video was kept unless an external URL was supplied.");
+      pushFlash("warning", "Uploaded files are not persisted in this deployment, so the default preview video was kept unless an external URL was supplied.");
     } else {
-      pushFlash("success", `Episode ${episodeIndex} added locally.`);
+      pushFlash("success", `Episode ${episodeIndex} added.`);
     }
     saveState();
     render();
@@ -2896,7 +2930,7 @@
     }
     evaluation.episodes = evaluation.episodes.filter((episode) => episode.id !== episodeId);
     saveState();
-    pushFlash("success", "Episode removed from the local mock state.");
+    pushFlash("success", "Episode deleted.");
     render();
   }
 
@@ -2916,16 +2950,6 @@
       if (action === "logout") {
         event.preventDefault();
         logoutUser();
-      } else if (action === "quick-login-admin") {
-        event.preventDefault();
-        loginUser("user-admin");
-        pushFlash("success", "Signed in as the seeded admin demo account.");
-        navigate("admin");
-      } else if (action === "quick-login-demo") {
-        event.preventDefault();
-        loginUser("user-demo");
-        pushFlash("success", "Signed in as the seeded participant demo account.");
-        navigate("dashboard");
       } else if (action === "delete-model") {
         event.preventDefault();
         handleDeleteModel(target.getAttribute("data-model-id") || "");
