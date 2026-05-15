@@ -233,73 +233,237 @@ EVALUATION_VARIATIONS = [
     "Unseen positions on a predefined 3 x 3 grid",
 ]
 
+BENCHMARK_SUMMARY = [
+    {
+        "label": "pi0 (sim)",
+        "model_name": "pi0",
+        "track": "sim-only",
+        "data_regime": "Sim only",
+        "success_rate": 22.00,
+        "action_steps": 898.12,
+        "real_time": 90.56,
+    },
+    {
+        "label": "pi0 (real)",
+        "model_name": "pi0",
+        "track": "real-only",
+        "data_regime": "Real only",
+        "success_rate": 22.50,
+        "action_steps": 881.15,
+        "real_time": 90.20,
+    },
+    {
+        "label": "pi0.5 (sim)",
+        "model_name": "pi0.5",
+        "track": "sim-only",
+        "data_regime": "Sim only",
+        "success_rate": 38.50,
+        "action_steps": 797.55,
+        "real_time": 80.55,
+    },
+    {
+        "label": "pi0.5 (real)",
+        "model_name": "pi0.5",
+        "track": "real-only",
+        "data_regime": "Real only",
+        "success_rate": 33.00,
+        "action_steps": 821.65,
+        "real_time": 82.35,
+    },
+    {
+        "label": "Motus (sim)",
+        "model_name": "Motus",
+        "track": "sim-only",
+        "data_regime": "Sim only",
+        "success_rate": 31.50,
+        "action_steps": 778.80,
+        "real_time": 133.76,
+    },
+    {
+        "label": "Motus (real)",
+        "model_name": "Motus",
+        "track": "real-only",
+        "data_regime": "Real only",
+        "success_rate": 27.50,
+        "action_steps": 721.35,
+        "real_time": 129.43,
+    },
+]
+
+BENCHMARK_TABLES_RAW = [
+    {
+        "title": "Click Bell to Table Rearrangement",
+        "tasks": [
+            "Click Bell",
+            "Items Hand-Over and Place",
+            "Dual-Arm Water Pouring",
+            "Table Rearrangement",
+        ],
+        "rows": [
+            {
+                "model": "pi0 (sim)",
+                "values": [("8/20", 625.30, 63.78), ("5/20", 834.75, 83.60), ("6/20", 898.60, 89.95), ("7/20", 788.20, 79.07)],
+            },
+            {
+                "model": "pi0 (real)",
+                "values": [("5/20", 860.45, 86.05), ("5/20", 844.00, 86.10), ("4/20", 917.70, 92.69), ("8/20", 742.70, 74.27)],
+            },
+            {
+                "model": "pi0.5 (sim)",
+                "values": [("10/20", 647.55, 65.53), ("7/20", 791.25, 80.00), ("7/20", 877.45, 87.90), ("12/20", 612.90, 61.31)],
+            },
+            {
+                "model": "pi0.5 (real)",
+                "values": [("6/20", 791.20, 80.70), ("5/20", 832.90, 84.12), ("6/20", 872.15, 87.22), ("12/20", 628.80, 63.51)],
+            },
+            {
+                "model": "Motus (sim)",
+                "values": [("13/20", 463.30, 79.09), ("10/20", 584.70, 97.52), ("8/20", 667.30, 111.00), ("4/20", 864.25, 143.75)],
+            },
+            {
+                "model": "Motus (real)",
+                "values": [("14/20", 420.50, 70.11), ("12/20", 492.30, 83.65), ("6/20", 744.95, 125.97), ("3/20", 900.05, 153.78)],
+            },
+        ],
+    },
+    {
+        "title": "Basket Pick-and-Place to Item Assembly",
+        "tasks": [
+            "Basket Pick-and-Place",
+            "Drawer Open and Place",
+            "Mixer Operating",
+            "Item Assembly",
+        ],
+        "rows": [
+            {
+                "model": "pi0 (sim)",
+                "values": [("5/20", 835.40, 83.56), ("6/20", 821.40, 82.23), ("3/20", 897.05, 90.09), ("0/20", 1000.00, 102.07)],
+            },
+            {
+                "model": "pi0 (real)",
+                "values": [("6/20", 796.70, 80.47), ("8/20", 757.70, 77.29), ("1/20", 967.55, 98.69), ("0/20", 1000.00, 99.86)],
+            },
+            {
+                "model": "pi0.5 (sim)",
+                "values": [("10/20", 663.25, 66.42), ("11/20", 664.40, 67.08), ("4/20", 864.50, 87.11), ("0/20", 1000.00, 104.29)],
+            },
+            {
+                "model": "pi0.5 (real)",
+                "values": [("9/20", 697.90, 71.88), ("12/20", 645.70, 65.22), ("3/20", 901.75, 90.18), ("0/20", 1000.00, 101.02)],
+            },
+            {
+                "model": "Motus (sim)",
+                "values": [("10/20", 827.95, 132.29), ("10/20", 593.15, 102.70), ("2/20", 936.25, 154.80), ("0/20", 1000.00, 166.22)],
+            },
+            {
+                "model": "Motus (real)",
+                "values": [("9/20", 608.55, 101.27), ("11/20", 546.60, 93.96), ("0/20", 1000.00, 166.41), ("0/20", 1000.00, 167.37)],
+            },
+        ],
+    },
+    {
+        "title": "Manipulate Pipette, Sample Loading, and Task Average",
+        "tasks": [
+            "Manipulate Pipette",
+            "Sample Loading",
+            "Task Average",
+        ],
+        "rows": [
+            {
+                "model": "pi0 (sim)",
+                "values": [("2/20", 960.65, 96.29), ("2/20", 946.85, 94.73), ("22.00%", 898.12, 90.56)],
+            },
+            {
+                "model": "pi0 (real)",
+                "values": [("0/20", 1000.00, 108.46), ("3/20", 920.35, 92.04), ("22.50%", 881.15, 90.20)],
+            },
+            {
+                "model": "pi0.5 (sim)",
+                "values": [("2/20", 953.15, 95.82), ("4/20", 900.05, 89.97), ("38.50%", 797.55, 80.55)],
+            },
+            {
+                "model": "pi0.5 (real)",
+                "values": [("4/20", 898.75, 91.67), ("3/20", 914.95, 93.32), ("33.00%", 821.65, 82.35)],
+            },
+            {
+                "model": "Motus (sim)",
+                "values": [("4/20", 905.35, 149.33), ("2/20", 945.70, 157.82), ("31.50%", 778.80, 133.76)],
+            },
+            {
+                "model": "Motus (real)",
+                "values": [("0/20", 1000.00, 164.84), ("0/20", 1000.00, 166.85), ("27.50%", 721.35, 129.43)],
+            },
+        ],
+    },
+]
+
+
+def _sr_value(sr_text: str) -> float:
+    if sr_text.endswith("%"):
+        return float(sr_text.rstrip("%"))
+    if "/" in sr_text:
+        return float(sr_text.split("/", 1)[0])
+    return float(sr_text)
+
+
+def prepare_benchmark_tables(raw_tables: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    prepared: list[dict[str, Any]] = []
+    for block in raw_tables:
+        task_bests: list[dict[str, float]] = []
+        for task_index, _ in enumerate(block["tasks"]):
+            sr_values = [_sr_value(row["values"][task_index][0]) for row in block["rows"]]
+            step_values = [float(row["values"][task_index][1]) for row in block["rows"]]
+            time_values = [float(row["values"][task_index][2]) for row in block["rows"]]
+            task_bests.append(
+                {
+                    "sr": max(sr_values),
+                    "steps": min(step_values),
+                    "time": min(time_values),
+                }
+            )
+
+        rows: list[dict[str, Any]] = []
+        for row in block["rows"]:
+            metrics: list[dict[str, Any]] = []
+            for task_index, (sr_text, steps, time_value) in enumerate(row["values"]):
+                bests = task_bests[task_index]
+                metrics.append(
+                    {
+                        "sr": sr_text,
+                        "steps": float(steps),
+                        "time": float(time_value),
+                        "best_sr": _sr_value(sr_text) == bests["sr"],
+                        "best_steps": float(steps) == bests["steps"],
+                        "best_time": float(time_value) == bests["time"],
+                    }
+                )
+            rows.append({"model": row["model"], "metrics": metrics})
+
+        prepared.append(
+            {
+                "title": block["title"],
+                "tasks": list(block["tasks"]),
+                "rows": rows,
+            }
+        )
+    return prepared
+
+
+BENCHMARK_TABLES = prepare_benchmark_tables(BENCHMARK_TABLES_RAW)
+
 BASELINE_SEEDS = [
     {
-        "model_name": "pi0",
+        "model_name": item["model_name"],
         "username_display": "Official Baseline",
         "affiliation": "RoboSynChallenge",
-        "track": "real-only",
-        "data_regime": "Real only",
-        "success_rate": 61.2,
-        "action_steps": 412,
-        "real_time": 73.8,
-        "notes": "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-        "model_name": "pi0",
-        "username_display": "Official Baseline",
-        "affiliation": "RoboSynChallenge",
-        "track": "sim-only",
-        "data_regime": "Sim only",
-        "success_rate": 48.7,
-        "action_steps": 526,
-        "real_time": 91.6,
-        "notes": "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-        "model_name": "pi0.5",
-        "username_display": "Official Baseline",
-        "affiliation": "RoboSynChallenge",
-        "track": "real-only",
-        "data_regime": "Real only",
-        "success_rate": 68.5,
-        "action_steps": 390,
-        "real_time": 69.3,
-        "notes": "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-        "model_name": "pi0.5",
-        "username_display": "Official Baseline",
-        "affiliation": "RoboSynChallenge",
-        "track": "sim-only",
-        "data_regime": "Sim only",
-        "success_rate": 55.4,
-        "action_steps": 478,
-        "real_time": 82.7,
-        "notes": "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-        "model_name": "Motus",
-        "username_display": "Official Baseline",
-        "affiliation": "RoboSynChallenge",
-        "track": "real-only",
-        "data_regime": "Real only",
-        "success_rate": 63.8,
-        "action_steps": 401,
-        "real_time": 71.1,
-        "notes": "Placeholder baseline seeded for the public leaderboard.",
-    },
-    {
-        "model_name": "Motus",
-        "username_display": "Official Baseline",
-        "affiliation": "RoboSynChallenge",
-        "track": "sim-only",
-        "data_regime": "Sim only",
-        "success_rate": 50.9,
-        "action_steps": 510,
-        "real_time": 87.4,
-        "notes": "Placeholder baseline seeded for the public leaderboard.",
-    },
+        "track": item["track"],
+        "data_regime": item["data_regime"],
+        "success_rate": item["success_rate"],
+        "action_steps": item["action_steps"],
+        "real_time": item["real_time"],
+        "notes": f"{item['label']} from the official 10-task benchmark snapshot.",
+    }
+    for item in BENCHMARK_SUMMARY
 ]
 
 BASELINE_EPISODES = [
@@ -514,11 +678,15 @@ def seed_admin() -> None:
 
 
 def seed_baselines() -> None:
-    existing_count = fetchone(
-        "SELECT COUNT(*) AS count FROM leaderboard_entries WHERE source_kind = 'baseline'"
+    placeholder_ids = fetchall(
+        "SELECT id FROM leaderboard_entries WHERE source_kind = 'baseline' AND is_placeholder = 1"
     )
-    if existing_count and existing_count["count"] > 0:
-        return
+    if placeholder_ids:
+        for row in placeholder_ids:
+            execute(
+                "DELETE FROM leaderboard_entries WHERE id = ?",
+                (row["id"],),
+            )
 
     demo_video_name = "demo-eval.mp4"
     for seed in BASELINE_SEEDS:
@@ -1216,6 +1384,11 @@ def data_page():
         real_collection_conditions=REAL_COLLECTION_CONDITIONS,
         sim_randomization=SIM_RANDOMIZATION,
     )
+
+
+@app.route("/benchmark")
+def benchmark_page():
+    return render_template("benchmark.html", benchmark_blocks=BENCHMARK_TABLES)
 
 
 @app.route("/evaluation", methods=["GET", "POST"])

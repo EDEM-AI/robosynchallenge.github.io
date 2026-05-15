@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Benchmark{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Benchmark snapshot</span>
+    <h1>Official baseline results across the 10 held-out RoboSynChallenge tasks.</h1>
+    <p class="lead narrow">
+      The tables below reproduce the released baseline benchmark sheet for pi0, pi0.5, and Motus
+      under sim-only and real-only training regimes. SR is reported as successes out of 20 episodes,
+      and Task Average is the macro-average summary over the full task set.
+    </p>
+  </section>
+
+  <section class="section shell">
+    <div class="panel-stack">
+      {% for block in benchmark_blocks %}
+        <article class="card">
+          <div class="section-heading left">
+            <span class="eyebrow">Benchmark block {{ loop.index }}</span>
+            <h2>{{ block.title }}</h2>
+          </div>
+          <p class="field-note">Bold values mark the best SR, lowest action steps, and lowest real time within each task column.</p>
+          <div class="table-shell">
+            <table class="leaderboard-table">
+              <thead>
+                <tr>
+                  <th rowspan="2">Model</th>
+                  {% for task in block.tasks %}
+                    <th colspan="3">{{ task }}</th>
+                  {% endfor %}
+                </tr>
+                <tr>
+                  {% for task in block.tasks %}
+                    <th>SR</th>
+                    <th>Steps</th>
+                    <th>Time</th>
+                  {% endfor %}
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in block.rows %}
+                  <tr>
+                    <th scope="row">{{ row.model }}</th>
+                    {% for metric in row.metrics %}
+                      <td>{% if metric.best_sr %}<strong>{{ metric.sr }}</strong>{% else %}{{ metric.sr }}{% endif %}</td>
+                      <td>{% if metric.best_steps %}<strong>{{ "%.2f"|format(metric.steps) }}</strong>{% else %}{{ "%.2f"|format(metric.steps) }}{% endif %}</td>
+                      <td>{% if metric.best_time %}<strong>{{ "%.2f"|format(metric.time) }}</strong>{% else %}{{ "%.2f"|format(metric.time) }}{% endif %}</td>
+                    {% endfor %}
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}
