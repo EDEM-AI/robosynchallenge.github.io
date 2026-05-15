@@ -14,7 +14,6 @@
         <div class="cta-row">
           <a href="{{ url_for('evaluation_page') }}" class="button button-primary">Submit a policy</a>
           <a href="{{ url_for('data_page') }}" class="button button-secondary">Explore datasets</a>
-          <a href="{{ url_for('benchmark_page') }}" class="button button-secondary">View benchmark</a>
           <a href="{{ url_for('paper_download') }}" class="button button-ghost">Read benchmark PDF</a>
         </div>
       </div>
@@ -164,7 +163,7 @@
     <div class="shell">
       <div class="section-heading">
         <span class="eyebrow">Leaderboard preview</span>
-        <h2>Baseline placeholders are already wired into the public ranking flow.</h2>
+        <h2>Official baseline benchmark results are already integrated into the public ranking flow.</h2>
       </div>
       <div class="table-shell">
         <table class="leaderboard-table">
@@ -202,7 +201,6 @@
         </table>
       </div>
       <div class="section-actions">
-        <a href="{{ url_for('benchmark_page') }}" class="button button-secondary">Open benchmark tables</a>
         <a href="{{ url_for('leaderboard_page') }}" class="button button-primary">Open full leaderboard</a>
       </div>
     </div>

@@ -1388,7 +1388,7 @@ def data_page():
 
 @app.route("/benchmark")
 def benchmark_page():
-    return render_template("benchmark.html", benchmark_blocks=BENCHMARK_TABLES)
+    return redirect(url_for("leaderboard_page"))
 
 
 @app.route("/evaluation", methods=["GET", "POST"])
