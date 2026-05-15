@@ -87,18 +87,11 @@
         <div>
           <div class="footer-heading">Resources</div>
           <a href="{{ simulation_repo_url }}" target="_blank" rel="noreferrer">Embodied_Challenge GitHub</a>
-          <a href="{{ url_for('paper_download') }}">Benchmark PDF</a>
           {% if dataset_url %}
             <a href="{{ dataset_url }}" target="_blank" rel="noreferrer">{{ dataset_label }}</a>
           {% else %}
             <span class="footer-muted">Hugging Face release coming soon</span>
           {% endif %}
-        </div>
-        <div>
-          <div class="footer-heading">Access</div>
-          <span class="footer-muted">Public result browsing enabled</span>
-          <span class="footer-muted">Participant access is issued with email and token</span>
-          <span class="footer-muted">Model artifacts stay on Hugging Face or GitHub links</span>
         </div>
       </div>
       <div class="shell footer-bottom">

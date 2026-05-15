@@ -21,7 +21,6 @@ from flask import (
     redirect,
     render_template,
     request,
-    send_file,
     send_from_directory,
     session,
     url_for,
@@ -2305,17 +2304,6 @@ def result_detail_json(evaluation_id: int):
             "episodes": episode_payload(episodes),
         }
     )
-
-
-@app.route("/paper")
-def paper_download():
-    return send_file(
-        BASE_DIR.parent / "Benchmark___Competition_2026.pdf",
-        download_name="RoboSynChallenge_Benchmark_2026.pdf",
-        as_attachment=False,
-    )
-
-
 @app.route("/health")
 def health():
     return {"ok": True, "service": "RoboSynChallenge"}
