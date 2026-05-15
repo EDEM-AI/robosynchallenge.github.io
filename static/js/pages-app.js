@@ -502,13 +502,6 @@
     };
   }
 
-  function resetState() {
-    state = freshState();
-    saveState();
-    pushFlash("success", "GitHub Pages demo state has been reset to the seeded defaults.");
-    render();
-  }
-
   function loginUser(userId) {
     state.session.userId = userId;
     saveState();
@@ -626,7 +619,6 @@
 
     if (user) {
       headerActionsEl.innerHTML = `
-        <button type="button" class="button button-ghost" data-action="reset-demo">Reset demo</button>
         <div class="user-badge">
           <span>${escapeHtml(user.username)}</span>
           <small>${escapeHtml(user.role)}</small>
@@ -635,7 +627,6 @@
       `;
     } else {
       headerActionsEl.innerHTML = `
-        <button type="button" class="button button-ghost" data-action="reset-demo">Reset demo</button>
         <a href="${routeHref("login")}" class="button button-secondary">Sign in</a>
         <a href="${routeHref("register")}" class="button button-primary">Request access</a>
       `;
@@ -2925,9 +2916,6 @@
       if (action === "logout") {
         event.preventDefault();
         logoutUser();
-      } else if (action === "reset-demo") {
-        event.preventDefault();
-        resetState();
       } else if (action === "quick-login-admin") {
         event.preventDefault();
         loginUser("user-admin");
