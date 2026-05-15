@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "robosynchallenge-pages-state-v1";
+  const STORAGE_KEY = "robosynchallenge-pages-state-v2";
   const DATASET_URL = "";
   const DATASET_LABEL = "Hugging Face dataset";
   const SIMULATION_REPO_URL = "https://github.com/wuxinxin27/Embodied_Challenge";
@@ -403,7 +403,7 @@
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return freshState();
       const parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== 1) return freshState();
+      if (!parsed || parsed.version !== 2) return freshState();
       return parsed;
     } catch {
       return freshState();
@@ -416,9 +416,6 @@
 
   function freshState() {
     const createdAt = nowIso();
-    const scheduledAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-    const publishedAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-
     const adminUser = {
       id: "user-admin",
       username: "robosyn-admin",
@@ -436,84 +433,15 @@
       username: "team-alpha",
       email: "team-alpha@robosynchallenge.local",
       affiliation: "EDEM AI Lab",
-      bio: "Reference participant account for the public workflow.",
+      bio: "",
       role: "participant",
       token: "RSC-TEAM-ALPHA",
       createdAt,
       access_token_hint: "RSC-TEA****",
     };
 
-    const seededModel = {
-      id: "model-seeded",
-      ownerId: seededUser.id,
-      display_name: "pi0.5 hybrid transfer",
-      checkpoint_link: "https://huggingface.co/edem-ai/pi05-hybrid-transfer",
-      code_link: "https://github.com/edem-ai/RoboSynChallenge",
-      created_at: createdAt,
-      updated_at: createdAt,
-    };
-
-    const seededSubmission = {
-      id: "submission-seeded",
-      owner_id: seededUser.id,
-      model_id: seededModel.id,
-      display_name: seededModel.display_name,
-      checkpoint_link: seededModel.checkpoint_link,
-      code_link: seededModel.code_link,
-      title: "Official hybrid reference run",
-      short_description: "Reference participant submission illustrating the public evaluation workflow.",
-      technical_notes: "Reference entry for the published result viewer and leaderboard flow.",
-      is_ranked: true,
-      data_sources: [DATA_SOURCE_LABELS.official_real, DATA_SOURCE_LABELS.official_simulated],
-      other_data_source_text: "",
-      input_state: [STATE_LABELS.joints, STATE_LABELS.gripper, STATE_LABELS.eef_pose],
-      input_images: [IMAGE_LABELS.cam_high, IMAGE_LABELS.cam_left_wrist, IMAGE_LABELS.cam_right_wrist],
-      input_rotation_format: "rot6d",
-      output_actions: ["Joints", "Gripper", "EEF pose delta"],
-      output_rotation_format: "rot6d",
-      output_chunk_size: 16,
-      execution_chunk_size: 8,
-      gripper_threshold: 0.05,
-      track: "hybrid",
-      track_label: TRACK_LABELS.hybrid,
-      ranking_label: rankingLabel(true),
-      status: "published",
-      admin_schedule_note: "Reference published run used for the public result viewer.",
-      evaluation_id: "evaluation-seeded",
-      evaluation_schedule_at: scheduledAt,
-      evaluation_published: true,
-      evaluation_notes: "Published reference result for the workflow preview.",
-      created_at: createdAt,
-    };
-
-    const seededEvaluation = {
-      id: "evaluation-seeded",
-      submission_id: seededSubmission.id,
-      display_name: `${seededSubmission.display_name} | ${seededSubmission.title}`,
-      short_description: seededSubmission.short_description,
-      status: "published",
-      source_kind: "submission",
-      track_label: TRACK_LABELS.hybrid,
-      schedule_at: scheduledAt,
-      published: true,
-      published_at: publishedAt,
-      success_rate: 71.4,
-      action_steps: 318,
-      real_time: 54.8,
-      notes: "Published reference result used to exercise the episode viewer.",
-      leaderboard_notes: "Reference published evaluation.",
-      episodes: BASELINE_EPISODES.map((episode, index) => ({
-        id: uid("episode"),
-        episode_index: index + 1,
-        task_name: episode.task_name,
-        duration_seconds: 22 + index * 4,
-        video_url: DEFAULT_VIDEO_URL,
-        notes: episode.notes,
-      })),
-    };
-
     return {
-      version: 1,
+      version: 2,
       session: { userId: null },
       latestToken: {
         action: "issued",
@@ -523,9 +451,9 @@
       },
       accessRequests: [],
       users: [adminUser, seededUser],
-      models: [seededModel],
-      submissions: [seededSubmission],
-      evaluations: [seededEvaluation],
+      models: [],
+      submissions: [],
+      evaluations: [],
       baselines: BASELINE_SEEDS.map((baseline, index) => ({
         id: `baseline-${index + 1}`,
         ...baseline,
