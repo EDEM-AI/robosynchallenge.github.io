@@ -1,0 +1,147 @@
+.page-shell {
+  min-height: 60vh;
+}
+
+.mock-note,
+.helper-note {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.7;
+}
+
+.mock-banner {
+  display: grid;
+  gap: 12px;
+}
+
+.mock-banner code,
+.code-chip,
+code {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(16, 33, 45, 0.08);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  word-break: break-all;
+}
+
+.inline-actions,
+.stack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.stack-actions {
+  margin-top: 18px;
+}
+
+.empty-state {
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+}
+
+.split-grid-equal {
+  display: grid;
+  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.hero-mini {
+  display: grid;
+  gap: 8px;
+}
+
+.subtle-box {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 33, 45, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.list-card {
+  display: grid;
+  gap: 16px;
+}
+
+.list-card + .list-card {
+  margin-top: 18px;
+}
+
+.fieldset-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.fieldset-box {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(16, 33, 45, 0.08);
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.fieldset-box h3 {
+  margin: 0 0 12px;
+}
+
+.nav-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.nav-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: rgba(16, 33, 45, 0.06);
+  color: var(--ink-soft);
+}
+
+.nav-pill.active {
+  background: rgba(191, 212, 231, 0.34);
+  color: var(--ink);
+}
+
+.mock-token {
+  display: grid;
+  gap: 8px;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rank-card h2 {
+  margin-bottom: 16px;
+}
+
+.video-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 420px;
+  text-align: center;
+  color: white;
+  padding: 24px;
+}
+
+.compact-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 1040px) {
+  .split-grid-equal {
+    grid-template-columns: 1fr;
+  }
+}

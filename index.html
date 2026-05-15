@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RoboSynChallenge</title>
+    <meta
+      name="description"
+      content="RoboSynChallenge is a NeurIPS 2026 competition on sim-to-real robot manipulation with synthesized and real-world co-training."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="static/css/site.css">
+    <link rel="stylesheet" href="static/css/pages.css">
+    <script defer src="static/js/pages-app.js"></script>
+  </head>
+  <body>
+    <div class="site-chrome"></div>
+    <header class="site-header">
+      <div class="shell header-row">
+        <a class="brand" href="#/home">
+          <span class="brand-mark">RS</span>
+          <span class="brand-copy">
+            <strong>RoboSynChallenge</strong>
+            <small>NeurIPS 2026 Competition</small>
+          </span>
+        </a>
+        <button class="nav-toggle" type="button" data-nav-toggle aria-label="Toggle navigation">
+          Menu
+        </button>
+        <nav class="site-nav" data-nav-menu id="site-nav"></nav>
+        <div class="header-actions" id="header-actions"></div>
+      </div>
+    </header>
+
+    <section class="flash-zone shell" id="flash-zone"></section>
+    <main id="app"></main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <div class="footer-heading">RoboSynChallenge</div>
+          <p>
+            A public benchmark for studying how synthesized manipulation data improves real-world
+            generalization under scarce physical supervision.
+          </p>
+        </div>
+        <div>
+          <div class="footer-heading">Resources</div>
+          <a href="https://github.com/wuxinxin27/Embodied_Challenge" target="_blank" rel="noreferrer">Embodied_Challenge GitHub</a>
+          <a id="paper-link" href="Benchmark___Competition_2026.pdf" target="_blank" rel="noreferrer">Benchmark PDF</a>
+          <span class="footer-muted">Hugging Face release coming soon</span>
+        </div>
+        <div>
+          <div class="footer-heading">Pages Mock Mode</div>
+          <span class="footer-muted">Frontend-only GitHub Pages deployment</span>
+          <span class="footer-muted">Login, register, models, submissions, and admin all run in localStorage</span>
+          <span class="footer-muted">No real backend or database is required</span>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© 2026 RoboSynChallenge</span>
+        <span>GitHub Pages mock deployment for public demos</span>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>RoboSynChallenge</title>
+    <script>
+      (function () {
+        var path = window.location.pathname || "/";
+        var parts = path.split("/").filter(Boolean);
+        var repoBase = parts.length ? "/" + parts[0] + "/" : "/";
+        window.location.replace(repoBase + "#/home");
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>
