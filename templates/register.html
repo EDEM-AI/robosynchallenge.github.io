@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Request Access{% endblock %}
+{% block content %}
+  <section class="section shell auth-grid single">
+    <article class="auth-card wide">
+      <span class="eyebrow">Participant access</span>
+      <h1>Request an account token</h1>
+      <p class="lead">
+        RoboSynChallenge now follows a token-based access model similar to RoboChallenge. Participants
+        receive an email-and-token pair from the organizers, then use that token to sign in and manage
+        model links and evaluation submissions.
+      </p>
+      <div class="task-list">
+        <span><strong>Recommended email subject:</strong> RoboSynChallenge participant access request</span>
+        <span><strong>Suggested details:</strong> full name, affiliation, email, team name, and intended use</span>
+        <span><strong>Organizer action:</strong> an admin creates the account and issues an access token</span>
+      </div>
+      <div class="cta-row">
+        <a href="mailto:{{ contact_email }}?subject=RoboSynChallenge%20participant%20access%20request" class="button button-primary">Open email draft</a>
+        <a href="{{ url_for('login') }}" class="button button-secondary">I already have a token</a>
+      </div>
+      <p class="auth-footnote">
+        If you deploy this publicly, replace the email address above with your real organizer contact.
+      </p>
+    </article>
+  </section>
+{% endblock %}

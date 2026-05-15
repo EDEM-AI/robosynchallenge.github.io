@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+instance/*.db
+uploads/policies/*
+uploads/results/*
+!uploads/results/demo-eval.mp4
+*.pyc

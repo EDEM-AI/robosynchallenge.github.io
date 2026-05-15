@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Leaderboard{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Public ranking</span>
+    <h1>Success rate first, then action efficiency, then real-world time.</h1>
+    <p class="lead narrow">
+      The leaderboard is automatically refreshed from published evaluations. Baseline placeholders
+      are seeded now so the interface is usable before the first public submissions arrive.
+    </p>
+  </section>
+
+  <section class="section shell">
+    <div class="top-grid">
+      {% for row in rows[:3] %}
+        <article class="card rank-card">
+          <span class="tag">#{{ loop.index }}</span>
+          <h2>{{ row.model_name }}</h2>
+          <div class="detail-list">
+            <span><strong>User:</strong> {{ row.username_display }}</span>
+            <span><strong>Track:</strong> {{ row.track_label }}</span>
+            <span><strong>Success rate:</strong> {{ "%.1f"|format(row.success_rate or 0) }}%</span>
+            <span><strong>Action steps:</strong> {{ "%.0f"|format(row.action_steps or 0) }}</span>
+            <span><strong>Real time:</strong> {{ "%.1f"|format(row.real_time or 0) }}s</span>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="table-shell">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Model</th>
+            <th>User</th>
+            <th>Track</th>
+            <th>Data regime</th>
+            <th>Success rate</th>
+            <th>Action steps</th>
+            <th>Real time</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>#{{ loop.index }}</td>
+              <td>
+                <div class="table-primary">
+                  {{ row.model_name }}
+                  {% if row.evaluation_id %}
+                    <a href="{{ url_for('result_viewer', evaluation_id=row.evaluation_id) }}">View result</a>
+                  {% endif %}
+                </div>
+              </td>
+              <td>{{ row.username_display }}</td>
+              <td>{{ row.track_label }}</td>
+              <td>{{ row.data_regime }}</td>
+              <td>{{ "%.1f"|format(row.success_rate or 0) }}%</td>
+              <td>{{ "%.0f"|format(row.action_steps or 0) }}</td>
+              <td>{{ "%.1f"|format(row.real_time or 0) }}s</td>
+              <td>{{ row.rank_badge }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="9">No published results yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

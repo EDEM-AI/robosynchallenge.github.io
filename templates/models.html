@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | My Models{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Model registry</span>
+    <h1>Register the Hugging Face and GitHub links that identify your base models.</h1>
+    <p class="lead narrow">
+      Evaluation submissions now reference a saved base model instead of uploading checkpoints to the
+      website. This keeps the platform light while preserving clear provenance for each run.
+    </p>
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">New model</span>
+          <h2>Add a base model</h2>
+        </div>
+        <form method="post" class="panel-stack compact">
+          <div class="form-grid">
+            <label class="field">
+              <span>Base model name</span>
+              <input type="text" name="display_name" placeholder="pi0.5 hybrid transfer">
+            </label>
+            <label class="field">
+              <span>Checkpoint link</span>
+              <input type="url" name="checkpoint_link" placeholder="https://huggingface.co/your-org/model">
+            </label>
+            <label class="field field-span-2">
+              <span>Code link</span>
+              <input type="url" name="code_link" placeholder="https://github.com/your-org/your-repo">
+            </label>
+          </div>
+          <button type="submit" class="button button-primary">Save model</button>
+        </form>
+      </article>
+
+      <article class="card card-soft">
+        <span class="tag">Expected usage</span>
+        <div class="task-list">
+          <span>Store weights on Hugging Face and source code on GitHub when possible.</span>
+          <span>Each evaluation submission picks one registered base model.</span>
+          <span>Admins can inspect these links without handling heavyweight uploads.</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="section-heading">
+      <span class="eyebrow">Saved entries</span>
+      <h2>{{ models|length }} base model{{ '' if models|length == 1 else 's' }}</h2>
+    </div>
+
+    {% if models %}
+      <div class="panel-stack">
+        {% for model in models %}
+          <article class="card">
+            <form method="post" action="{{ url_for('edit_model', model_id=model.id) }}" class="panel-stack compact">
+              <div class="form-grid">
+                <label class="field">
+                  <span>Base model name</span>
+                  <input type="text" name="display_name" value="{{ model.display_name }}">
+                </label>
+                <label class="field">
+                  <span>Checkpoint link</span>
+                  <input type="url" name="checkpoint_link" value="{{ model.checkpoint_link or '' }}">
+                </label>
+                <label class="field field-span-2">
+                  <span>Code link</span>
+                  <input type="url" name="code_link" value="{{ model.code_link or '' }}">
+                </label>
+              </div>
+              <div class="detail-list">
+                <span><strong>Updated:</strong> {{ model.updated_at|human_datetime }}</span>
+                <span><strong>Checkpoint:</strong> {{ model.checkpoint_link or 'Not provided' }}</span>
+                <span><strong>Code:</strong> {{ model.code_link or 'Not provided' }}</span>
+              </div>
+              <div class="section-actions">
+                <button type="submit" class="button button-secondary">Save changes</button>
+              </div>
+            </form>
+            <form method="post" action="{{ url_for('delete_model', model_id=model.id) }}" class="section-actions">
+              <button type="submit" class="button button-danger">Delete model</button>
+            </form>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <article class="card">
+        <p>No base models saved yet. Add one above before creating an evaluation submission.</p>
+      </article>
+    {% endif %}
+  </section>
+{% endblock %}

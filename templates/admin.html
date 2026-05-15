@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Admin{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Administrator console</span>
+    <h1>Issue access tokens, schedule runs, publish results, and seed baselines.</h1>
+    <p class="lead narrow">
+      This console is the operational layer of the competition site. It stays light by issuing account
+      tokens, referencing external model links, and exposing public leaderboard data as JSON.
+    </p>
+  </section>
+
+  <section class="section shell">
+    <div class="four-up">
+      <article class="card metric-card"><span>Users</span><strong>{{ metrics.users }}</strong></article>
+      <article class="card metric-card"><span>Submissions</span><strong>{{ metrics.submissions }}</strong></article>
+      <article class="card metric-card"><span>Published results</span><strong>{{ metrics.published_results }}</strong></article>
+      <article class="card metric-card"><span>Leaderboard rows</span><strong>{{ metrics.leaderboard_entries }}</strong></article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    {% if latest_token %}
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Copy now</span>
+          <h2>Latest participant token</h2>
+        </div>
+        <div class="detail-list">
+          <span><strong>Action:</strong> {{ latest_token.action }}</span>
+          <span><strong>User:</strong> {{ latest_token.username }} · {{ latest_token.email }}</span>
+          <span><strong>Token:</strong> <code>{{ latest_token.token }}</code></span>
+        </div>
+      </article>
+    {% endif %}
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Participant access</span>
+          <h2>Create a token-based account</h2>
+        </div>
+        <form method="post" class="panel-stack compact">
+          <input type="hidden" name="form_name" value="create-participant">
+          <div class="form-grid">
+            <label class="field">
+              <span>Username</span>
+              <input type="text" name="username" placeholder="team_name">
+            </label>
+            <label class="field">
+              <span>Email</span>
+              <input type="email" name="email" placeholder="user@example.org">
+            </label>
+            <label class="field">
+              <span>Affiliation</span>
+              <input type="text" name="affiliation" placeholder="Lab or company">
+            </label>
+            <label class="field field-span-2">
+              <span>Short bio</span>
+              <textarea name="bio" rows="3" placeholder="Optional context for the participant account."></textarea>
+            </label>
+          </div>
+          <button type="submit" class="button button-primary">Create participant</button>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Seed a baseline</span>
+          <h2>Create a public leaderboard entry</h2>
+        </div>
+        <form method="post" class="panel-stack compact">
+          <input type="hidden" name="form_name" value="create-baseline">
+          <div class="form-grid">
+            <label class="field">
+              <span>Model name</span>
+              <input type="text" name="model_name" placeholder="pi0.5">
+            </label>
+            <label class="field">
+              <span>Display user</span>
+              <input type="text" name="username_display" placeholder="Official Baseline">
+            </label>
+            <label class="field">
+              <span>Affiliation</span>
+              <input type="text" name="affiliation" placeholder="RoboSynChallenge">
+            </label>
+            <label class="field">
+              <span>Track</span>
+              <select name="track">
+                {% for key, label in track_labels.items() %}
+                  <option value="{{ key }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="field">
+              <span>Data regime label</span>
+              <input type="text" name="data_regime" placeholder="Official sim + real">
+            </label>
+            <label class="field">
+              <span>Success rate</span>
+              <input type="number" step="0.1" name="success_rate" placeholder="64.2">
+            </label>
+            <label class="field">
+              <span>Action steps</span>
+              <input type="number" step="0.1" name="action_steps" placeholder="402">
+            </label>
+            <label class="field">
+              <span>Real time</span>
+              <input type="number" step="0.1" name="real_time" placeholder="72.5">
+            </label>
+            <label class="field field-span-2">
+              <span>Notes</span>
+              <textarea name="notes" rows="3" placeholder="What this baseline represents."></textarea>
+            </label>
+          </div>
+          <button type="submit" class="button button-primary">Add baseline</button>
+        </form>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="table-shell">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Affiliation</th>
+            <th>Role</th>
+            <th>Token hint</th>
+            <th>Issued</th>
+            <th>Token</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for participant in participants %}
+            <tr>
+              <td>{{ participant.username }}</td>
+              <td>{{ participant.email }}</td>
+              <td>{{ participant.affiliation or '—' }}</td>
+              <td>{{ participant.role }}</td>
+              <td>{{ participant.access_token_hint or 'Not issued' }}</td>
+              <td>{{ participant.created_at|human_datetime }}</td>
+              <td>
+                <form method="post">
+                  <input type="hidden" name="form_name" value="regenerate-token">
+                  <input type="hidden" name="user_id" value="{{ participant.id }}">
+                  <button type="submit" class="button button-secondary">Regenerate</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7">No participants yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="table-shell">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Base model</th>
+            <th>Experiment</th>
+            <th>User</th>
+            <th>Run type</th>
+            <th>Status</th>
+            <th>Schedule</th>
+            <th>Published</th>
+            <th>Manage</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for submission in submissions %}
+            <tr>
+              <td>{{ submission.model_name_snapshot or submission.title }}</td>
+              <td>{{ submission.title }}</td>
+              <td>{{ submission.username }}</td>
+              <td>{{ ranking_labels.get(submission.is_ranked, 'Test run') }}</td>
+              <td>{{ submission.evaluation_status|human_status if submission.evaluation_status else submission.status|human_status }}</td>
+              <td>{{ submission.evaluation_schedule_at|human_datetime }}</td>
+              <td>{{ 'Yes' if submission.evaluation_published else 'No' }}</td>
+              <td><a href="{{ url_for('admin_submission', submission_id=submission.id) }}">Open</a></td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8">No submissions yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

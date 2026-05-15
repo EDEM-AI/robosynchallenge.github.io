@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Sign In{% endblock %}
+{% block content %}
+  <section class="section shell auth-grid single">
+    <article class="auth-card">
+      <span class="eyebrow">Token access</span>
+      <h1>Sign in</h1>
+      <form method="post" class="panel-stack compact">
+        <label class="field">
+          <span>Email</span>
+          <input type="email" name="email" placeholder="user@example.org">
+        </label>
+        <label class="field">
+          <span>Access token</span>
+          <input type="text" name="token" placeholder="Paste the token issued by the administrator">
+        </label>
+        <button type="submit" class="button button-primary">Sign in</button>
+      </form>
+      <p class="auth-footnote">
+        Need an account token?
+        <a href="{{ url_for('register') }}">Request access here</a>
+      </p>
+    </article>
+  </section>
+{% endblock %}

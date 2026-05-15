@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: robosynchallenge
+    env: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: ROBOCHALLENGE_RUNTIME_DIR
+        value: /var/data/robosynchallenge
+      - key: ROBOCHALLENGE_ADMIN_USERNAME
+        value: admin
+      - key: ROBOCHALLENGE_ADMIN_EMAIL
+        value: admin@example.org
+      - key: ROBOCHALLENGE_ADMIN_TOKEN
+        value: change-me-before-public-launch
+    disk:
+      name: robosynchallenge-data
+      mountPath: /var/data/robosynchallenge
+      sizeGB: 1

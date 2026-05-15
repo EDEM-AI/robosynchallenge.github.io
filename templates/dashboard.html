@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Dashboard{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">My submissions</span>
+    <h1>Track your evaluation requests, schedules, and published results.</h1>
+    <p class="lead narrow">
+      Each entry records the selected base model, declared modalities, data sources, admin schedule,
+      and any published evaluation results.
+    </p>
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card card-soft">
+        <span class="tag">Profile</span>
+        <h2>{{ g.user.username }}</h2>
+        <p>{{ g.user.affiliation or "Affiliation not provided." }}</p>
+        <p>{{ g.user.bio or "No biography added yet." }}</p>
+      </article>
+      <article class="card card-soft">
+        <span class="tag">Quick actions</span>
+        <div class="cta-row">
+          <a href="{{ url_for('evaluation_page') }}" class="button button-primary">New submission</a>
+          <a href="{{ url_for('my_models') }}" class="button button-secondary">Manage models</a>
+          <a href="{{ url_for('leaderboard_page') }}" class="button button-secondary">Public leaderboard</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="section-heading">
+      <span class="eyebrow">Submissions</span>
+      <h2>{{ submissions|length }} record{{ '' if submissions|length == 1 else 's' }}</h2>
+    </div>
+    <div class="table-shell">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Base model</th>
+            <th>Experiment</th>
+            <th>Track</th>
+            <th>Run type</th>
+            <th>Status</th>
+            <th>Schedule</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for submission in submissions %}
+            <tr>
+              <td>
+                <div class="table-primary">
+                  <a href="{{ url_for('submission_detail', submission_id=submission.id) }}">{{ submission.display_name }}</a>
+                  <span>{{ "External links attached" if submission.code_link or submission.checkpoint_link else "No external link attached" }}</span>
+                </div>
+              </td>
+              <td>
+                <div class="table-primary">
+                  <a href="{{ url_for('submission_detail', submission_id=submission.id) }}">{{ submission.title }}</a>
+                  <span>{{ submission.short_description[:88] }}{% if submission.short_description|length > 88 %}…{% endif %}</span>
+                </div>
+              </td>
+              <td>{{ track_labels.get(submission.track, submission.track) }}</td>
+              <td>{{ submission.ranking_label }}</td>
+              <td><span class="status-pill status-{{ submission.status }}">{{ submission.status|human_status }}</span></td>
+              <td>{{ submission.evaluation_schedule_at|human_datetime }}</td>
+              <td>{{ submission.created_at|human_datetime }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7">No submissions yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

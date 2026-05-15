@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}RoboSynChallenge{% endblock %}</title>
+    <meta
+      name="description"
+      content="RoboSynChallenge is a NeurIPS 2026 competition on sim-to-real robot manipulation with synthesized and real-world co-training."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+    <script defer src="{{ url_for('static', filename='js/site.js') }}"></script>
+  </head>
+  <body class="{% block body_class %}{% endblock %}">
+    <div class="site-chrome"></div>
+    <header class="site-header">
+      <div class="shell header-row">
+        <a class="brand" href="{{ url_for('home') }}">
+          <span class="brand-mark">RS</span>
+          <span class="brand-copy">
+            <strong>RoboSynChallenge</strong>
+            <small>NeurIPS 2026 Competition</small>
+          </span>
+        </a>
+        <button class="nav-toggle" type="button" data-nav-toggle aria-label="Toggle navigation">
+          Menu
+        </button>
+        <nav class="site-nav" data-nav-menu>
+          <a href="{{ url_for('home') }}" class="{{ 'active' if request.path == '/' else '' }}">Home</a>
+          <a href="{{ url_for('data_page') }}" class="{{ 'active' if request.path.startswith('/data') else '' }}">Data</a>
+          <a href="{{ url_for('evaluation_page') }}" class="{{ 'active' if request.path.startswith('/evaluation') else '' }}">Evaluation</a>
+          <a href="{{ url_for('leaderboard_page') }}" class="{{ 'active' if request.path.startswith('/leaderboard') else '' }}">Leaderboard</a>
+          {% if g.user %}
+            <a href="{{ url_for('my_models') }}" class="{{ 'active' if request.path.startswith('/models') else '' }}">My Models</a>
+            <a href="{{ url_for('dashboard') }}" class="{{ 'active' if request.path.startswith('/dashboard') or request.path.startswith('/submission') else '' }}">My Submissions</a>
+            {% if g.user.role == 'admin' %}
+              <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.path.startswith('/admin') else '' }}">Admin</a>
+            {% endif %}
+          {% endif %}
+        </nav>
+        <div class="header-actions">
+          {% if g.user %}
+            <div class="user-badge">
+              <span>{{ g.user.username }}</span>
+              <small>{{ g.user.role }}</small>
+            </div>
+            <form method="post" action="{{ url_for('logout') }}">
+              <button type="submit" class="button button-secondary">Sign out</button>
+            </form>
+          {% else %}
+            <a href="{{ url_for('login') }}" class="button button-secondary">Sign in</a>
+            <a href="{{ url_for('register') }}" class="button button-primary">Request access</a>
+          {% endif %}
+        </div>
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <section class="flash-zone shell">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+    {% endwith %}
+
+    <main>
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <div class="shell footer-grid">
+        <div>
+          <div class="footer-heading">RoboSynChallenge</div>
+          <p>
+            A public benchmark for studying how synthesized manipulation data improves real-world
+            generalization under scarce physical supervision.
+          </p>
+        </div>
+        <div>
+          <div class="footer-heading">Resources</div>
+          <a href="{{ simulation_repo_url }}" target="_blank" rel="noreferrer">Embodied_Challenge GitHub</a>
+          <a href="{{ url_for('paper_download') }}">Benchmark PDF</a>
+          {% if dataset_url %}
+            <a href="{{ dataset_url }}" target="_blank" rel="noreferrer">{{ dataset_label }}</a>
+          {% else %}
+            <span class="footer-muted">Hugging Face release coming soon</span>
+          {% endif %}
+        </div>
+        <div>
+          <div class="footer-heading">Access</div>
+          <span class="footer-muted">Public result browsing enabled</span>
+          <span class="footer-muted">Participant access is issued with email and token</span>
+          <span class="footer-muted">Model artifacts stay on Hugging Face or GitHub links</span>
+        </div>
+      </div>
+      <div class="shell footer-bottom">
+        <span>© {{ current_year }} RoboSynChallenge</span>
+        <span>Designed for open research evaluation</span>
+      </div>
+    </footer>
+  </body>
+</html>

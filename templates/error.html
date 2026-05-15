@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Error{% endblock %}
+{% block content %}
+  <section class="section shell auth-grid single">
+    <article class="auth-card">
+      <span class="eyebrow">Error {{ code }}</span>
+      <h1>{{ message }}</h1>
+      <div class="cta-row">
+        <a href="{{ url_for('home') }}" class="button button-primary">Back home</a>
+        <a href="{{ url_for('leaderboard_page') }}" class="button button-secondary">Leaderboard</a>
+      </div>
+    </article>
+  </section>
+{% endblock %}

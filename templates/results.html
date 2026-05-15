@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Result Viewer{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Result viewer</span>
+    <h1>{{ evaluation.display_name }}</h1>
+    <p class="lead narrow">
+      {{ evaluation.short_description or evaluation.notes or evaluation.leaderboard_notes or "Published evaluation result." }}
+    </p>
+  </section>
+
+  <section class="section shell">
+    <div class="three-up">
+      <article class="card metric-card">
+        <span>Success rate</span>
+        <strong>{{ "%.1f"|format(evaluation.success_rate or 0) }}%</strong>
+      </article>
+      <article class="card metric-card">
+        <span>Action steps</span>
+        <strong>{{ "%.0f"|format(evaluation.action_steps or 0) }}</strong>
+      </article>
+      <article class="card metric-card">
+        <span>Real time</span>
+        <strong>{{ "%.1f"|format(evaluation.real_time or 0) }}s</strong>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="result-layout">
+      <article class="card viewer-card" data-result-viewer data-episodes='{{ episode_data|tojson }}'>
+        <div class="slider-shell">
+          <div class="slider-header">
+            <span>Eval episode</span>
+            <strong data-episode-title>Episode 1</strong>
+          </div>
+          <input type="range" min="1" max="{{ episodes|length }}" value="1" step="1" data-episode-slider>
+        </div>
+        <div class="video-shell">
+          <video controls playsinline preload="metadata" data-result-video></video>
+          <div class="video-empty" data-video-empty>Episode video pending upload.</div>
+        </div>
+        <div class="slider-shell">
+          <div class="slider-header">
+            <span>Episode time</span>
+            <strong data-time-readout>0.0s</strong>
+          </div>
+          <input type="range" min="0" max="0" value="0" step="0.1" data-time-slider>
+        </div>
+      </article>
+
+      <article class="card sidecard">
+        <span class="tag">{{ evaluation.track_label or 'Published result' }}</span>
+        <h2 data-current-task>{{ episodes[0].task_name }}</h2>
+        <div class="detail-list">
+          <span><strong>Source:</strong> {{ evaluation.source_kind or 'submission' }}</span>
+          <span><strong>Status:</strong> {{ evaluation.status|human_status }}</span>
+          <span><strong>Scheduled:</strong> {{ evaluation.schedule_at|human_datetime }}</span>
+          <span><strong>Published:</strong> {{ evaluation.published_at|human_datetime }}</span>
+        </div>
+        <p data-episode-notes>{{ episodes[0].notes or "No episode notes uploaded." }}</p>
+      </article>
+    </div>
+  </section>
+{% endblock %}

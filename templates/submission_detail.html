@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Submission{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Submission detail</span>
+    <h1>{{ submission.display_name }}</h1>
+    <p class="lead narrow">{{ submission.short_description }}</p>
+    <div class="cta-row">
+      {% if submission.evaluation_published %}
+        <a href="{{ url_for('result_viewer', evaluation_id=submission.evaluation_id) }}" class="button button-primary">View published result</a>
+      {% endif %}
+      {% if g.user.role == 'admin' and submission.policy_filename %}
+        <a href="{{ url_for('admin_download_policy', submission_id=submission.id) }}" class="button button-secondary">Download policy</a>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card">
+        <span class="tag">Status</span>
+        <h2>{{ submission.status|human_status }}</h2>
+        <div class="detail-list">
+          <span><strong>Owner:</strong> {{ submission.username }}</span>
+          <span><strong>Experiment:</strong> {{ submission.title }}</span>
+          <span><strong>Track:</strong> {{ track_labels.get(submission.track, submission.track) }}</span>
+          <span><strong>Run type:</strong> {{ submission.ranking_label }}</span>
+          <span><strong>Schedule:</strong> {{ submission.evaluation_schedule_at|human_datetime }}</span>
+          <span><strong>Published:</strong> {{ 'Yes' if submission.evaluation_published else 'No' }}</span>
+        </div>
+      </article>
+      <article class="card">
+        <span class="tag">Protocol</span>
+        <div class="detail-list">
+          <span><strong>output_chunk_size:</strong> {{ submission.output_chunk_size }}</span>
+          <span><strong>execution_chunk_size:</strong> {{ submission.execution_chunk_size }}</span>
+          <span><strong>gripper_threshold:</strong> {{ submission.gripper_threshold }}</span>
+          <span><strong>Input rot:</strong> {{ rotation_labels.get(submission.input_rotation_format, 'N/A') }}</span>
+          <span><strong>Output rot:</strong> {{ rotation_labels.get(submission.output_rotation_format, 'N/A') }}</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="three-up">
+      <article class="card">
+        <h3>Data sources</h3>
+        <div class="task-list">
+          {% for item in submission.data_sources %}
+            <span>{{ item }}</span>
+          {% endfor %}
+          {% if submission.other_data_source_text %}
+            <span>{{ submission.other_data_source_text }}</span>
+          {% endif %}
+        </div>
+      </article>
+      <article class="card">
+        <h3>Inputs</h3>
+        <div class="task-list">
+          {% for item in submission.input_state %}
+            <span>{{ item }}</span>
+          {% endfor %}
+          {% for item in submission.input_images %}
+            <span>{{ item }}</span>
+          {% endfor %}
+        </div>
+      </article>
+      <article class="card">
+        <h3>Outputs</h3>
+        <div class="task-list">
+          {% for item in submission.output_actions %}
+            <span>{{ item }}</span>
+          {% endfor %}
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card">
+        <span class="tag">Model registry</span>
+        <div class="detail-list">
+          <span><strong>Base model:</strong> {{ submission.display_name }}</span>
+          <span><strong>Checkpoint:</strong> {{ submission.checkpoint_link or 'Not provided' }}</span>
+          <span><strong>Code:</strong> {{ submission.code_link or 'Not provided' }}</span>
+        </div>
+      </article>
+      <article class="card">
+        <span class="tag">Admin notes</span>
+        <p>{{ submission.admin_schedule_note or submission.evaluation_notes or "No admin notes yet." }}</p>
+      </article>
+    </div>
+  </section>
+
+  {% if episodes %}
+    <section class="section shell">
+      <div class="section-heading">
+        <span class="eyebrow">Episodes</span>
+        <h2>Uploaded evaluation footage</h2>
+      </div>
+      <div class="table-shell">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Episode</th>
+              <th>Task</th>
+              <th>Duration</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for episode in episodes %}
+              <tr>
+                <td>{{ episode.episode_index }}</td>
+                <td>{{ episode.task_name }}</td>
+                <td>{{ episode.duration_seconds|human_time }}</td>
+                <td>{{ episode.notes or '—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

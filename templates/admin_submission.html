@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}RoboSynChallenge | Manage Submission{% endblock %}
+{% block content %}
+  <section class="page-hero shell">
+    <span class="eyebrow">Submission management</span>
+    <h1>{{ submission.display_name }}</h1>
+    <p class="lead narrow">{{ submission.short_description }}</p>
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Participant</span>
+          <h2>{{ submission.username }}</h2>
+        </div>
+        <div class="detail-list">
+          <span><strong>Email:</strong> {{ submission.email }}</span>
+          <span><strong>Affiliation:</strong> {{ submission.user_affiliation or 'Not provided' }}</span>
+          <span><strong>Base model:</strong> {{ submission.display_name }}</span>
+          <span><strong>Checkpoint:</strong> {{ submission.checkpoint_link or 'Not provided' }}</span>
+          <span><strong>Code:</strong> {{ submission.code_link or 'Not provided' }}</span>
+        </div>
+        {% if submission.policy_filename %}
+          <div class="section-actions">
+            <a href="{{ url_for('admin_download_policy', submission_id=submission.id) }}" class="button button-secondary">Download legacy policy</a>
+          </div>
+        {% endif %}
+      </article>
+
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Declared protocol</span>
+          <h2>{{ track_labels.get(submission.track, submission.track) }}</h2>
+        </div>
+        <div class="detail-list">
+          <span><strong>Experiment:</strong> {{ submission.title }}</span>
+          <span><strong>Run type:</strong> {{ submission.ranking_label }}</span>
+          <span><strong>Inputs:</strong> {{ (submission.input_state + submission.input_images)|join(', ') }}</span>
+          <span><strong>Outputs:</strong> {{ submission.output_actions|join(', ') }}</span>
+          <span><strong>Data sources:</strong> {{ submission.data_sources|join(', ') }}</span>
+          <span><strong>Chunking:</strong> {{ submission.execution_chunk_size }} / {{ submission.output_chunk_size }}</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="split-grid">
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Evaluation metadata</span>
+          <h2>Schedule and publish</h2>
+        </div>
+        <form method="post" class="panel-stack compact">
+          <input type="hidden" name="form_name" value="update-evaluation">
+          <div class="form-grid">
+            <label class="field">
+              <span>Status</span>
+              <select name="status">
+                {% for value in ['submitted', 'scheduled', 'queued', 'evaluating', 'completed', 'published'] %}
+                  <option value="{{ value }}" {{ 'selected' if evaluation.status == value else '' }}>{{ value|human_status }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="field">
+              <span>Schedule</span>
+              <input type="datetime-local" name="schedule_at" value="{{ evaluation.schedule_at or '' }}">
+            </label>
+            <label class="field">
+              <span>Success rate</span>
+              <input type="number" step="0.1" name="success_rate" value="{{ evaluation.success_rate or '' }}">
+            </label>
+            <label class="field">
+              <span>Action steps</span>
+              <input type="number" step="0.1" name="action_steps" value="{{ evaluation.action_steps or '' }}">
+            </label>
+            <label class="field">
+              <span>Real time</span>
+              <input type="number" step="0.1" name="real_time" value="{{ evaluation.real_time or '' }}">
+            </label>
+            <label class="field field-span-2">
+              <span>Schedule note</span>
+              <textarea name="admin_schedule_note" rows="3">{{ submission.admin_schedule_note or '' }}</textarea>
+            </label>
+            <label class="field field-span-2">
+              <span>Evaluation notes</span>
+              <textarea name="notes" rows="4">{{ evaluation.notes or '' }}</textarea>
+            </label>
+          </div>
+          <label class="choice-inline">
+            <input type="checkbox" name="published" {{ 'checked' if evaluation.published else '' }}>
+            <span>Publish to leaderboard and result viewer</span>
+          </label>
+          <button type="submit" class="button button-primary">Save evaluation</button>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="section-heading left">
+          <span class="eyebrow">Episode uploader</span>
+          <h2>Add result footage</h2>
+        </div>
+        <form method="post" enctype="multipart/form-data" class="panel-stack compact">
+          <input type="hidden" name="form_name" value="add-episode">
+          <div class="form-grid">
+            <label class="field">
+              <span>Episode index</span>
+              <input type="number" min="1" step="1" name="episode_index" value="{{ episodes|length + 1 }}">
+            </label>
+            <label class="field">
+              <span>Task name</span>
+              <input type="text" name="task_name" placeholder="Drawer open-and-place">
+            </label>
+            <label class="field">
+              <span>Duration seconds</span>
+              <input type="number" step="0.1" name="duration_seconds" placeholder="12.5">
+            </label>
+            <label class="field">
+              <span>Episode video</span>
+              <input type="file" name="episode_video" accept=".mp4,.webm,.mov,.m4v">
+            </label>
+            <label class="field">
+              <span>External video URL</span>
+              <input type="url" name="video_url" placeholder="https://...">
+            </label>
+            <label class="field field-span-2">
+              <span>Episode notes</span>
+              <textarea name="episode_notes" rows="3" placeholder="What to notice in this rollout."></textarea>
+            </label>
+          </div>
+          <button type="submit" class="button button-secondary">Add episode</button>
+        </form>
+
+        {% if evaluation.published %}
+          <div class="section-actions">
+            <a href="{{ url_for('result_viewer', evaluation_id=evaluation.id) }}" class="button button-ghost">Open public viewer</a>
+          </div>
+        {% endif %}
+      </article>
+    </div>
+  </section>
+
+  <section class="section shell">
+    <div class="table-shell">
+      <table class="leaderboard-table">
+        <thead>
+          <tr>
+            <th>Episode</th>
+            <th>Task</th>
+            <th>Duration</th>
+            <th>Video</th>
+            <th>Notes</th>
+            <th>Delete</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for episode in episodes %}
+            <tr>
+              <td>{{ episode.episode_index }}</td>
+              <td>{{ episode.task_name }}</td>
+              <td>{{ episode.duration_seconds|human_time }}</td>
+              <td>{{ episode.video_url or episode.video_filename or 'Not uploaded' }}</td>
+              <td>{{ episode.notes or '—' }}</td>
+              <td>
+                <form method="post" action="{{ url_for('admin_delete_episode', episode_id=episode.id) }}">
+                  <button type="submit" class="button button-danger">Delete</button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6">No episodes uploaded yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}
