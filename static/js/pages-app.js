@@ -5,7 +5,6 @@
   const DATASET_URL = "";
   const DATASET_LABEL = "Hugging Face dataset";
   const SIMULATION_REPO_URL = "https://github.com/wuxinxin27/Embodied_Challenge";
-  const PAPER_URL = "Benchmark___Competition_2026.pdf";
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
 
   const STATE_LABELS = {
@@ -622,7 +621,6 @@
           <article class="card">
             <span class="tag">Account access</span>
             <div class="task-list">
-              <span>Participant access is issued with email and token.</span>
               <span>After signing in you can register models and submit evaluation requests.</span>
               <span>Public leaderboard entries and published result viewers remain visible without sign-in.</span>
             </div>
@@ -649,7 +647,6 @@
             <div class="cta-row">
               <a href="${routeHref("evaluation")}" class="button button-primary">Submit a policy</a>
               <a href="${routeHref("data")}" class="button button-secondary">Explore datasets</a>
-              <a href="${PAPER_URL}" class="button button-ghost" target="_blank" rel="noreferrer">Read benchmark PDF</a>
             </div>
           </div>
           <div class="hero-visual">
@@ -732,7 +729,6 @@
                 observations and proprioceptive feedback only. Entry, mid, and high-level tasks cover
                 rigid objects, articulated objects, tools, and precision operations.
               </p>
-              <a href="${PAPER_URL}" class="button button-secondary" target="_blank" rel="noreferrer">See platform details</a>
             </div>
             <img src="static/assets/realworld-env.png" alt="Real-world hardware platform">
           </article>
