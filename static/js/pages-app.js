@@ -4,7 +4,7 @@
   const STORAGE_KEY = "robosynchallenge-pages-state-v2";
   const DATASET_URL = "";
   const DATASET_LABEL = "Hugging Face dataset";
-  const SIMULATION_REPO_URL = "https://github.com/wuxinxin27/Embodied_Challenge";
+  const SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge";
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
 
   const STATE_LABELS = {
@@ -691,7 +691,7 @@
           <article class="card card-soft">
             <h3>What teams are allowed to use</h3>
             <p>
-              Participants can train with the open Embodied_Challenge generation platform, the official
+              Participants can train with the open RoboSynChallenge generation platform, the official
               simulated and real data releases, or additional private data if they disclose its source at
               submission time. The leaderboard keeps that provenance visible.
             </p>
@@ -708,7 +708,7 @@
           <article class="card platform-card">
             <div class="platform-meta">
               <span class="tag">Synthetic data generation</span>
-              <h3>Embodied_Challenge simulation stack</h3>
+              <h3>RoboSynChallenge simulation stack</h3>
               <p>
                 Use the open-source simulation pipeline to synthesize large-scale state-action trials with
                 domain randomization over lighting, objects, table properties, camera calibration, robot
@@ -895,7 +895,7 @@
         <h1>From teleoperated real trajectories to large-scale randomized simulation streams.</h1>
         <p class="lead narrow">
           RoboSynChallenge combines a smaller curated real set with a larger synthetic corpus generated
-          using Embodied_Challenge. The site keeps both the data links and the collection protocol visible
+          using RoboSynChallenge. The site keeps both the data links and the collection protocol visible
           so participants can reason about what is official, what is additional, and what is still held out.
         </p>
         <div class="cta-row">
@@ -1032,9 +1032,9 @@
           <span class="eyebrow">Participant access</span>
           <h1>Request an account token</h1>
           <p class="lead">
-            RoboSynChallenge now follows a token-based access model similar to RoboChallenge. Participants
-            receive an email-and-token pair from the organizers, then use that token to sign in and manage
-            model links and evaluation submissions.
+            RoboSynChallenge uses a token-based access model. Participants receive an email-and-token pair
+            from the organizers, then use that token to sign in and manage model links and evaluation
+            submissions.
           </p>
           <div class="task-list">
             <span><strong>Recommended email subject:</strong> RoboSynChallenge participant access request</span>
@@ -1113,8 +1113,8 @@
               <span class="tag">Model registry required</span>
               <h2>Create a base model entry first</h2>
               <p>
-                The evaluation workflow mirrors RoboChallenge-style model registration. Save a Hugging Face
-                or GitHub-backed base model first, then return here to submit a run.
+                The evaluation workflow requires model registration. Save a Hugging Face or GitHub-backed
+                base model first, then return here to submit a run.
               </p>
               <div class="cta-row">
                 <a href="${routeHref("models")}" class="button button-primary">Open My Models</a>
