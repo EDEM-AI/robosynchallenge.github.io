@@ -35,7 +35,7 @@ SCHEMA_PATH = BASE_DIR / "schema.sql"
 POLICY_UPLOAD_DIR = RUNTIME_DIR / "uploads" / "policies"
 RESULT_UPLOAD_DIR = RUNTIME_DIR / "uploads" / "results"
 
-SIMULATION_REPO_URL = "https://github.com/wuxinxin27/Embodied_Challenge"
+SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge"
 HUGGING_FACE_URL = os.getenv("ROBOCHALLENGE_DATASET_URL", "").strip()
 HUGGING_FACE_LABEL = os.getenv("ROBOCHALLENGE_DATASET_LABEL", "Hugging Face dataset")
 DEFAULT_ADMIN_USERNAME = os.getenv("ROBOCHALLENGE_ADMIN_USERNAME", "admin").strip() or "admin"
