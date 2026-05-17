@@ -68,7 +68,6 @@ if (viewer) {
   const title = viewer.querySelector("[data-episode-title]");
   const timeReadout = viewer.querySelector("[data-time-readout]");
   const currentTask = document.querySelector("[data-current-task]");
-  const currentTaskDetail = document.querySelector("[data-current-task-detail]");
   const currentSetup = document.querySelector("[data-current-setup]");
   const currentOutcome = document.querySelector("[data-current-outcome]");
   const episodeNotes = document.querySelector("[data-episode-notes]");
@@ -88,7 +87,6 @@ if (viewer) {
     const details = structuredEpisodeDetails(episode);
     if (title) title.textContent = `Episode ${episode.episode_index}: ${details.task}`;
     if (currentTask) currentTask.textContent = details.task;
-    if (currentTaskDetail) currentTaskDetail.textContent = details.task;
     if (currentSetup) currentSetup.textContent = details.setup;
     if (currentOutcome) currentOutcome.textContent = details.outcome;
     if (episodeNotes) {
