@@ -25,7 +25,7 @@
         "success": true,
         "duration_seconds": 41.8,
         "video_url": "static/assets/result-videos/videos/pi0_real/click_bell/unlabeled/01__Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165118.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165118",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi0_ed/clickbell_ed/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165118/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165118_videos.mp4"
       },
       {
@@ -38,7 +38,7 @@
         "success": true,
         "duration_seconds": 20.9,
         "video_url": "static/assets/result-videos/videos/pi0_real/click_bell/unlabeled/02__Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165440.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165440",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi0_ed/clickbell_ed/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165440/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_165440_videos.mp4"
       },
       {
@@ -51,7 +51,7 @@
         "success": true,
         "duration_seconds": 92.8,
         "video_url": "static/assets/result-videos/videos/pi0_real/click_bell/unlabeled/03__Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_171250.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_171250",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi0_ed/clickbell_ed/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_171250/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_171250_videos.mp4"
       },
       {
@@ -64,7 +64,7 @@
         "success": true,
         "duration_seconds": 46.8,
         "video_url": "static/assets/result-videos/videos/pi0_real/click_bell/unlabeled/04__Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172042.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172042",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi0_ed/clickbell_ed/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172042/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172042_videos.mp4"
       },
       {
@@ -77,7 +77,7 @@
         "success": true,
         "duration_seconds": 18.6,
         "video_url": "static/assets/result-videos/videos/pi0_real/click_bell/unlabeled/05__Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172723.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172723",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi0_ed/clickbell_ed/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172723/Pi0-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_172723_videos.mp4"
       },
       {
@@ -90,7 +90,7 @@
         "success": true,
         "duration_seconds": 34.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/items_handover_place/unlabeled/01__Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_183755.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_183755",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/itemhand_ed/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_183755/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_183755_videos.mp4"
       },
       {
@@ -103,7 +103,7 @@
         "success": true,
         "duration_seconds": 36.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/items_handover_place/unlabeled/02__Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_184225.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_184225",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/itemhand_ed/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_184225/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_184225_videos.mp4"
       },
       {
@@ -116,7 +116,7 @@
         "success": true,
         "duration_seconds": 33.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/items_handover_place/unlabeled/03__Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_185350.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_185350",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/itemhand_ed/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_185350/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_185350_videos.mp4"
       },
       {
@@ -129,7 +129,7 @@
         "success": true,
         "duration_seconds": 36.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/items_handover_place/unlabeled/04__Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190029.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190029",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/itemhand_ed/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190029/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190029_videos.mp4"
       },
       {
@@ -142,7 +142,7 @@
         "success": true,
         "duration_seconds": 51.5,
         "video_url": "static/assets/result-videos/videos/pi0_real/items_handover_place/unlabeled/05__Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190320.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190320",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/itemhand_ed/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190320/Pi0-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_190320_videos.mp4"
       },
       {
@@ -155,7 +155,7 @@
         "success": true,
         "duration_seconds": 55.9,
         "video_url": "static/assets/result-videos/videos/pi0_real/dual_arm_water_pouring/unlabeled/01__Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173213.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173213",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi0_ed/pourwater_ed/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173213/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173213_videos.mp4"
       },
       {
@@ -168,7 +168,7 @@
         "success": true,
         "duration_seconds": 63.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/dual_arm_water_pouring/unlabeled/02__Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173406.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173406",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi0_ed/pourwater_ed/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173406/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_173406_videos.mp4"
       },
       {
@@ -181,7 +181,7 @@
         "success": true,
         "duration_seconds": 63.1,
         "video_url": "static/assets/result-videos/videos/pi0_real/dual_arm_water_pouring/unlabeled/03__Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_175933.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_175933",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi0_ed/pourwater_ed/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_175933/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_175933_videos.mp4"
       },
       {
@@ -194,7 +194,7 @@
         "success": true,
         "duration_seconds": 53.4,
         "video_url": "static/assets/result-videos/videos/pi0_real/dual_arm_water_pouring/unlabeled/04__Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_181928.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_181928",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi0_ed/pourwater_ed/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_181928/Pi0-SLAIPiper-PourDual-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_181928_videos.mp4"
       },
       {
@@ -207,7 +207,7 @@
         "success": true,
         "duration_seconds": 34.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/01__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151016.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151016",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151016/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151016_videos.mp4"
       },
       {
@@ -220,7 +220,7 @@
         "success": true,
         "duration_seconds": 37.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/02__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151619.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151619",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151619/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_151619_videos.mp4"
       },
       {
@@ -233,7 +233,7 @@
         "success": true,
         "duration_seconds": 36.8,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/03__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152745.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152745",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152745/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152745_videos.mp4"
       },
       {
@@ -246,7 +246,7 @@
         "success": true,
         "duration_seconds": 37.8,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/04__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152946.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152946",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152946/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_152946_videos.mp4"
       },
       {
@@ -259,7 +259,7 @@
         "success": true,
         "duration_seconds": 39.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/05__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155337.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155337",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155337/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155337_videos.mp4"
       },
       {
@@ -272,7 +272,7 @@
         "success": true,
         "duration_seconds": 39.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/06__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155525.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155525",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155525/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_155525_videos.mp4"
       },
       {
@@ -285,7 +285,7 @@
         "success": true,
         "duration_seconds": 36.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/07__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160059.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160059",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160059/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160059_videos.mp4"
       },
       {
@@ -298,7 +298,7 @@
         "success": true,
         "duration_seconds": 30.5,
         "video_url": "static/assets/result-videos/videos/pi0_real/table_rearrangement/unlabeled/08__Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160240.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160240",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi0_ed/rearrange_ed/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160240/Pi0-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_160240_videos.mp4"
       },
       {
@@ -311,7 +311,7 @@
         "success": true,
         "duration_seconds": 30.9,
         "video_url": "static/assets/result-videos/videos/pi0_real/basket_pick_and_place/unlabeled/01__Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_191608.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_191608",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/carrybasket_ed/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_191608/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_191608_videos.mp4"
       },
       {
@@ -324,7 +324,7 @@
         "success": true,
         "duration_seconds": 38.5,
         "video_url": "static/assets/result-videos/videos/pi0_real/basket_pick_and_place/unlabeled/02__Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192510.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192510",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/carrybasket_ed/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192510/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192510_videos.mp4"
       },
       {
@@ -337,7 +337,7 @@
         "success": true,
         "duration_seconds": 34.9,
         "video_url": "static/assets/result-videos/videos/pi0_real/basket_pick_and_place/unlabeled/03__Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192631.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192631",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/carrybasket_ed/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192631/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_192631_videos.mp4"
       },
       {
@@ -350,7 +350,7 @@
         "success": true,
         "duration_seconds": 32.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/basket_pick_and_place/unlabeled/04__Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193544.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193544",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/carrybasket_ed/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193544/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193544_videos.mp4"
       },
       {
@@ -363,7 +363,7 @@
         "success": true,
         "duration_seconds": 32.8,
         "video_url": "static/assets/result-videos/videos/pi0_real/basket_pick_and_place/unlabeled/05__Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193827.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193827",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/carrybasket_ed/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193827/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193827_videos.mp4"
       },
       {
@@ -376,7 +376,7 @@
         "success": true,
         "duration_seconds": 28.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/basket_pick_and_place/unlabeled/06__Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193949.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193949",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/carrybasket_ed/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193949/Pi0-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_193949_videos.mp4"
       },
       {
@@ -389,7 +389,7 @@
         "success": true,
         "duration_seconds": 43.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/01__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_223951.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_223951",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_223951/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_223951_videos.mp4"
       },
       {
@@ -402,7 +402,7 @@
         "success": true,
         "duration_seconds": 39.5,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/02__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_110952.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_110952",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_110952/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_110952_videos.mp4"
       },
       {
@@ -415,7 +415,7 @@
         "success": true,
         "duration_seconds": 38.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/03__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_111424.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_111424",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_111424/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_111424_videos.mp4"
       },
       {
@@ -428,7 +428,7 @@
         "success": true,
         "duration_seconds": 41.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/04__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112137.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112137",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112137/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112137_videos.mp4"
       },
       {
@@ -441,7 +441,7 @@
         "success": true,
         "duration_seconds": 47.5,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/05__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112328.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112328",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112328/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112328_videos.mp4"
       },
       {
@@ -454,7 +454,7 @@
         "success": true,
         "duration_seconds": 36.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/06__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112828.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112828",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112828/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_112828_videos.mp4"
       },
       {
@@ -467,7 +467,7 @@
         "success": true,
         "duration_seconds": 34.5,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/07__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_113441.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_113441",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_113441/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_113441_videos.mp4"
       },
       {
@@ -480,7 +480,7 @@
         "success": true,
         "duration_seconds": 40.2,
         "video_url": "static/assets/result-videos/videos/pi0_real/drawer_open_and_place/unlabeled/08__Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_114212.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_114212",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi0_ed/opendraw_ed/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_114212/Pi0-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260503_114212_videos.mp4"
       },
       {
@@ -493,7 +493,7 @@
         "success": true,
         "duration_seconds": 35.1,
         "video_url": "static/assets/result-videos/videos/pi0_real/mixer_operating/unlabeled/01__Pi0-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_222521.mp4",
-        "notes": "Mixer Operating | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_222521",
+        "notes": "Task: Mixer Operating. Outcome: Success.",
         "source_path": "裁减/pi0_ed/beakmixer_ed/Pi0-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_222521/Pi0-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_222521_videos.mp4"
       },
       {
@@ -506,7 +506,7 @@
         "success": true,
         "duration_seconds": 47.6,
         "video_url": "static/assets/result-videos/videos/pi0_real/sample_loading/unlabeled/01__Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_200133.mp4",
-        "notes": "Sample Loading | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_200133",
+        "notes": "Task: Sample Loading. Outcome: Success.",
         "source_path": "裁减/pi0_ed/insert_ed/Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_200133/Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_200133_videos.mp4"
       },
       {
@@ -519,7 +519,7 @@
         "success": true,
         "duration_seconds": 48.1,
         "video_url": "static/assets/result-videos/videos/pi0_real/sample_loading/unlabeled/02__Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_201445.mp4",
-        "notes": "Sample Loading | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_201445",
+        "notes": "Task: Sample Loading. Outcome: Success.",
         "source_path": "裁减/pi0_ed/insert_ed/Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_201445/Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_201445_videos.mp4"
       },
       {
@@ -532,7 +532,7 @@
         "success": true,
         "duration_seconds": 45.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/sample_loading/unlabeled/03__Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_204459.mp4",
-        "notes": "Sample Loading | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_204459",
+        "notes": "Task: Sample Loading. Outcome: Success.",
         "source_path": "裁减/pi0_ed/insert_ed/Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_204459/Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_204459_videos.mp4"
       }
     ]
@@ -563,7 +563,7 @@
         "success": true,
         "duration_seconds": 21.9,
         "video_url": "static/assets/result-videos/videos/pi05_real/click_bell/unlabeled/01__Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_173333.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_173333",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi05_ed/clickbell_ed/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_173333/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_173333_videos.mp4"
       },
       {
@@ -576,7 +576,7 @@
         "success": true,
         "duration_seconds": 24.1,
         "video_url": "static/assets/result-videos/videos/pi05_real/click_bell/unlabeled/02__Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_204125.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_204125",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi05_ed/clickbell_ed/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_204125/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_204125_videos.mp4"
       },
       {
@@ -589,7 +589,7 @@
         "success": true,
         "duration_seconds": 57.4,
         "video_url": "static/assets/result-videos/videos/pi05_real/click_bell/unlabeled/03__Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210146.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210146",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi05_ed/clickbell_ed/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210146/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210146_videos.mp4"
       },
       {
@@ -602,7 +602,7 @@
         "success": true,
         "duration_seconds": 24.6,
         "video_url": "static/assets/result-videos/videos/pi05_real/click_bell/unlabeled/04__Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210348.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210348",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi05_ed/clickbell_ed/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210348/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_210348_videos.mp4"
       },
       {
@@ -615,7 +615,7 @@
         "success": true,
         "duration_seconds": 33.1,
         "video_url": "static/assets/result-videos/videos/pi05_real/click_bell/unlabeled/05__Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211534.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211534",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi05_ed/clickbell_ed/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211534/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211534_videos.mp4"
       },
       {
@@ -628,7 +628,7 @@
         "success": true,
         "duration_seconds": 21.3,
         "video_url": "static/assets/result-videos/videos/pi05_real/click_bell/unlabeled/06__Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211841.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211841",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/pi05_ed/clickbell_ed/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211841/Pi05-SLAIPiper-ClickBell-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_211841_videos.mp4"
       },
       {
@@ -641,7 +641,7 @@
         "success": true,
         "duration_seconds": 32.8,
         "video_url": "static/assets/result-videos/videos/pi05_real/items_handover_place/unlabeled/01__Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_194855.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_194855",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/itemhandover_ed/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_194855/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_194855_videos.mp4"
       },
       {
@@ -654,7 +654,7 @@
         "success": true,
         "duration_seconds": 30.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/items_handover_place/unlabeled/02__Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_195629.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_195629",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/itemhandover_ed/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_195629/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260426_195629_videos.mp4"
       },
       {
@@ -667,7 +667,7 @@
         "success": true,
         "duration_seconds": 33.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/items_handover_place/unlabeled/03__Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_145544.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_145544",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/itemhandover_ed/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_145544/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_145544_videos.mp4"
       },
       {
@@ -680,7 +680,7 @@
         "success": true,
         "duration_seconds": 33.3,
         "video_url": "static/assets/result-videos/videos/pi05_real/items_handover_place/unlabeled/04__Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150427.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150427",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/itemhandover_ed/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150427/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150427_videos.mp4"
       },
       {
@@ -693,7 +693,7 @@
         "success": true,
         "duration_seconds": 36.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/items_handover_place/unlabeled/05__Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150949.mp4",
-        "notes": "Items Hand-Over and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150949",
+        "notes": "Task: Items Hand-Over and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/itemhandover_ed/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150949/Pi05-SLAIPiper-ItemsHandOverPlace-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_150949_videos.mp4"
       },
       {
@@ -706,7 +706,7 @@
         "success": true,
         "duration_seconds": 61.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/dual_arm_water_pouring/unlabeled/01__Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_114756.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_114756",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pourwater_ed/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_114756/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_114756_videos.mp4"
       },
       {
@@ -719,7 +719,7 @@
         "success": true,
         "duration_seconds": 54.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/dual_arm_water_pouring/unlabeled/02__Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_120036.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_120036",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pourwater_ed/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_120036/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_120036_videos.mp4"
       },
       {
@@ -732,7 +732,7 @@
         "success": true,
         "duration_seconds": 46.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/dual_arm_water_pouring/unlabeled/03__Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121036.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121036",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pourwater_ed/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121036/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121036_videos.mp4"
       },
       {
@@ -745,7 +745,7 @@
         "success": true,
         "duration_seconds": 53.8,
         "video_url": "static/assets/result-videos/videos/pi05_real/dual_arm_water_pouring/unlabeled/04__Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121517.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121517",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pourwater_ed/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121517/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_121517_videos.mp4"
       },
       {
@@ -758,7 +758,7 @@
         "success": true,
         "duration_seconds": 48.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/dual_arm_water_pouring/unlabeled/05__Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122038.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122038",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pourwater_ed/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122038/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122038_videos.mp4"
       },
       {
@@ -771,7 +771,7 @@
         "success": true,
         "duration_seconds": 81.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/dual_arm_water_pouring/unlabeled/06__Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122725.mp4",
-        "notes": "Dual-Arm Water Pouring | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122725",
+        "notes": "Task: Dual-Arm Water Pouring. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pourwater_ed/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122725/Pi05-SLAIPiper-PourDualNew-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_122725_videos.mp4"
       },
       {
@@ -784,7 +784,7 @@
         "success": true,
         "duration_seconds": 40.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/01__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_153536.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_153536",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_153536/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_153536_videos.mp4"
       },
       {
@@ -797,7 +797,7 @@
         "success": true,
         "duration_seconds": 36.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/02__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154052.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154052",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154052/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154052_videos.mp4"
       },
       {
@@ -810,7 +810,7 @@
         "success": true,
         "duration_seconds": 36.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/03__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154228.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154228",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154228/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154228_videos.mp4"
       },
       {
@@ -823,7 +823,7 @@
         "success": true,
         "duration_seconds": 43.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/04__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154708.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154708",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154708/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_154708_videos.mp4"
       },
       {
@@ -836,7 +836,7 @@
         "success": true,
         "duration_seconds": 35.6,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/05__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160239.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160239",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160239/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160239_videos.mp4"
       },
       {
@@ -849,7 +849,7 @@
         "success": true,
         "duration_seconds": 41.9,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/06__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160446.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160446",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160446/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_160446_videos.mp4"
       },
       {
@@ -862,7 +862,7 @@
         "success": true,
         "duration_seconds": 41.7,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/07__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_161831.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_161831",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_161831/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_161831_videos.mp4"
       },
       {
@@ -875,7 +875,7 @@
         "success": true,
         "duration_seconds": 51.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/08__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163059.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163059",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163059/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163059_videos.mp4"
       },
       {
@@ -888,7 +888,7 @@
         "success": true,
         "duration_seconds": 33.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/09__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163307.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163307",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163307/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163307_videos.mp4"
       },
       {
@@ -901,7 +901,7 @@
         "success": true,
         "duration_seconds": 29.4,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/10__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163610.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163610",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163610/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163610_videos.mp4"
       },
       {
@@ -914,7 +914,7 @@
         "success": true,
         "duration_seconds": 32.3,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/11__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163919.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163919",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163919/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_163919_videos.mp4"
       },
       {
@@ -927,7 +927,7 @@
         "success": true,
         "duration_seconds": 36.1,
         "video_url": "static/assets/result-videos/videos/pi05_real/table_rearrangement/unlabeled/12__Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_164052.mp4",
-        "notes": "Table Rearrangement | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_164052",
+        "notes": "Task: Table Rearrangement. Outcome: Success.",
         "source_path": "裁减/pi05_ed/rearrange_ed/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_164052/Pi05-SLAIPiper-Rearr-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_164052_videos.mp4"
       },
       {
@@ -940,7 +940,7 @@
         "success": true,
         "duration_seconds": 34.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/01__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162041.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162041",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162041/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162041_videos.mp4"
       },
       {
@@ -953,7 +953,7 @@
         "success": true,
         "duration_seconds": 33.4,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/02__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162358.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162358",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162358/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162358_videos.mp4"
       },
       {
@@ -966,7 +966,7 @@
         "success": true,
         "duration_seconds": 35.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/03__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162537.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162537",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162537/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_162537_videos.mp4"
       },
       {
@@ -979,7 +979,7 @@
         "success": true,
         "duration_seconds": 32.4,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/04__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164528.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164528",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164528/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164528_videos.mp4"
       },
       {
@@ -992,7 +992,7 @@
         "success": true,
         "duration_seconds": 35.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/05__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164729.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164729",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164729/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_164729_videos.mp4"
       },
       {
@@ -1005,7 +1005,7 @@
         "success": true,
         "duration_seconds": 31.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/06__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165635.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165635",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165635/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165635_videos.mp4"
       },
       {
@@ -1018,7 +1018,7 @@
         "success": true,
         "duration_seconds": 30.8,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/07__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165816.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165816",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165816/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_165816_videos.mp4"
       },
       {
@@ -1031,7 +1031,7 @@
         "success": true,
         "duration_seconds": 31.7,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/08__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170755.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170755",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170755/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170755_videos.mp4"
       },
       {
@@ -1044,7 +1044,7 @@
         "success": true,
         "duration_seconds": 32.3,
         "video_url": "static/assets/result-videos/videos/pi05_real/basket_pick_and_place/unlabeled/09__Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170926.mp4",
-        "notes": "Basket Pick-and-Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170926",
+        "notes": "Task: Basket Pick-and-Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/carrybasket_ed/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170926/Pi05-SLAIPiper-CarryBasket-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260429_170926_videos.mp4"
       },
       {
@@ -1057,7 +1057,7 @@
         "success": true,
         "duration_seconds": 48.4,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/01__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_114051.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_114051",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_114051/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_114051_videos.mp4"
       },
       {
@@ -1070,7 +1070,7 @@
         "success": true,
         "duration_seconds": 42.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/02__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_115557.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_115557",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_115557/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_115557_videos.mp4"
       },
       {
@@ -1083,7 +1083,7 @@
         "success": true,
         "duration_seconds": 50.9,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/03__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_120435.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_120435",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_120435/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_120435_videos.mp4"
       },
       {
@@ -1096,7 +1096,7 @@
         "success": true,
         "duration_seconds": 45.6,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/04__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_122141.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_122141",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_122141/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260427_122141_videos.mp4"
       },
       {
@@ -1109,7 +1109,7 @@
         "success": true,
         "duration_seconds": 36.6,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/05__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_115712.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_115712",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_115712/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_115712_videos.mp4"
       },
       {
@@ -1122,7 +1122,7 @@
         "success": true,
         "duration_seconds": 41.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/06__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121140.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121140",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121140/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121140_videos.mp4"
       },
       {
@@ -1135,7 +1135,7 @@
         "success": true,
         "duration_seconds": 41.6,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/07__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121354.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121354",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121354/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121354_videos.mp4"
       },
       {
@@ -1148,7 +1148,7 @@
         "success": true,
         "duration_seconds": 41.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/08__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121844.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121844",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121844/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_121844_videos.mp4"
       },
       {
@@ -1161,7 +1161,7 @@
         "success": true,
         "duration_seconds": 51.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/09__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122221.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122221",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122221/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122221_videos.mp4"
       },
       {
@@ -1174,7 +1174,7 @@
         "success": true,
         "duration_seconds": 36.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/10__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122425.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122425",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122425/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_122425_videos.mp4"
       },
       {
@@ -1187,7 +1187,7 @@
         "success": true,
         "duration_seconds": 22.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/11__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_123022.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_123022",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_123022/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_123022_videos.mp4"
       },
       {
@@ -1200,7 +1200,7 @@
         "success": true,
         "duration_seconds": 37.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/drawer_open_and_place/unlabeled/12__Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_143436.mp4",
-        "notes": "Drawer Open and Place | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_143436",
+        "notes": "Task: Drawer Open and Place. Outcome: Success.",
         "source_path": "裁减/pi05_ed/opendraw_ed/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_143436/Pi05-SLAIPiper-OpenDrawer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_143436_videos.mp4"
       },
       {
@@ -1213,7 +1213,7 @@
         "success": true,
         "duration_seconds": 35.2,
         "video_url": "static/assets/result-videos/videos/pi05_real/mixer_operating/unlabeled/01__Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_113332.mp4",
-        "notes": "Mixer Operating | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_113332",
+        "notes": "Task: Mixer Operating. Outcome: Success.",
         "source_path": "裁减/pi05_ed/beakmixer_ed/Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_113332/Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_113332_videos.mp4"
       },
       {
@@ -1226,7 +1226,7 @@
         "success": true,
         "duration_seconds": 34.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/mixer_operating/unlabeled/02__Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_114128.mp4",
-        "notes": "Mixer Operating | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_114128",
+        "notes": "Task: Mixer Operating. Outcome: Success.",
         "source_path": "裁减/pi05_ed/beakmixer_ed/Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_114128/Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_114128_videos.mp4"
       },
       {
@@ -1239,7 +1239,7 @@
         "success": true,
         "duration_seconds": 34.8,
         "video_url": "static/assets/result-videos/videos/pi05_real/mixer_operating/unlabeled/03__Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_120755.mp4",
-        "notes": "Mixer Operating | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_120755",
+        "notes": "Task: Mixer Operating. Outcome: Success.",
         "source_path": "裁减/pi05_ed/beakmixer_ed/Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_120755/Pi05-SLAIPiper-BeakerMixer-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260430_120755_videos.mp4"
       },
       {
@@ -1252,7 +1252,7 @@
         "success": true,
         "duration_seconds": 42.1,
         "video_url": "static/assets/result-videos/videos/pi05_real/manipulate_pipette/unlabeled/01__Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_202108.mp4",
-        "notes": "Manipulate Pipette | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_202108",
+        "notes": "Task: Manipulate Pipette. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pipette_ed/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_202108/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_202108_videos.mp4"
       },
       {
@@ -1265,7 +1265,7 @@
         "success": true,
         "duration_seconds": 40.1,
         "video_url": "static/assets/result-videos/videos/pi05_real/manipulate_pipette/unlabeled/02__Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_203732.mp4",
-        "notes": "Manipulate Pipette | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_203732",
+        "notes": "Task: Manipulate Pipette. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pipette_ed/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_203732/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_203732_videos.mp4"
       },
       {
@@ -1278,7 +1278,7 @@
         "success": true,
         "duration_seconds": 60.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/manipulate_pipette/unlabeled/03__Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204137.mp4",
-        "notes": "Manipulate Pipette | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204137",
+        "notes": "Task: Manipulate Pipette. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pipette_ed/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204137/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204137_videos.mp4"
       },
       {
@@ -1291,7 +1291,7 @@
         "success": true,
         "duration_seconds": 55.3,
         "video_url": "static/assets/result-videos/videos/pi05_real/manipulate_pipette/unlabeled/04__Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204337.mp4",
-        "notes": "Manipulate Pipette | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204337",
+        "notes": "Task: Manipulate Pipette. Outcome: Success.",
         "source_path": "裁减/pi05_ed/pipette_ed/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204337/Pi05-SLAIPiper-DepressPipette-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260428_204337_videos.mp4"
       },
       {
@@ -1304,7 +1304,7 @@
         "success": true,
         "duration_seconds": 44.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/sample_loading/unlabeled/01__Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_111105.mp4",
-        "notes": "Sample Loading | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_111105",
+        "notes": "Task: Sample Loading. Outcome: Success.",
         "source_path": "裁减/pi05_ed/insert_ed/Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_111105/Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_111105_videos.mp4"
       },
       {
@@ -1317,7 +1317,7 @@
         "success": true,
         "duration_seconds": 48.5,
         "video_url": "static/assets/result-videos/videos/pi05_real/sample_loading/unlabeled/02__Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112232.mp4",
-        "notes": "Sample Loading | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112232",
+        "notes": "Task: Sample Loading. Outcome: Success.",
         "source_path": "裁减/pi05_ed/insert_ed/Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112232/Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112232_videos.mp4"
       },
       {
@@ -1330,7 +1330,7 @@
         "success": true,
         "duration_seconds": 40.0,
         "video_url": "static/assets/result-videos/videos/pi05_real/sample_loading/unlabeled/03__Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112548.mp4",
-        "notes": "Sample Loading | Unlabeled setup | Success (inferred_from_official_success_count) | source: Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112548",
+        "notes": "Task: Sample Loading. Outcome: Success.",
         "source_path": "裁减/pi05_ed/insert_ed/Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112548/Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_112548_videos.mp4"
       }
     ]
@@ -1361,7 +1361,7 @@
         "success": true,
         "duration_seconds": 5.8,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/01__piper_multi_tasks_robotwin_like_joints_streaming_20260506_125646.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_125646",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_125646/piper_multi_tasks_robotwin_like_joints_streaming_20260506_125646_videos.mp4"
       },
       {
@@ -1374,7 +1374,7 @@
         "success": true,
         "duration_seconds": 5.8,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/02__piper_multi_tasks_robotwin_like_joints_streaming_20260506_130037.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_130037",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_130037/piper_multi_tasks_robotwin_like_joints_streaming_20260506_130037_videos.mp4"
       },
       {
@@ -1387,7 +1387,7 @@
         "success": true,
         "duration_seconds": 12.2,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/03__piper_multi_tasks_robotwin_like_joints_streaming_20260506_130148.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_130148",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_130148/piper_multi_tasks_robotwin_like_joints_streaming_20260506_130148_videos.mp4"
       },
       {
@@ -1400,7 +1400,7 @@
         "success": true,
         "duration_seconds": 72.2,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/04__piper_multi_tasks_robotwin_like_joints_streaming_20260506_130519.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_130519",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_130519/piper_multi_tasks_robotwin_like_joints_streaming_20260506_130519_videos.mp4"
       },
       {
@@ -1413,7 +1413,7 @@
         "success": true,
         "duration_seconds": 4.9,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/05__piper_multi_tasks_robotwin_like_joints_streaming_20260506_131001.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_131001",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_131001/piper_multi_tasks_robotwin_like_joints_streaming_20260506_131001_videos.mp4"
       },
       {
@@ -1426,7 +1426,7 @@
         "success": true,
         "duration_seconds": 11.0,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/06__piper_multi_tasks_robotwin_like_joints_streaming_20260506_131124.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_131124",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_131124/piper_multi_tasks_robotwin_like_joints_streaming_20260506_131124_videos.mp4"
       },
       {
@@ -1439,7 +1439,7 @@
         "success": true,
         "duration_seconds": 12.3,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/07__piper_multi_tasks_robotwin_like_joints_streaming_20260506_131304.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_131304",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_131304/piper_multi_tasks_robotwin_like_joints_streaming_20260506_131304_videos.mp4"
       },
       {
@@ -1452,7 +1452,7 @@
         "success": true,
         "duration_seconds": 9.1,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/08__piper_multi_tasks_robotwin_like_joints_streaming_20260506_132059.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_132059",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_132059/piper_multi_tasks_robotwin_like_joints_streaming_20260506_132059_videos.mp4"
       },
       {
@@ -1465,7 +1465,7 @@
         "success": true,
         "duration_seconds": 6.5,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/09__piper_multi_tasks_robotwin_like_joints_streaming_20260506_132604.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_132604",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_132604/piper_multi_tasks_robotwin_like_joints_streaming_20260506_132604_videos.mp4"
       },
       {
@@ -1478,7 +1478,7 @@
         "success": true,
         "duration_seconds": 58.9,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/10__piper_multi_tasks_robotwin_like_joints_streaming_20260506_132825.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_132825",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_132825/piper_multi_tasks_robotwin_like_joints_streaming_20260506_132825_videos.mp4"
       },
       {
@@ -1491,7 +1491,7 @@
         "success": true,
         "duration_seconds": 13.0,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/11__piper_multi_tasks_robotwin_like_joints_streaming_20260506_133732.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_133732",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_133732/piper_multi_tasks_robotwin_like_joints_streaming_20260506_133732_videos.mp4"
       },
       {
@@ -1504,7 +1504,7 @@
         "success": true,
         "duration_seconds": 6.0,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/12__piper_multi_tasks_robotwin_like_joints_streaming_20260506_133853.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_133853",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_133853/piper_multi_tasks_robotwin_like_joints_streaming_20260506_133853_videos.mp4"
       },
       {
@@ -1517,7 +1517,7 @@
         "success": true,
         "duration_seconds": 3.4,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/13__piper_multi_tasks_robotwin_like_joints_streaming_20260506_134100.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_134100",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_134100/piper_multi_tasks_robotwin_like_joints_streaming_20260506_134100_videos.mp4"
       },
       {
@@ -1530,7 +1530,7 @@
         "success": true,
         "duration_seconds": 19.9,
         "video_url": "static/assets/result-videos/videos/motus_real/click_bell/unlabeled/14__piper_multi_tasks_robotwin_like_joints_streaming_20260506_134206.mp4",
-        "notes": "Click Bell | Unlabeled setup | Success (inferred_from_official_success_count) | source: piper_multi_tasks_robotwin_like_joints_streaming_20260506_134206",
+        "notes": "Task: Click Bell. Outcome: Success.",
         "source_path": "裁减/motus/motus_clickbell_ed/piper_multi_tasks_robotwin_like_joints_streaming_20260506_134206/piper_multi_tasks_robotwin_like_joints_streaming_20260506_134206_videos.mp4"
       },
       {
@@ -1543,7 +1543,7 @@
         "success": true,
         "duration_seconds": 16.0,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/standard/01__piper_multi_tasks_a3v4_joints_streaming_20260509_154639.mp4",
-        "notes": "Items Hand-Over and Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_154639_S",
+        "notes": "Task: Items Hand-Over and Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_154639_S/piper_multi_tasks_a3v4_joints_streaming_20260509_154639_videos.mp4"
       },
       {
@@ -1556,7 +1556,7 @@
         "success": true,
         "duration_seconds": 15.2,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/standard/02__piper_multi_tasks_a3v4_joints_streaming_20260509_161438.mp4",
-        "notes": "Items Hand-Over and Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_161438_S",
+        "notes": "Task: Items Hand-Over and Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_161438_S/piper_multi_tasks_a3v4_joints_streaming_20260509_161438_videos.mp4"
       },
       {
@@ -1569,7 +1569,7 @@
         "success": true,
         "duration_seconds": 15.3,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/standard/03__piper_multi_tasks_a3v4_joints_streaming_20260509_164715.mp4",
-        "notes": "Items Hand-Over and Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_164715_S",
+        "notes": "Task: Items Hand-Over and Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_164715_S/piper_multi_tasks_a3v4_joints_streaming_20260509_164715_videos.mp4"
       },
       {
@@ -1582,7 +1582,7 @@
         "success": true,
         "duration_seconds": 16.7,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/bright_light/01__piper_multi_tasks_a3v4_joints_streaming_20260509_164855.mp4",
-        "notes": "Items Hand-Over and Place | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_164855_S_highlight",
+        "notes": "Task: Items Hand-Over and Place. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_164855_S_highlight/piper_multi_tasks_a3v4_joints_streaming_20260509_164855_videos.mp4"
       },
       {
@@ -1595,7 +1595,7 @@
         "success": true,
         "duration_seconds": 16.5,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/bright_light/02__piper_multi_tasks_a3v4_joints_streaming_20260509_182848.mp4",
-        "notes": "Items Hand-Over and Place | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_182848_S_highlight",
+        "notes": "Task: Items Hand-Over and Place. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_182848_S_highlight/piper_multi_tasks_a3v4_joints_streaming_20260509_182848_videos.mp4"
       },
       {
@@ -1608,7 +1608,7 @@
         "success": true,
         "duration_seconds": 14.4,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/distractor/01__piper_multi_tasks_a3v4_joints_streaming_20260509_184902.mp4",
-        "notes": "Items Hand-Over and Place | Distractor objects | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_184902_S_distractor",
+        "notes": "Task: Items Hand-Over and Place. Setup: Distractor objects. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_184902_S_distractor/piper_multi_tasks_a3v4_joints_streaming_20260509_184902_videos.mp4"
       },
       {
@@ -1621,7 +1621,7 @@
         "success": true,
         "duration_seconds": 15.9,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/distractor/02__piper_multi_tasks_a3v4_joints_streaming_20260509_185239.mp4",
-        "notes": "Items Hand-Over and Place | Distractor objects | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_185239_S_distractor",
+        "notes": "Task: Items Hand-Over and Place. Setup: Distractor objects. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_185239_S_distractor/piper_multi_tasks_a3v4_joints_streaming_20260509_185239_videos.mp4"
       },
       {
@@ -1634,7 +1634,7 @@
         "success": true,
         "duration_seconds": 16.3,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/blue_tablecloth/01__piper_multi_tasks_a3v4_joints_streaming_20260509_191644.mp4",
-        "notes": "Items Hand-Over and Place | Blue tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_191644_S_blue",
+        "notes": "Task: Items Hand-Over and Place. Setup: Blue tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_191644_S_blue/piper_multi_tasks_a3v4_joints_streaming_20260509_191644_videos.mp4"
       },
       {
@@ -1647,7 +1647,7 @@
         "success": true,
         "duration_seconds": 14.8,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/yellow_tablecloth/01__piper_multi_tasks_a3v4_joints_streaming_20260509_192111.mp4",
-        "notes": "Items Hand-Over and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_192111_S_color",
+        "notes": "Task: Items Hand-Over and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_192111_S_color/piper_multi_tasks_a3v4_joints_streaming_20260509_192111_videos.mp4"
       },
       {
@@ -1660,7 +1660,7 @@
         "success": true,
         "duration_seconds": 15.5,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/yellow_tablecloth/02__piper_multi_tasks_a3v4_joints_streaming_20260509_192242.mp4",
-        "notes": "Items Hand-Over and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_192242_S_color",
+        "notes": "Task: Items Hand-Over and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_192242_S_color/piper_multi_tasks_a3v4_joints_streaming_20260509_192242_videos.mp4"
       },
       {
@@ -1673,7 +1673,7 @@
         "success": true,
         "duration_seconds": 12.9,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/yellow_tablecloth/03__piper_multi_tasks_a3v4_joints_streaming_20260509_192408.mp4",
-        "notes": "Items Hand-Over and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_192408_S_color_?",
+        "notes": "Task: Items Hand-Over and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_192408_S_color_?/piper_multi_tasks_a3v4_joints_streaming_20260509_192408_videos.mp4"
       },
       {
@@ -1686,7 +1686,7 @@
         "success": true,
         "duration_seconds": 15.1,
         "video_url": "static/assets/result-videos/videos/motus_real/items_handover_place/yellow_tablecloth/04__piper_multi_tasks_a3v4_joints_streaming_20260509_192523.mp4",
-        "notes": "Items Hand-Over and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_192523_S_color",
+        "notes": "Task: Items Hand-Over and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_handover_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_192523_S_color/piper_multi_tasks_a3v4_joints_streaming_20260509_192523_videos.mp4"
       },
       {
@@ -1699,7 +1699,7 @@
         "success": true,
         "duration_seconds": 16.1,
         "video_url": "static/assets/result-videos/videos/motus_real/dual_arm_water_pouring/standard/01__piper_multi_tasks_a3v4_joints_streaming_20260509_220351.mp4",
-        "notes": "Dual-Arm Water Pouring | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260509_220351_S",
+        "notes": "Task: Dual-Arm Water Pouring. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_pour_ed/piper_multi_tasks_a3v4_joints_streaming_20260509_220351_S/piper_multi_tasks_a3v4_joints_streaming_20260509_220351_videos.mp4"
       },
       {
@@ -1712,7 +1712,7 @@
         "success": true,
         "duration_seconds": 15.1,
         "video_url": "static/assets/result-videos/videos/motus_real/dual_arm_water_pouring/standard/02__piper_multi_tasks_a3v4_joints_streaming_20260511_141822.mp4",
-        "notes": "Dual-Arm Water Pouring | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260511_141822_S",
+        "notes": "Task: Dual-Arm Water Pouring. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_pour_ed/piper_multi_tasks_a3v4_joints_streaming_20260511_141822_S/piper_multi_tasks_a3v4_joints_streaming_20260511_141822_videos.mp4"
       },
       {
@@ -1725,7 +1725,7 @@
         "success": true,
         "duration_seconds": 16.0,
         "video_url": "static/assets/result-videos/videos/motus_real/dual_arm_water_pouring/standard/03__piper_multi_tasks_a3v4_joints_streaming_20260511_154126.mp4",
-        "notes": "Dual-Arm Water Pouring | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260511_154126_S_default",
+        "notes": "Task: Dual-Arm Water Pouring. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_pour_ed/piper_multi_tasks_a3v4_joints_streaming_20260511_154126_S_default/piper_multi_tasks_a3v4_joints_streaming_20260511_154126_videos.mp4"
       },
       {
@@ -1738,7 +1738,7 @@
         "success": true,
         "duration_seconds": 15.0,
         "video_url": "static/assets/result-videos/videos/motus_real/dual_arm_water_pouring/bright_light/01__piper_multi_tasks_a3v4_joints_streaming_20260511_153501.mp4",
-        "notes": "Dual-Arm Water Pouring | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260511_153501_S_highlight",
+        "notes": "Task: Dual-Arm Water Pouring. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_pour_ed/piper_multi_tasks_a3v4_joints_streaming_20260511_153501_S_highlight/piper_multi_tasks_a3v4_joints_streaming_20260511_153501_videos.mp4"
       },
       {
@@ -1751,7 +1751,7 @@
         "success": true,
         "duration_seconds": 12.5,
         "video_url": "static/assets/result-videos/videos/motus_real/dual_arm_water_pouring/blue_tablecloth/01__piper_multi_tasks_a3v4_joints_streaming_20260511_155010.mp4",
-        "notes": "Dual-Arm Water Pouring | Blue tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260511_155010_S_Blue",
+        "notes": "Task: Dual-Arm Water Pouring. Setup: Blue tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_pour_ed/piper_multi_tasks_a3v4_joints_streaming_20260511_155010_S_Blue/piper_multi_tasks_a3v4_joints_streaming_20260511_155010_videos.mp4"
       },
       {
@@ -1764,7 +1764,7 @@
         "success": true,
         "duration_seconds": 15.2,
         "video_url": "static/assets/result-videos/videos/motus_real/dual_arm_water_pouring/yellow_tablecloth/01__piper_multi_tasks_a3v4_joints_streaming_20260511_160740.mp4",
-        "notes": "Dual-Arm Water Pouring | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260511_160740_S_Yellow",
+        "notes": "Task: Dual-Arm Water Pouring. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_pour_ed/piper_multi_tasks_a3v4_joints_streaming_20260511_160740_S_Yellow/piper_multi_tasks_a3v4_joints_streaming_20260511_160740_videos.mp4"
       },
       {
@@ -1777,7 +1777,7 @@
         "success": true,
         "duration_seconds": 35.9,
         "video_url": "static/assets/result-videos/videos/motus_real/table_rearrangement/standard/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260511_183806.mp4",
-        "notes": "Table Rearrangement | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260511_183806_S",
+        "notes": "Task: Table Rearrangement. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_rearrange_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260511_183806_S/piper_multi_tasks_a3v4_joints_chunk_sync_20260511_183806_videos.mp4"
       },
       {
@@ -1790,7 +1790,7 @@
         "success": true,
         "duration_seconds": 38.4,
         "video_url": "static/assets/result-videos/videos/motus_real/table_rearrangement/bright_light/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260511_185407.mp4",
-        "notes": "Table Rearrangement | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260511_185407_S_light",
+        "notes": "Task: Table Rearrangement. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_rearrange_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260511_185407_S_light/piper_multi_tasks_a3v4_joints_chunk_sync_20260511_185407_videos.mp4"
       },
       {
@@ -1803,7 +1803,7 @@
         "success": true,
         "duration_seconds": 25.8,
         "video_url": "static/assets/result-videos/videos/motus_real/table_rearrangement/blue_tablecloth/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260512_204644.mp4",
-        "notes": "Table Rearrangement | Blue tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260512_204644_S_blue",
+        "notes": "Task: Table Rearrangement. Setup: Blue tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_rearrange_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_204644_S_blue/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_204644_videos.mp4"
       },
       {
@@ -1816,7 +1816,7 @@
         "success": true,
         "duration_seconds": 12.7,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/standard/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_164450.mp4",
-        "notes": "Basket Pick-and-Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_164450_S",
+        "notes": "Task: Basket Pick-and-Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_164450_S/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_164450_videos.mp4"
       },
       {
@@ -1829,7 +1829,7 @@
         "success": true,
         "duration_seconds": 12.4,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/standard/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_165017.mp4",
-        "notes": "Basket Pick-and-Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_165017_S",
+        "notes": "Task: Basket Pick-and-Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_165017_S/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_165017_videos.mp4"
       },
       {
@@ -1842,7 +1842,7 @@
         "success": true,
         "duration_seconds": 13.1,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/bright_light/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170246.mp4",
-        "notes": "Basket Pick-and-Place | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170246_S_light",
+        "notes": "Task: Basket Pick-and-Place. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170246_S_light/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170246_videos.mp4"
       },
       {
@@ -1855,7 +1855,7 @@
         "success": true,
         "duration_seconds": 12.1,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/bright_light/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170543.mp4",
-        "notes": "Basket Pick-and-Place | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170543_S_light",
+        "notes": "Task: Basket Pick-and-Place. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170543_S_light/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170543_videos.mp4"
       },
       {
@@ -1868,7 +1868,7 @@
         "success": true,
         "duration_seconds": 12.0,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/bright_light/03__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170714.mp4",
-        "notes": "Basket Pick-and-Place | Bright light | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170714_S_light",
+        "notes": "Task: Basket Pick-and-Place. Setup: Bright light. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170714_S_light/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_170714_videos.mp4"
       },
       {
@@ -1881,7 +1881,7 @@
         "success": true,
         "duration_seconds": 12.0,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/distractor/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_181252.mp4",
-        "notes": "Basket Pick-and-Place | Distractor objects | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_181252_S_distractor",
+        "notes": "Task: Basket Pick-and-Place. Setup: Distractor objects. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_181252_S_distractor/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_181252_videos.mp4"
       },
       {
@@ -1894,7 +1894,7 @@
         "success": true,
         "duration_seconds": 20.9,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/blue_tablecloth/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_182255.mp4",
-        "notes": "Basket Pick-and-Place | Blue tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_182255_S_blue",
+        "notes": "Task: Basket Pick-and-Place. Setup: Blue tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_182255_S_blue/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_182255_videos.mp4"
       },
       {
@@ -1907,7 +1907,7 @@
         "success": true,
         "duration_seconds": 10.6,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/yellow_tablecloth/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183429.mp4",
-        "notes": "Basket Pick-and-Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183429_S_yellow",
+        "notes": "Task: Basket Pick-and-Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183429_S_yellow/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183429_videos.mp4"
       },
       {
@@ -1920,7 +1920,7 @@
         "success": true,
         "duration_seconds": 11.3,
         "video_url": "static/assets/result-videos/videos/motus_real/basket_pick_and_place/yellow_tablecloth/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183718.mp4",
-        "notes": "Basket Pick-and-Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183718_S_yellow",
+        "notes": "Task: Basket Pick-and-Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_carrybasket_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183718_S_yellow/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_183718_videos.mp4"
       },
       {
@@ -1933,7 +1933,7 @@
         "success": true,
         "duration_seconds": 12.3,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/standard/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235407.mp4",
-        "notes": "Drawer Open and Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235407_S",
+        "notes": "Task: Drawer Open and Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235407_S/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235407_videos.mp4"
       },
       {
@@ -1946,7 +1946,7 @@
         "success": true,
         "duration_seconds": 12.5,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/standard/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235648.mp4",
-        "notes": "Drawer Open and Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235648_S",
+        "notes": "Task: Drawer Open and Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235648_S/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235648_videos.mp4"
       },
       {
@@ -1959,7 +1959,7 @@
         "success": true,
         "duration_seconds": 12.5,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/standard/03__piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235737.mp4",
-        "notes": "Drawer Open and Place | Standard | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235737_S",
+        "notes": "Task: Drawer Open and Place. Setup: Standard. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235737_S/piper_multi_tasks_a3v4_joints_chunk_sync_20260512_235737_videos.mp4"
       },
       {
@@ -1972,7 +1972,7 @@
         "success": true,
         "duration_seconds": 12.0,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/distractor/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001702.mp4",
-        "notes": "Drawer Open and Place | Distractor objects | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001702_S_distractor",
+        "notes": "Task: Drawer Open and Place. Setup: Distractor objects. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001702_S_distractor/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001702_videos.mp4"
       },
       {
@@ -1985,7 +1985,7 @@
         "success": true,
         "duration_seconds": 12.5,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/distractor/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001825.mp4",
-        "notes": "Drawer Open and Place | Distractor objects | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001825_S_distractor",
+        "notes": "Task: Drawer Open and Place. Setup: Distractor objects. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001825_S_distractor/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_001825_videos.mp4"
       },
       {
@@ -1998,7 +1998,7 @@
         "success": true,
         "duration_seconds": 39.0,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/distractor/03__piper_multi_tasks_a3v4_joints_streaming_20260513_001304.mp4",
-        "notes": "Drawer Open and Place | Distractor objects | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_streaming_20260513_001304_S_distractor_?",
+        "notes": "Task: Drawer Open and Place. Setup: Distractor objects. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_streaming_20260513_001304_S_distractor_?/piper_multi_tasks_a3v4_joints_streaming_20260513_001304_videos.mp4"
       },
       {
@@ -2011,7 +2011,7 @@
         "success": true,
         "duration_seconds": 11.1,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/blue_tablecloth/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_002710.mp4",
-        "notes": "Drawer Open and Place | Blue tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_002710_S_blue",
+        "notes": "Task: Drawer Open and Place. Setup: Blue tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_002710_S_blue/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_002710_videos.mp4"
       },
       {
@@ -2024,7 +2024,7 @@
         "success": true,
         "duration_seconds": 11.4,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/blue_tablecloth/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004154.mp4",
-        "notes": "Drawer Open and Place | Blue tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004154_S_blue",
+        "notes": "Task: Drawer Open and Place. Setup: Blue tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004154_S_blue/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004154_videos.mp4"
       },
       {
@@ -2037,7 +2037,7 @@
         "success": true,
         "duration_seconds": 18.4,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/yellow_tablecloth/01__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004433.mp4",
-        "notes": "Drawer Open and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004433_S_yellow",
+        "notes": "Task: Drawer Open and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004433_S_yellow/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004433_videos.mp4"
       },
       {
@@ -2050,7 +2050,7 @@
         "success": true,
         "duration_seconds": 30.5,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/yellow_tablecloth/02__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004525.mp4",
-        "notes": "Drawer Open and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004525_S_yellow",
+        "notes": "Task: Drawer Open and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004525_S_yellow/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004525_videos.mp4"
       },
       {
@@ -2063,7 +2063,7 @@
         "success": true,
         "duration_seconds": 11.0,
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/yellow_tablecloth/03__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004935.mp4",
-        "notes": "Drawer Open and Place | Yellow tablecloth | Success (folder_has_S) | source: piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004935_S_yellow",
+        "notes": "Task: Drawer Open and Place. Setup: Yellow tablecloth. Outcome: Success.",
         "source_path": "裁减/motus/motus_opendraw_ed/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004935_S_yellow/piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004935_videos.mp4"
       }
     ]
