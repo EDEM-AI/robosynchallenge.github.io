@@ -227,6 +227,17 @@
     notes: `${item.label} from the official 10-task benchmark snapshot.`,
   }));
 
+  const BASELINE_RESULT_SEEDS = Array.isArray(window.ROBO_SYN_BASELINE_RESULTS)
+    ? window.ROBO_SYN_BASELINE_RESULTS
+    : [];
+  const BASELINE_RESULT_BY_ID = new Map(BASELINE_RESULT_SEEDS.map((result) => [result.id, result]));
+  const BASELINE_RESULT_BY_BASELINE_ID = new Map(
+    BASELINE_RESULT_SEEDS.map((result) => [result.baseline_id, result])
+  );
+  const BASELINE_RESULT_BY_MODEL_TRACK = new Map(
+    BASELINE_RESULT_SEEDS.map((result) => [`${result.model_name}|${result.track}`, result])
+  );
+
   const BASELINE_EPISODES = [
     { title: "Episode 01", task_name: "Click-bell", notes: "Entry-level closed-loop evaluation" },
     { title: "Episode 02", task_name: "Drawer open-and-place", notes: "Mid-level coordination evaluation" },
@@ -394,7 +405,11 @@
   }
 
   function getEvaluationById(evaluationId) {
-    return state.evaluations.find((evaluation) => evaluation.id === evaluationId) || null;
+    return (
+      state.evaluations.find((evaluation) => evaluation.id === evaluationId) ||
+      BASELINE_RESULT_BY_ID.get(evaluationId) ||
+      null
+    );
   }
 
   function loadState() {
@@ -498,6 +513,9 @@
     const rows = [];
 
     state.baselines.forEach((baseline) => {
+      const baselineResult =
+        BASELINE_RESULT_BY_BASELINE_ID.get(baseline.id) ||
+        BASELINE_RESULT_BY_MODEL_TRACK.get(`${baseline.model_name}|${baseline.track}`);
       rows.push({
         kind: "baseline",
         id: baseline.id,
@@ -510,7 +528,7 @@
         action_steps: baseline.action_steps,
         real_time: baseline.real_time,
         rank_badge: "Official baseline",
-        evaluation_id: "",
+        evaluation_id: baselineResult ? baselineResult.id : "",
         notes: baseline.notes,
       });
     });
