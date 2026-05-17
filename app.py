@@ -465,11 +465,25 @@ BASELINE_SEEDS = [
     for item in BENCHMARK_SUMMARY
 ]
 
+BASELINE_RESULTS_PATH = BASE_DIR / "static" / "assets" / "result-videos" / "baseline-results.json"
+
 BASELINE_EPISODES = [
     ("Episode 01", "Click-bell", "Entry-level closed-loop evaluation"),
     ("Episode 02", "Drawer open-and-place", "Mid-level coordination evaluation"),
     ("Episode 03", "Sample loading", "High-level fine manipulation evaluation"),
 ]
+
+
+def load_baseline_video_results() -> dict[tuple[str, str], dict[str, Any]]:
+    if not BASELINE_RESULTS_PATH.exists():
+        return {}
+    with BASELINE_RESULTS_PATH.open("r", encoding="utf-8") as handle:
+        results = json.load(handle)
+    return {
+        (str(result.get("model_name")), str(result.get("track"))): result
+        for result in results
+    }
+
 
 app = Flask(
     __name__,
@@ -687,7 +701,7 @@ def seed_baselines() -> None:
                 (row["id"],),
             )
 
-    demo_video_name = "demo-eval.mp4"
+    baseline_video_results = load_baseline_video_results()
     for seed in BASELINE_SEEDS:
         timestamp = now_iso()
         cursor = execute(
@@ -709,7 +723,7 @@ def seed_baselines() -> None:
                 created_at,
                 updated_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, 'baseline', ?, ?, ?, ?, 1, 1, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, 'baseline', ?, ?, ?, ?, 0, 1, ?, ?)
             """,
             (
                 None,
@@ -761,30 +775,61 @@ def seed_baselines() -> None:
             ),
         )
         evaluation_id = eval_cursor.lastrowid
-        for index, (_, task_name, note) in enumerate(BASELINE_EPISODES, start=1):
-            execute(
-                """
-                INSERT INTO evaluation_episodes (
-                    evaluation_id,
-                    episode_index,
-                    task_name,
-                    notes,
-                    video_filename,
-                    duration_seconds,
-                    created_at
+        baseline_result = baseline_video_results.get((seed["model_name"], seed["track"]))
+        if baseline_result:
+            episodes = baseline_result.get("episodes") or []
+            for episode in episodes:
+                video_url = str(episode.get("video_url") or "")
+                if video_url and not video_url.startswith(("/", "http://", "https://")):
+                    video_url = f"/{video_url}"
+                execute(
+                    """
+                    INSERT INTO evaluation_episodes (
+                        evaluation_id,
+                        episode_index,
+                        task_name,
+                        notes,
+                        video_url,
+                        duration_seconds,
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        evaluation_id,
+                        int(episode.get("episode_index") or 1),
+                        episode.get("task_name") or "Unknown task",
+                        episode.get("notes") or "",
+                        video_url or None,
+                        float(episode.get("duration_seconds") or 0),
+                        timestamp,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    evaluation_id,
-                    index,
-                    task_name,
-                    note,
-                    demo_video_name,
-                    12.0,
-                    timestamp,
-                ),
-            )
+        else:
+            for index, (_, task_name, note) in enumerate(BASELINE_EPISODES, start=1):
+                execute(
+                    """
+                    INSERT INTO evaluation_episodes (
+                        evaluation_id,
+                        episode_index,
+                        task_name,
+                        notes,
+                        video_filename,
+                        duration_seconds,
+                        created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        evaluation_id,
+                        index,
+                        task_name,
+                        note,
+                        None,
+                        0.0,
+                        timestamp,
+                    ),
+                )
 
 
 def login_required(view):
@@ -1124,7 +1169,7 @@ def leaderboard_rows(limit: int | None = None) -> list[dict[str, Any]]:
     rows = fetchall(query)
     for row in rows:
         row["track_label"] = TRACK_LABELS.get(row["track"], row["track"])
-        row["rank_badge"] = "Placeholder" if row["is_placeholder"] else "Official"
+        row["rank_badge"] = "Official baseline" if row["source_kind"] == "baseline" else "Official"
         row["result_url"] = (
             url_for("result_viewer", evaluation_id=row["evaluation_id"])
             if row.get("evaluation_id") and row.get("evaluation_published")
