@@ -686,6 +686,10 @@ code {
   font-weight: 500;
 }
 
+.sidecard h2 + .episode-detail-list {
+  margin-top: 24px;
+}
+
 .viewer-card {
   display: grid;
   gap: 18px;
