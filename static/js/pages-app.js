@@ -2371,6 +2371,10 @@
     };
     const onLoadedMetadata = () => {
       if (timeSlider) timeSlider.max = String(video.duration || 0);
+      if (video.videoWidth && video.videoHeight) {
+        const shell = video.closest(".video-shell");
+        if (shell) shell.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+      }
     };
 
     episodeSlider.addEventListener("input", onEpisodeInput);
