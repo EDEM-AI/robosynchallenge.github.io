@@ -1823,7 +1823,6 @@
             <span class="tag">${escapeHtml(evaluation.track_label || "Published result")}</span>
             <h2 data-current-task>${escapeHtml(firstEpisode ? firstEpisode.task_name : "Episode pending")}</h2>
             <div class="detail-list episode-detail-list">
-              <span><strong>Task:</strong> <span data-current-task-detail>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).task : "Episode pending")}</span></span>
               <span><strong>Setup:</strong> <span data-current-setup>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).setup : "Not specified")}</span></span>
               <span><strong>Outcome:</strong> <span data-current-outcome>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).outcome : "Not specified")}</span></span>
             </div>
@@ -2344,7 +2343,6 @@
     const title = viewer.querySelector("[data-episode-title]");
     const timeReadout = viewer.querySelector("[data-time-readout]");
     const currentTask = appEl.querySelector("[data-current-task]");
-    const currentTaskDetail = appEl.querySelector("[data-current-task-detail]");
     const currentSetup = appEl.querySelector("[data-current-setup]");
     const currentOutcome = appEl.querySelector("[data-current-outcome]");
     const episodeNotes = appEl.querySelector("[data-episode-notes]");
@@ -2362,7 +2360,6 @@
       const details = structuredEpisodeDetails(episode);
       if (title) title.textContent = `Episode ${episode.episode_index}: ${details.task}`;
       if (currentTask) currentTask.textContent = details.task;
-      if (currentTaskDetail) currentTaskDetail.textContent = details.task;
       if (currentSetup) currentSetup.textContent = details.setup;
       if (currentOutcome) currentOutcome.textContent = details.outcome;
       if (episodeNotes) {
