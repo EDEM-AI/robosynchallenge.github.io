@@ -376,6 +376,22 @@
     return STATUS_LABELS[value] || value || "Unknown";
   }
 
+
+  function structuredEpisodeDetails(episode) {
+    const notes = String(episode?.notes || "");
+    const match = notes.match(/^Task:\s*(.*?)\.\s*Setup:\s*(.*?)\.\s*Outcome:\s*(.*?)\.?$/i);
+    const structured = Boolean(match);
+    const outcome =
+      episode?.outcome ||
+      (episode?.success === true ? "Success" : episode?.success === false ? "Fail" : (match ? match[3] : "Not specified"));
+    return {
+      task: episode?.task_name || (match ? match[1] : "Not specified"),
+      setup: episode?.setup || (match ? match[2] : "Not specified"),
+      outcome,
+      notes: structured ? "" : notes,
+    };
+  }
+
   function trackLabel(value) {
     return TRACK_LABELS[value] || value || "Custom";
   }
@@ -1806,13 +1822,12 @@
           <article class="card sidecard">
             <span class="tag">${escapeHtml(evaluation.track_label || "Published result")}</span>
             <h2 data-current-task>${escapeHtml(firstEpisode ? firstEpisode.task_name : "Episode pending")}</h2>
-            <div class="detail-list">
-              <span><strong>Source:</strong> ${escapeHtml(evaluation.source_kind || "submission")}</span>
-              <span><strong>Status:</strong> ${escapeHtml(humanStatus(evaluation.status))}</span>
-              <span><strong>Scheduled:</strong> ${escapeHtml(formatDateTime(evaluation.schedule_at))}</span>
-              <span><strong>Published:</strong> ${escapeHtml(formatDateTime(evaluation.published_at))}</span>
+            <div class="detail-list episode-detail-list">
+              <span><strong>Task:</strong> <span data-current-task-detail>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).task : "Episode pending")}</span></span>
+              <span><strong>Setup:</strong> <span data-current-setup>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).setup : "Not specified")}</span></span>
+              <span><strong>Outcome:</strong> <span data-current-outcome>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).outcome : "Not specified")}</span></span>
             </div>
-            <p data-episode-notes>${escapeHtml(firstEpisode ? firstEpisode.notes || "No episode notes uploaded." : "No episodes uploaded yet.")}</p>
+            <p data-episode-notes>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).notes : "")}</p>
           </article>
         </div>
       </section>
@@ -2329,6 +2344,9 @@
     const title = viewer.querySelector("[data-episode-title]");
     const timeReadout = viewer.querySelector("[data-time-readout]");
     const currentTask = appEl.querySelector("[data-current-task]");
+    const currentTaskDetail = appEl.querySelector("[data-current-task-detail]");
+    const currentSetup = appEl.querySelector("[data-current-setup]");
+    const currentOutcome = appEl.querySelector("[data-current-outcome]");
     const episodeNotes = appEl.querySelector("[data-episode-notes]");
 
     if (!episodes.length || !video || !episodeSlider || !timeSlider || !emptyState) return;
@@ -2341,9 +2359,16 @@
     const loadEpisode = (index) => {
       const episode = episodes[index] || episodes[0];
       if (!episode) return;
-      if (title) title.textContent = `Episode ${episode.episode_index}: ${episode.task_name}`;
-      if (currentTask) currentTask.textContent = episode.task_name;
-      if (episodeNotes) episodeNotes.textContent = episode.notes || "No episode notes uploaded.";
+      const details = structuredEpisodeDetails(episode);
+      if (title) title.textContent = `Episode ${episode.episode_index}: ${details.task}`;
+      if (currentTask) currentTask.textContent = details.task;
+      if (currentTaskDetail) currentTaskDetail.textContent = details.task;
+      if (currentSetup) currentSetup.textContent = details.setup;
+      if (currentOutcome) currentOutcome.textContent = details.outcome;
+      if (episodeNotes) {
+        episodeNotes.textContent = details.notes;
+        episodeNotes.style.display = details.notes ? "" : "none";
+      }
       if (timeSlider) {
         timeSlider.max = String(episode.duration_seconds || 0);
         timeSlider.value = "0";
