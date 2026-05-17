@@ -52,13 +52,12 @@
       <article class="card sidecard">
         <span class="tag">{{ evaluation.track_label or 'Published result' }}</span>
         <h2 data-current-task>{{ episodes[0].task_name }}</h2>
-        <div class="detail-list">
-          <span><strong>Source:</strong> {{ evaluation.source_kind or 'submission' }}</span>
-          <span><strong>Status:</strong> {{ evaluation.status|human_status }}</span>
-          <span><strong>Scheduled:</strong> {{ evaluation.schedule_at|human_datetime }}</span>
-          <span><strong>Published:</strong> {{ evaluation.published_at|human_datetime }}</span>
+        <div class="detail-list episode-detail-list">
+          <span><strong>Task:</strong> <span data-current-task-detail>{{ episodes[0].task_name }}</span></span>
+          <span><strong>Setup:</strong> <span data-current-setup>Loading</span></span>
+          <span><strong>Outcome:</strong> <span data-current-outcome>Loading</span></span>
         </div>
-        <p data-episode-notes>{{ episodes[0].notes or "No episode notes uploaded." }}</p>
+        <p data-episode-notes>{{ episodes[0].notes or "" }}</p>
       </article>
     </div>
   </section>

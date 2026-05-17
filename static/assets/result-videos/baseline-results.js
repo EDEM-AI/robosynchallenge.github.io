@@ -1,5 +1,38 @@
 window.ROBO_SYN_BASELINE_RESULTS = [
   {
+    "id": "baseline-result-pi0_sim",
+    "baseline_id": "baseline-1",
+    "model_key": "pi0_sim",
+    "display_name": "pi0 (sim)",
+    "model_name": "pi0",
+    "track": "sim-only",
+    "track_label": "Sim only",
+    "data_regime": "Sim only",
+    "success_rate": 22.0,
+    "action_steps": 898.12,
+    "real_time": 90.56,
+    "short_description": "pi0 (sim) official leaderboard entry. Rollout footage is represented by a placeholder preview video.",
+    "published": true,
+    "source_kind": "baseline",
+    "status": "published",
+    "leaderboard_notes": "Official benchmark entry with placeholder preview footage.",
+    "episodes": [
+      {
+        "episode_index": 1,
+        "title": "Preview episode",
+        "task_key": "preview",
+        "task_name": "Benchmark preview",
+        "setup_key": "placeholder",
+        "setup": "Placeholder preview",
+        "outcome": "Preview",
+        "success": null,
+        "duration_seconds": 12.0,
+        "video_url": "static/assets/demo-eval.mp4",
+        "notes": "Placeholder preview video for this leaderboard result."
+      }
+    ]
+  },
+  {
     "id": "baseline-result-pi0_real",
     "baseline_id": "baseline-2",
     "model_key": "pi0_real",
@@ -2414,6 +2447,41 @@ window.ROBO_SYN_BASELINE_RESULTS = [
         "duration_seconds": 100.0,
         "video_url": "static/assets/result-videos/videos/pi0_real/sample_loading/yellow_tablecloth/04__Pi0-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_210041.mp4",
         "notes": "Task: Sample Loading. Setup: Yellow tablecloth. Outcome: Fail."
+      }
+    ],
+    "source_kind": "baseline",
+    "status": "published"
+  },
+  {
+    "id": "baseline-result-pi05_sim",
+    "baseline_id": "baseline-3",
+    "model_key": "pi05_sim",
+    "display_name": "pi0.5 (sim)",
+    "model_name": "pi0.5",
+    "track": "sim-only",
+    "track_label": "Sim only",
+    "data_regime": "Sim only",
+    "success_rate": 38.5,
+    "action_steps": 797.55,
+    "real_time": 80.55,
+    "short_description": "pi0.5 (sim) official leaderboard entry. Rollout footage is represented by a placeholder preview video.",
+    "published": true,
+    "source_kind": "baseline",
+    "status": "published",
+    "leaderboard_notes": "Official benchmark entry with placeholder preview footage.",
+    "episodes": [
+      {
+        "episode_index": 1,
+        "title": "Preview episode",
+        "task_key": "preview",
+        "task_name": "Benchmark preview",
+        "setup_key": "placeholder",
+        "setup": "Placeholder preview",
+        "outcome": "Preview",
+        "success": null,
+        "duration_seconds": 12.0,
+        "video_url": "static/assets/demo-eval.mp4",
+        "notes": "Placeholder preview video for this leaderboard result."
       }
     ]
   },
@@ -4833,6 +4901,41 @@ window.ROBO_SYN_BASELINE_RESULTS = [
         "video_url": "static/assets/result-videos/videos/pi05_real/sample_loading/yellow_tablecloth/04__Pi05-SLAIPiper-InsertTestTube-chunk30-Ajointgripper-Sjointgripper-30000_joints_chunk_sync_20260502_113604.mp4",
         "notes": "Task: Sample Loading. Setup: Yellow tablecloth. Outcome: Fail."
       }
+    ],
+    "source_kind": "baseline",
+    "status": "published"
+  },
+  {
+    "id": "baseline-result-motus_sim",
+    "baseline_id": "baseline-5",
+    "model_key": "motus_sim",
+    "display_name": "Motus (sim)",
+    "model_name": "Motus",
+    "track": "sim-only",
+    "track_label": "Sim only",
+    "data_regime": "Sim only",
+    "success_rate": 31.5,
+    "action_steps": 778.8,
+    "real_time": 133.76,
+    "short_description": "Motus (sim) official leaderboard entry. Rollout footage is represented by a placeholder preview video.",
+    "published": true,
+    "source_kind": "baseline",
+    "status": "published",
+    "leaderboard_notes": "Official benchmark entry with placeholder preview footage.",
+    "episodes": [
+      {
+        "episode_index": 1,
+        "title": "Preview episode",
+        "task_key": "preview",
+        "task_name": "Benchmark preview",
+        "setup_key": "placeholder",
+        "setup": "Placeholder preview",
+        "outcome": "Preview",
+        "success": null,
+        "duration_seconds": 12.0,
+        "video_url": "static/assets/demo-eval.mp4",
+        "notes": "Placeholder preview video for this leaderboard result."
+      }
     ]
   },
   {
@@ -6291,6 +6394,8 @@ window.ROBO_SYN_BASELINE_RESULTS = [
         "video_url": "static/assets/result-videos/videos/motus_real/drawer_open_and_place/yellow_tablecloth/04__piper_multi_tasks_a3v4_joints_chunk_sync_20260513_004935.mp4",
         "notes": "Task: Drawer Open and Place. Setup: Yellow tablecloth. Outcome: Success."
       }
-    ]
+    ],
+    "source_kind": "baseline",
+    "status": "published"
   }
 ];

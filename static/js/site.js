@@ -41,6 +41,22 @@ if (evalForm) {
   if (executionChunk) executionChunk.addEventListener("input", syncChunkHint);
 }
 
+
+const structuredEpisodeDetails = (episode) => {
+  const notes = String(episode.notes || "");
+  const match = notes.match(/^Task:\s*(.*?)\.\s*Setup:\s*(.*?)\.\s*Outcome:\s*(.*?)\.?$/i);
+  const structured = Boolean(match);
+  const outcome =
+    episode.outcome ||
+    (episode.success === true ? "Success" : episode.success === false ? "Fail" : (match ? match[3] : "Not specified"));
+  return {
+    task: episode.task_name || (match ? match[1] : "Not specified"),
+    setup: episode.setup || (match ? match[2] : "Not specified"),
+    outcome,
+    notes: structured ? "" : notes,
+  };
+};
+
 const viewer = document.querySelector("[data-result-viewer]");
 
 if (viewer) {
@@ -52,6 +68,9 @@ if (viewer) {
   const title = viewer.querySelector("[data-episode-title]");
   const timeReadout = viewer.querySelector("[data-time-readout]");
   const currentTask = document.querySelector("[data-current-task]");
+  const currentTaskDetail = document.querySelector("[data-current-task-detail]");
+  const currentSetup = document.querySelector("[data-current-setup]");
+  const currentOutcome = document.querySelector("[data-current-outcome]");
   const episodeNotes = document.querySelector("[data-episode-notes]");
 
   const formatSeconds = (seconds) => `${Number(seconds || 0).toFixed(1)}s`;
@@ -66,9 +85,16 @@ if (viewer) {
     const episode = episodes[index] || episodes[0];
     if (!episode) return;
 
-    if (title) title.textContent = `Episode ${episode.episode_index}: ${episode.task_name}`;
-    if (currentTask) currentTask.textContent = episode.task_name;
-    if (episodeNotes) episodeNotes.textContent = episode.notes || "No episode notes uploaded.";
+    const details = structuredEpisodeDetails(episode);
+    if (title) title.textContent = `Episode ${episode.episode_index}: ${details.task}`;
+    if (currentTask) currentTask.textContent = details.task;
+    if (currentTaskDetail) currentTaskDetail.textContent = details.task;
+    if (currentSetup) currentSetup.textContent = details.setup;
+    if (currentOutcome) currentOutcome.textContent = details.outcome;
+    if (episodeNotes) {
+      episodeNotes.textContent = details.notes;
+      episodeNotes.style.display = details.notes ? "" : "none";
+    }
     if (timeSlider) {
       timeSlider.max = String(episode.duration_seconds || 0);
       timeSlider.value = "0";

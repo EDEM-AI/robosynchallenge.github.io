@@ -691,15 +691,9 @@ def seed_admin() -> None:
 
 
 def seed_baselines() -> None:
-    placeholder_ids = fetchall(
-        "SELECT id FROM leaderboard_entries WHERE source_kind = 'baseline' AND is_placeholder = 1"
-    )
-    if placeholder_ids:
-        for row in placeholder_ids:
-            execute(
-                "DELETE FROM leaderboard_entries WHERE id = ?",
-                (row["id"],),
-            )
+    # Rebuild official baseline rows on startup so the public leaderboard and
+    # result viewers stay aligned with the static benchmark manifest.
+    execute("DELETE FROM leaderboard_entries WHERE source_kind = 'baseline'")
 
     baseline_video_results = load_baseline_video_results()
     for seed in BASELINE_SEEDS:
