@@ -39,10 +39,16 @@ RESULT_UPLOAD_DIR = RUNTIME_DIR / "uploads" / "results"
 SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge/tree/main"
 TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/getting_started/overview.html"
 DATA_COLLECTION_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/collect_data.html"
-HUGGING_FACE_URL = os.getenv(
-    "ROBOCHALLENGE_DATASET_URL", "https://huggingface.co/RoboSynChallenge/datasets"
-).strip()
-HUGGING_FACE_LABEL = os.getenv("ROBOCHALLENGE_DATASET_LABEL", "Released data on Hugging Face")
+DEFAULT_HUGGING_FACE_URL = "https://huggingface.co/RoboSynChallenge"
+DEFAULT_HUGGING_FACE_LABEL = "RoboSynChallenge on Hugging Face"
+HUGGING_FACE_URL = (
+    os.getenv("ROBOCHALLENGE_DATASET_URL", DEFAULT_HUGGING_FACE_URL).strip()
+    or DEFAULT_HUGGING_FACE_URL
+)
+HUGGING_FACE_LABEL = (
+    os.getenv("ROBOCHALLENGE_DATASET_LABEL", DEFAULT_HUGGING_FACE_LABEL).strip()
+    or DEFAULT_HUGGING_FACE_LABEL
+)
 DEFAULT_ADMIN_USERNAME = os.getenv("ROBOCHALLENGE_ADMIN_USERNAME", "admin").strip() or "admin"
 DEFAULT_ADMIN_EMAIL = os.getenv(
     "ROBOCHALLENGE_ADMIN_EMAIL", "admin@robosynchallenge.local"
