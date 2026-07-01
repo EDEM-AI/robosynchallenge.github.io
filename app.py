@@ -32,16 +32,24 @@ RUNTIME_DIR = Path(os.getenv("ROBOCHALLENGE_RUNTIME_DIR", str(BASE_DIR))).resolv
 INSTANCE_DIR = RUNTIME_DIR / "instance"
 DB_PATH = INSTANCE_DIR / "robosynchallenge.db"
 SCHEMA_PATH = BASE_DIR / "schema.sql"
+REPORT_PATH = BASE_DIR / "material" / "RoboSynChallenge-report.pdf"
 POLICY_UPLOAD_DIR = RUNTIME_DIR / "uploads" / "policies"
 RESULT_UPLOAD_DIR = RUNTIME_DIR / "uploads" / "results"
 
-SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge"
-HUGGING_FACE_URL = os.getenv("ROBOCHALLENGE_DATASET_URL", "").strip()
-HUGGING_FACE_LABEL = os.getenv("ROBOCHALLENGE_DATASET_LABEL", "Hugging Face dataset")
+SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge/tree/main"
+TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/getting_started/overview.html"
+DATA_COLLECTION_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/collect_data.html"
+HUGGING_FACE_URL = os.getenv(
+    "ROBOCHALLENGE_DATASET_URL", "https://huggingface.co/RoboSynChallenge/datasets"
+).strip()
+HUGGING_FACE_LABEL = os.getenv("ROBOCHALLENGE_DATASET_LABEL", "Released data on Hugging Face")
 DEFAULT_ADMIN_USERNAME = os.getenv("ROBOCHALLENGE_ADMIN_USERNAME", "admin").strip() or "admin"
 DEFAULT_ADMIN_EMAIL = os.getenv(
     "ROBOCHALLENGE_ADMIN_EMAIL", "admin@robosynchallenge.local"
 ).strip()
+CONTACT_EMAIL = os.getenv(
+    "ROBOCHALLENGE_CONTACT_EMAIL", "robosynchallenge@gmail.com"
+).strip() or "robosynchallenge@gmail.com"
 DEFAULT_ADMIN_PASSWORD = os.getenv("ROBOCHALLENGE_ADMIN_PASSWORD", "ChangeMe2026!").strip()
 DEFAULT_ADMIN_TOKEN = os.getenv("ROBOCHALLENGE_ADMIN_TOKEN", DEFAULT_ADMIN_PASSWORD).strip() or DEFAULT_ADMIN_PASSWORD
 ALLOWED_MODEL_LINK_HOSTS = {"github.com", "huggingface.co"}
@@ -105,10 +113,10 @@ STATUS_LABELS = {
 }
 
 HOME_STATS = [
-    {"value": "10", "label": "official tasks"},
-    {"value": "1000", "label": "synthetic trials / task"},
-    {"value": "60", "label": "real references / task"},
-    {"value": "1000", "label": "action-step cap"},
+    {"value": "10", "label": "official manipulation tasks"},
+    {"value": "2", "label": "competition stages"},
+    {"value": "0", "label": "robots needed for preliminaries"},
+    {"value": "1", "label": "standardized final platform"},
 ]
 
 TASK_TIERS = [
@@ -1400,7 +1408,9 @@ def inject_globals() -> dict[str, Any]:
         "dataset_url": HUGGING_FACE_URL,
         "dataset_label": HUGGING_FACE_LABEL,
         "simulation_repo_url": SIMULATION_REPO_URL,
-        "contact_email": DEFAULT_ADMIN_EMAIL,
+        "tutorial_url": TUTORIAL_URL,
+        "data_collection_tutorial_url": DATA_COLLECTION_TUTORIAL_URL,
+        "contact_email": CONTACT_EMAIL,
         "current_year": datetime.now().year,
     }
 
@@ -1421,6 +1431,17 @@ def data_page():
         "data.html",
         real_collection_conditions=REAL_COLLECTION_CONDITIONS,
         sim_randomization=SIM_RANDOMIZATION,
+    )
+
+
+@app.route("/report")
+def competition_report():
+    if not REPORT_PATH.exists():
+        abort(404)
+    return send_from_directory(
+        REPORT_PATH.parent,
+        REPORT_PATH.name,
+        as_attachment=False,
     )
 
 

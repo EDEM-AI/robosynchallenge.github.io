@@ -15,13 +15,14 @@
         <span><strong>Suggested details:</strong> full name, affiliation, email, team name, and intended use</span>
         <span><strong>Organizer action:</strong> an admin creates the account and issues an access token</span>
       </div>
+      <p class="registration-email">
+        <strong>Registration email</strong>
+        <a href="mailto:{{ contact_email }}">{{ contact_email }}</a>
+      </p>
       <div class="cta-row">
         <a href="mailto:{{ contact_email }}?subject=RoboSynChallenge%20participant%20access%20request" class="button button-primary">Open email draft</a>
         <a href="{{ url_for('login') }}" class="button button-secondary">I already have a token</a>
       </div>
-      <p class="auth-footnote">
-        If you deploy this publicly, replace the email address above with your real organizer contact.
-      </p>
     </article>
   </section>
 {% endblock %}

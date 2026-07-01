@@ -1,114 +1,77 @@
 {% extends "base.html" %}
 {% block title %}RoboSynChallenge | Data{% endblock %}
 {% block content %}
-  <section class="page-hero shell">
-    <span class="eyebrow">Data and generation</span>
-    <h1>From teleoperated real trajectories to large-scale randomized simulation streams.</h1>
-    <p class="lead narrow">
-      RoboSynChallenge combines a smaller curated real set with a larger synthetic corpus generated
-      using RoboSynChallenge. The site keeps both the data links and the collection protocol visible
-      so participants can reason about what is official, what is additional, and what is still held out.
+  <section class="page-hero shell data-hero">
+    <span class="eyebrow">Competition data</span>
+    <h1>Train with scale. Ground in reality.</h1>
+    <p class="lead data-lead">
+      RoboSynChallenge pairs procedurally generated manipulation trials with a small, structured
+      real-world dataset to support data-efficient Sim2Real learning.
     </p>
     <div class="cta-row">
-      <a href="{{ simulation_repo_url }}" target="_blank" rel="noreferrer" class="button button-primary">Simulation platform</a>
+      <a href="{{ data_collection_tutorial_url }}" target="_blank" rel="noreferrer" class="button button-primary">Open generation toolkit ↗</a>
       {% if dataset_url %}
-        <a href="{{ dataset_url }}" target="_blank" rel="noreferrer" class="button button-secondary">{{ dataset_label }}</a>
+        <a href="{{ dataset_url }}" target="_blank" rel="noreferrer" class="button button-secondary">{{ dataset_label }} ↗</a>
       {% else %}
-        <span class="button button-disabled">Hugging Face release coming soon</span>
+        <span class="button button-disabled">Dataset release coming soon</span>
       {% endif %}
+      <a href="{{ tutorial_url }}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
     </div>
   </section>
 
-  <section class="section shell">
-    <div class="split-grid">
-      <article class="card">
-        <span class="tag">Official real data</span>
-        <h2>Teleoperation collection under five real-world conditions</h2>
+  <section class="section shell data-section">
+    <div class="data-columns">
+      <article class="data-panel data-panel-real">
+        <header class="data-panel-header">
+          <div>
+            <span class="tag">Real-world data</span>
+            <h2>Carefully collected demonstrations</h2>
+          </div>
+          <strong class="data-count">60<small>trials / task</small></strong>
+        </header>
         <p>
-          Each task is recorded across five experimental conditions, then expanded with four position
-          variations and three orientation settings for 60 samples per task. This gives physical
-          correspondence for a limited but carefully structured slice of the challenge.
+          Teleoperated dual-arm trajectories provide physical grounding across controlled changes in
+          appearance, lighting, clutter, position, and orientation.
         </p>
-        <div class="table-shell compact">
-          <table class="leaderboard-table compact">
-            <thead>
-              <tr>
-                <th>Background</th>
-                <th>Lighting</th>
-                <th>Additionals</th>
-                <th>Description</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for condition in real_collection_conditions %}
-                <tr>
-                  <td>{{ condition.background }}</td>
-                  <td>{{ condition.lighting }}</td>
-                  <td>{{ condition.additionals }}</td>
-                  <td>{{ condition.description }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <img src="{{ url_for('static', filename='assets/realworld-env.png') }}" alt="RoboSynChallenge real-world dual-arm collection platform">
+        <div class="data-facts">
+          <span><strong>5</strong> collection conditions</span>
+          <span><strong>4</strong> position variations</span>
+          <span><strong>3</strong> orientation settings</span>
+        </div>
+        <div class="condition-list" aria-label="Real-world collection conditions">
+          {% for condition in real_collection_conditions %}
+            <div>
+              <strong>{{ condition.background }} background</strong>
+              <span>{{ condition.lighting }} · {{ condition.additionals }}</span>
+            </div>
+          {% endfor %}
         </div>
       </article>
 
-      <article class="card">
-        <span class="tag">Official simulated data</span>
-        <h2>1000 randomized trials per task, generated procedurally</h2>
+      <article class="data-panel data-panel-sim">
+        <header class="data-panel-header">
+          <div>
+            <span class="tag">Simulated data</span>
+            <h2>Scale through procedural generation</h2>
+          </div>
+          <strong class="data-count">1,000<small>trials / task</small></strong>
+        </header>
         <p>
-          The synthetic corpus contains multi-modal interaction trajectories, RGB-D observations,
-          proprioceptive signals, structured task annotations, contact events, and success outcomes.
-          Its main job is to extend the diversity and scale that is too expensive to collect physically.
+          Multimodal trajectories combine RGB-D observations, robot state, actions, contact events,
+          task annotations, and outcomes under broad domain randomization.
         </p>
-        <img src="{{ url_for('static', filename='assets/robosynchallenge-pipeline.png') }}" alt="Data generation pipeline">
-      </article>
-    </div>
-  </section>
-
-  <section class="section section-alt">
-    <div class="shell">
-      <div class="section-heading">
-        <span class="eyebrow">Domain randomization</span>
-        <h2>The simulation dataset intentionally perturbs appearance, geometry, sensing, and initial states.</h2>
-      </div>
-      <div class="three-up">
-        {% for block in sim_randomization %}
-          <article class="card">
-            <h3>{{ block.title }}</h3>
-            <div class="task-list">
-              {% for item in block["items"] %}
-                <span>{{ item }}</span>
-              {% endfor %}
+        <img src="{{ url_for('static', filename='assets/robosynchallenge-pipeline.png') }}" alt="RoboSynChallenge synthetic data generation pipeline">
+        <div class="randomization-list">
+          {% for block in sim_randomization %}
+            <div>
+              <strong>{{ block.title }}</strong>
+              <span>{{ block["items"] | join(" · ") }}</span>
             </div>
-          </article>
-        {% endfor %}
-      </div>
+          {% endfor %}
+        </div>
+      </article>
     </div>
   </section>
 
-  <section class="section shell">
-    <div class="section-heading">
-      <span class="eyebrow">Release policy</span>
-      <h2>Open training resources, confidential test settings, and a held-out real benchmark.</h2>
-    </div>
-    <div class="split-grid">
-      <article class="card card-soft">
-        <h3>What is released</h3>
-        <p>
-          We expose the simulation generator, baseline pipelines, preprocessing logic, sample
-          trajectories, and the official dataset links. The public website is prepared to show both
-          repository and Hugging Face entry points.
-        </p>
-      </article>
-      <article class="card card-soft">
-        <h3>What remains held out</h3>
-        <p>
-          Final evaluation stays confidential: teams do not see test labels or raw held-out episodes.
-          Performance is measured directly on the standardized physical setup, reducing leakage risk and
-          overfitting to a known validation split.
-        </p>
-      </article>
-    </div>
-  </section>
 {% endblock %}

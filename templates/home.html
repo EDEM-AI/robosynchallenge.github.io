@@ -1,31 +1,29 @@
 {% extends "base.html" %}
-{% block title %}RoboSynChallenge | Home{% endblock %}
+{% block title %}RoboSynChallenge | NeurIPS 2026 Competition{% endblock %}
 {% block content %}
-  <section class="hero">
-    <div class="shell hero-grid">
+  <section class="hero home-hero">
+    <div class="shell home-hero-grid">
       <div class="hero-copy">
-        <span class="eyebrow">NeurIPS 2026 Competition</span>
-        <h1>Mastering real-world dexterity through synthesized manipulation skills.</h1>
+        <h1>RoboSynChallenge:</h1><h2> Mastering Real-World Dexterity via Generalizing Synthesized Manipulation Skills.</h2>
         <p class="lead">
-          RoboSynChallenge evaluates how well simulated and real-world co-training closes the
-          Sim2Real gap for bimanual manipulation. Teams train however they want, but official ranking
-          happens on held-out physical robot setups with standardized tasks and metrics.
+          Build a generalizable dual-arm manipulation policy with official synthetic data and limited
+          real data. Qualify in simulation, then prove it on a standardized real-robot platform.
         </p>
         <div class="cta-row">
-          <a href="{{ url_for('evaluation_page') }}" class="button button-primary">Submit a policy</a>
-          <a href="{{ url_for('data_page') }}" class="button button-secondary">Explore datasets</a>
+          <a href="{{ url_for('register') }}" class="button button-primary">Register your team</a>
+          <a href="{{ simulation_repo_url }}" target="_blank" rel="noreferrer" class="button button-secondary">GitHub codebase ↗</a>
+          <a href="{{ tutorial_url }}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
+          <a href="{{ url_for('competition_report') }}" target="_blank" rel="noreferrer" class="button button-ghost">Read report ↗</a>
         </div>
+        <p class="hero-note">Registration opens July 13 · Preliminary evaluation requires no physical robot</p>
       </div>
-      <div class="hero-visual">
-        <div class="hero-panel hero-panel-tall">
-          <div class="panel-label">Challenge pipeline</div>
-          <img src="{{ url_for('static', filename='assets/robosynchallenge-pipeline.png') }}" alt="RoboSynChallenge pipeline">
-        </div>
-        <div class="hero-panel hero-panel-short">
-          <div class="panel-label">Real-world workstation</div>
-          <img src="{{ url_for('static', filename='assets/realworld-env.png') }}" alt="RoboSynChallenge real-world evaluation platform">
-        </div>
-      </div>
+      <figure class="home-hero-figure">
+        <img src="{{ url_for('static', filename='assets/robosynchallenge-pipeline.png') }}" alt="RoboSynChallenge pipeline from synthetic data generation to real-world evaluation">
+        <figcaption>
+          <strong>The RoboSynChallenge pipeline</strong>
+          <span>Filter manipulation trials, synthesize diverse training data, co-train with synthetic and real demonstrations, then deploy and evaluate policies on the standardized dual-arm platform.</span>
+        </figcaption>
+      </figure>
     </div>
   </section>
 
@@ -40,167 +38,84 @@
     </div>
   </section>
 
-  <section class="section shell">
-    <div class="section-heading">
-      <span class="eyebrow">Overview</span>
-      <h2>One benchmark, one interface, multiple routes to Sim2Real transfer.</h2>
+  <section class="section shell home-section">
+    <div class="section-heading compact-heading">
+      <span class="eyebrow">How it works</span>
+      <h2>One competition, two stages.</h2>
+      <p>Every team follows the same route from scalable simulation testing to a controlled physical final.</p>
     </div>
-    <div class="split-grid">
-      <article class="card card-soft">
-        <h3>What the competition measures</h3>
-        <p>
-          Every official evaluation reports three outcomes: success rate, average action steps with a
-          1000-step cap, and measured real time on the held-out robot platform. The goal is not only
-          to finish tasks, but to do so efficiently and consistently under appearance, lighting, and
-          clutter variation.
-        </p>
-      </article>
-      <article class="card card-soft">
-        <h3>What teams are allowed to use</h3>
-        <p>
-          Participants can train with the open RoboSynChallenge generation platform, the official
-          simulated and real data releases, or additional private data if they disclose its source at
-          submission time. The leaderboard keeps that provenance visible.
-        </p>
-      </article>
-    </div>
-  </section>
-
-  <section class="section shell">
-    <div class="section-heading">
-      <span class="eyebrow">Platforms</span>
-      <h2>Simulation scale on one side, standardized dual-arm validation on the other.</h2>
-    </div>
-    <div class="platform-grid">
-      <article class="card platform-card">
-        <div class="platform-meta">
-          <span class="tag">Synthetic data generation</span>
-          <h3>RoboSynChallenge simulation stack</h3>
-          <p>
-            Use the open-source simulation pipeline to synthesize large-scale state-action trials with
-            domain randomization over lighting, objects, table properties, camera calibration, robot
-            initialization, and distractors.
-          </p>
-          <a href="{{ simulation_repo_url }}" target="_blank" rel="noreferrer" class="button button-secondary">
-            Open GitHub
-          </a>
+    <div class="stage-grid">
+      <article class="stage-card">
+        <span class="stage-number">01</span>
+        <div>
+          <span class="tag">Preliminary round</span>
+          <h3>Generalize in simulation</h3>
+          <p>Train with official synthetic and limited real data, then submit your model for randomized simulation evaluation. No robot hardware is needed.</p>
         </div>
-        <img src="{{ url_for('static', filename='assets/robosynchallenge-pipeline.png') }}" alt="Simulation pipeline figure">
       </article>
-      <article class="card platform-card">
-        <div class="platform-meta">
-          <span class="tag">Physical benchmark</span>
-          <h3>Dual AgileX PiPER evaluation platform</h3>
-          <p>
-            Final rankings come from standardized dual-arm workstations with multi-camera visual
-            observations and proprioceptive feedback only. Entry, mid, and high-level tasks cover
-            rigid objects, articulated objects, tools, and precision operations.
-          </p>
+      <div class="stage-arrow" aria-hidden="true">→</div>
+      <article class="stage-card stage-card-final">
+        <span class="stage-number">02</span>
+        <div>
+          <span class="tag">Final round</span>
+          <h3>Perform in the real world</h3>
+          <p>Top teams deploy on the same dual-arm platform across changing backgrounds, lighting, object placement, and distractors.</p>
         </div>
-        <img src="{{ url_for('static', filename='assets/realworld-env.png') }}" alt="Real-world hardware platform">
       </article>
     </div>
   </section>
 
-  <section class="section section-alt">
+  <section class="section section-alt home-section" id="timeline">
     <div class="shell">
-      <div class="section-heading">
-        <span class="eyebrow">Task spectrum</span>
-        <h2>Ten official tasks, organized by contact complexity and planning depth.</h2>
+      <div class="section-heading compact-heading">
+        <span class="eyebrow">Competition timeline</span>
+        <h2>Key dates for 2026.</h2>
       </div>
-      <div class="task-grid">
-        {% for tier in task_tiers %}
-          <article class="task-card tone-{{ tier.tone }}">
-            <div class="task-copy">
-              <span class="tag">{{ tier.name }}</span>
-              <h3>{{ tier.summary }}</h3>
-              <div class="task-list">
-                {% for task in tier.tasks %}
-                  <span>{{ task }}</span>
-                {% endfor %}
-              </div>
-            </div>
-            <img src="{{ url_for('static', filename=tier.image) }}" alt="{{ tier.name }} tasks">
-          </article>
-        {% endfor %}
-      </div>
+      <ol class="competition-timeline">
+        <li>
+          <time datetime="2026-07-13">July 13</time>
+          <div><h3>Registration</h3><p>Register your team and receive EmbodiChain, the synthetic dataset, and baseline models.</p></div>
+        </li>
+        <li>
+          <time datetime="2026-07-13/2026-10-11">July 13 – October 11</time>
+          <div><h3>Preliminary round</h3><p>Train and submit for randomized simulation evaluation. No physical robot is required.</p></div>
+        </li>
+        <li>
+          <time datetime="2026-10-18">October 18</time>
+          <div><h3>Finalists announced</h3><p>Top-ranked teams advance to the real-robot final.</p></div>
+        </li>
+        <li>
+          <time datetime="2026-10-18/2026-11-15">October 18 – November 15</time>
+          <div><h3>Final round</h3><p>Models are evaluated on a unified dual-arm platform. Every finalist receives a dedicated visual results page.</p></div>
+        </li>
+        <li>
+          <time datetime="2026-12">Early December</time>
+          <div><h3>Awards and showcase</h3><p>Winning teams are invited to present and receive awards at NeurIPS 2026.</p></div>
+        </li>
+      </ol>
     </div>
   </section>
 
-  <section class="section shell">
-    <div class="section-heading">
-      <span class="eyebrow">Evaluation protocol</span>
-      <h2>Held-out robot testing emphasizes robustness, not leaderboard gaming.</h2>
+  <section class="section shell home-section">
+    <div class="section-heading compact-heading">
+      <span class="eyebrow">Official benchmark</span>
+      <h2>Ten tasks, one test of robust manipulation.</h2>
     </div>
-    <div class="three-up">
-      <article class="card">
-        <h3>Controlled real-world shifts</h3>
-        <p>
-          Official evaluations vary table textures, light positions, object identities, distractor
-          density, and unseen object placements on a 3 × 3 grid.
-        </p>
-      </article>
-      <article class="card">
-        <h3>Unified submission schema</h3>
-        <p>
-          Teams declare input modalities, output action protocol, chunk sizes, gripper binarization
-          threshold, and data provenance. Admins then schedule and publish results through the same site.
-        </p>
-      </article>
-      <article class="card">
-        <h3>Public result playback</h3>
-        <p>
-          Each published result can expose an episode-by-episode video viewer with an evaluation
-          slider on top and an in-episode time slider below.
-        </p>
-      </article>
+    <div class="compact-task-grid">
+      {% for tier in task_tiers %}
+        <article class="compact-task-group tone-{{ tier.tone }}">
+          <span class="tag">{{ tier.name }}</span>
+          <div class="compact-task-list">
+            {% for task in tier.tasks %}<span>{{ task }}</span>{% endfor %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+    <div class="metric-strip">
+      <span><strong>Success rate</strong> task completion</span>
+      <span><strong>Action steps</strong> execution efficiency</span>
+      <span><strong>Real time</strong> deployment speed</span>
     </div>
   </section>
 
-  <section class="section section-alt">
-    <div class="shell">
-      <div class="section-heading">
-        <span class="eyebrow">Leaderboard preview</span>
-        <h2>Official baseline benchmark results are already integrated into the public ranking flow.</h2>
-      </div>
-      <div class="table-shell">
-        <table class="leaderboard-table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Model</th>
-              <th>User</th>
-              <th>Track</th>
-              <th>Success rate</th>
-              <th>Action steps</th>
-              <th>Real time</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in top_entries %}
-              <tr>
-                <td>#{{ loop.index }}</td>
-                <td>
-                  <div class="table-primary">
-                    {{ row.model_name }}
-                    {% if row.evaluation_id %}
-                      <a href="{{ url_for('result_viewer', evaluation_id=row.evaluation_id) }}">View result</a>
-                    {% endif %}
-                  </div>
-                </td>
-                <td>{{ row.username_display }}</td>
-                <td>{{ row.track_label }}</td>
-                <td>{{ "%.1f"|format(row.success_rate or 0) }}%</td>
-                <td>{{ "%.0f"|format(row.action_steps or 0) }}</td>
-                <td>{{ "%.1f"|format(row.real_time or 0) }}s</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      <div class="section-actions">
-        <a href="{{ url_for('leaderboard_page') }}" class="button button-primary">Open full leaderboard</a>
-      </div>
-    </div>
-  </section>
 {% endblock %}
