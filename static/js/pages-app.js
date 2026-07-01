@@ -2,9 +2,12 @@
   "use strict";
 
   const STORAGE_KEY = "robosynchallenge-pages-state-v2";
-  const DATASET_URL = "";
-  const DATASET_LABEL = "Hugging Face dataset";
-  const SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge";
+  const DATASET_URL = "https://huggingface.co/RoboSynChallenge/datasets";
+  const DATASET_LABEL = "Released data on Hugging Face";
+  const SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge/tree/main";
+  const TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/getting_started/overview.html";
+  const DATA_COLLECTION_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/collect_data.html";
+  const REPORT_URL = "material/RoboSynChallenge-report.pdf";
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
 
   const STATE_LABELS = {
@@ -53,10 +56,10 @@
   };
 
   const HOME_STATS = [
-    { value: "10", label: "official tasks" },
-    { value: "1000", label: "synthetic trials / task" },
-    { value: "60", label: "real references / task" },
-    { value: "1000", label: "action-step cap" },
+    { value: "10", label: "official manipulation tasks" },
+    { value: "2", label: "competition stages" },
+    { value: "0", label: "robots needed for preliminaries" },
+    { value: "1", label: "standardized final platform" },
   ];
 
   const BENCHMARK_SUMMARY = [
@@ -665,34 +668,35 @@
   }
 
   function renderHome() {
-    const topEntries = getLeaderboardRows().slice(0, 5);
-
     return `
-      <section class="hero">
-        <div class="shell hero-grid">
+      <section class="hero home-hero">
+        <div class="shell home-hero-grid">
           <div class="hero-copy">
-            <span class="eyebrow">NeurIPS 2026 Competition</span>
-            <h1>Mastering real-world dexterity through synthesized manipulation skills.</h1>
+            <div class="hero-affiliation">
+              <img src="static/assets/neurips-logo.svg" alt="NeurIPS">
+              <span>2026 Competition</span>
+            </div>
+            <h1>RoboSynChallenge:</h1>
+            <h2>Mastering Real-World Dexterity via Generalizing Synthesized Manipulation Skills.</h2>
             <p class="lead">
-              RoboSynChallenge evaluates how well simulated and real-world co-training closes the
-              Sim2Real gap for bimanual manipulation. Teams train however they want, but official ranking
-              happens on held-out physical robot setups with standardized tasks and metrics.
+              Build a generalizable dual-arm manipulation policy with official synthetic data and limited
+              real data. Qualify in simulation, then prove it on a standardized real-robot platform.
             </p>
             <div class="cta-row">
-              <a href="${routeHref("evaluation")}" class="button button-primary">Submit a policy</a>
-              <a href="${routeHref("data")}" class="button button-secondary">Explore datasets</a>
+              <a href="${routeHref("register")}" class="button button-primary">Register your team</a>
+              <a href="${SIMULATION_REPO_URL}" target="_blank" rel="noreferrer" class="button button-secondary">GitHub codebase ↗</a>
+              <a href="${TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
+              <a href="${REPORT_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read report ↗</a>
             </div>
+            <p class="hero-note">Registration opens July 13 · Preliminary evaluation requires no physical robot</p>
           </div>
-          <div class="hero-visual">
-            <div class="hero-panel hero-panel-tall">
-              <div class="panel-label">Challenge pipeline</div>
-              <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge pipeline">
-            </div>
-            <div class="hero-panel hero-panel-short">
-              <div class="panel-label">Real-world workstation</div>
-              <img src="static/assets/realworld-env.png" alt="RoboSynChallenge real-world evaluation platform">
-            </div>
-          </div>
+          <figure class="home-hero-figure">
+            <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge pipeline from synthetic data generation to real-world evaluation">
+            <figcaption>
+              <strong>The RoboSynChallenge pipeline</strong>
+              <span>Filter manipulation trials, synthesize diverse training data, co-train with synthetic and real demonstrations, then deploy and evaluate policies on the standardized dual-arm platform.</span>
+            </figcaption>
+          </figure>
         </div>
       </section>
 
@@ -707,163 +711,66 @@
         </div>
       </section>
 
-      <section class="section shell">
-        <div class="section-heading">
-          <span class="eyebrow">Overview</span>
-          <h2>One benchmark, one interface, multiple routes to Sim2Real transfer.</h2>
+      <section class="section shell home-section">
+        <div class="section-heading compact-heading">
+          <span class="eyebrow">How it works</span>
+          <h2>One competition, two stages.</h2>
+          <p>Every team follows the same route from scalable simulation testing to a controlled physical final.</p>
         </div>
-        <div class="split-grid">
-          <article class="card card-soft">
-            <h3>What the competition measures</h3>
-            <p>
-              Every official evaluation reports three outcomes: success rate, average action steps with a
-              1000-step cap, and measured real time on the held-out robot platform. The goal is not only
-              to finish tasks, but to do so efficiently and consistently under appearance, lighting, and
-              clutter variation.
-            </p>
-          </article>
-          <article class="card card-soft">
-            <h3>What teams are allowed to use</h3>
-            <p>
-              Participants can train with the open RoboSynChallenge generation platform, the official
-              simulated and real data releases, or additional private data if they disclose its source at
-              submission time. The leaderboard keeps that provenance visible.
-            </p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="section-heading">
-          <span class="eyebrow">Platforms</span>
-          <h2>Simulation scale on one side, standardized dual-arm validation on the other.</h2>
-        </div>
-        <div class="platform-grid">
-          <article class="card platform-card">
-            <div class="platform-meta">
-              <span class="tag">Synthetic data generation</span>
-              <h3>RoboSynChallenge simulation stack</h3>
-              <p>
-                Use the open-source simulation pipeline to synthesize large-scale state-action trials with
-                domain randomization over lighting, objects, table properties, camera calibration, robot
-                initialization, and distractors.
-              </p>
-              <a href="${SIMULATION_REPO_URL}" target="_blank" rel="noreferrer" class="button button-secondary">
-                Open GitHub
-              </a>
+        <div class="stage-grid">
+          <article class="stage-card">
+            <span class="stage-number">01</span>
+            <div>
+              <span class="tag">Preliminary round</span>
+              <h3>Generalize in simulation</h3>
+              <p>Train with official synthetic and limited real data, then submit your model for randomized simulation evaluation. No robot hardware is needed.</p>
             </div>
-            <img src="static/assets/robosynchallenge-pipeline.png" alt="Simulation pipeline figure">
           </article>
-          <article class="card platform-card">
-            <div class="platform-meta">
-              <span class="tag">Physical benchmark</span>
-              <h3>Dual AgileX PiPER evaluation platform</h3>
-              <p>
-                Final rankings come from standardized dual-arm workstations with multi-camera visual
-                observations and proprioceptive feedback only. Entry, mid, and high-level tasks cover
-                rigid objects, articulated objects, tools, and precision operations.
-              </p>
+          <div class="stage-arrow" aria-hidden="true">→</div>
+          <article class="stage-card stage-card-final">
+            <span class="stage-number">02</span>
+            <div>
+              <span class="tag">Final round</span>
+              <h3>Perform in the real world</h3>
+              <p>Top teams deploy on the same dual-arm platform across changing backgrounds, lighting, object placement, and distractors.</p>
             </div>
-            <img src="static/assets/realworld-env.png" alt="Real-world hardware platform">
           </article>
         </div>
       </section>
 
-      <section class="section section-alt">
+      <section class="section section-alt home-section" id="timeline">
         <div class="shell">
-          <div class="section-heading">
-            <span class="eyebrow">Task spectrum</span>
-            <h2>Ten official tasks, organized by contact complexity and planning depth.</h2>
+          <div class="section-heading compact-heading">
+            <span class="eyebrow">Competition timeline</span>
+            <h2>Key dates for 2026.</h2>
           </div>
-          <div class="task-grid">
-            ${TASK_TIERS.map((tier) => `
-              <article class="task-card tone-${escapeHtml(tier.tone)}">
-                <div class="task-copy">
-                  <span class="tag">${escapeHtml(tier.name)}</span>
-                  <h3>${escapeHtml(tier.summary)}</h3>
-                  <div class="task-list">
-                    ${tier.tasks.map((task) => `<span>${escapeHtml(task)}</span>`).join("")}
-                  </div>
-                </div>
-                <img src="${escapeHtml(tier.image)}" alt="${escapeHtml(tier.name)} tasks">
-              </article>
-            `).join("")}
-          </div>
+          <ol class="competition-timeline">
+            <li><time>July 13</time><div><h3>Registration</h3><p>Register your team and receive EmbodiChain, the synthetic dataset, and baseline models.</p></div></li>
+            <li><time>July 13 – October 11</time><div><h3>Preliminary round</h3><p>Train and submit for randomized simulation evaluation. No physical robot is required.</p></div></li>
+            <li><time>October 18</time><div><h3>Finalists announced</h3><p>Top-ranked teams advance to the real-robot final.</p></div></li>
+            <li><time>October 18 – November 15</time><div><h3>Final round</h3><p>Models are evaluated on a unified dual-arm platform. Every finalist receives a dedicated visual results page.</p></div></li>
+            <li><time>Early December</time><div><h3>Awards and showcase</h3><p>Winning teams are invited to present and receive awards at NeurIPS 2026.</p></div></li>
+          </ol>
         </div>
       </section>
 
-      <section class="section shell">
-        <div class="section-heading">
-          <span class="eyebrow">Evaluation protocol</span>
-          <h2>Held-out robot testing emphasizes robustness, not leaderboard gaming.</h2>
+      <section class="section shell home-section">
+        <div class="section-heading compact-heading">
+          <span class="eyebrow">Official benchmark</span>
+          <h2>Ten tasks, one test of robust manipulation.</h2>
         </div>
-        <div class="three-up">
-          <article class="card">
-            <h3>Controlled real-world shifts</h3>
-            <p>
-              Official evaluations vary table textures, light positions, object identities, distractor
-              density, and unseen object placements on a 3 × 3 grid.
-            </p>
-          </article>
-          <article class="card">
-            <h3>Unified submission schema</h3>
-            <p>
-              Teams declare input modalities, output action protocol, chunk sizes, gripper binarization
-              threshold, and data provenance. Admins then schedule and publish results through the same site.
-            </p>
-          </article>
-          <article class="card">
-            <h3>Public result playback</h3>
-            <p>
-              Each published result can expose an episode-by-episode video viewer with an evaluation
-              slider on top and an in-episode time slider below.
-            </p>
-          </article>
+        <div class="compact-task-grid">
+          ${TASK_TIERS.map((tier) => `
+            <article class="compact-task-group tone-${escapeHtml(tier.tone)}">
+              <span class="tag">${escapeHtml(tier.name)}</span>
+              <div class="compact-task-list">${tier.tasks.map((task) => `<span>${escapeHtml(task)}</span>`).join("")}</div>
+            </article>
+          `).join("")}
         </div>
-      </section>
-
-      <section class="section section-alt">
-        <div class="shell">
-          <div class="section-heading">
-            <span class="eyebrow">Leaderboard preview</span>
-            <h2>Official baseline benchmark results are already integrated into the public ranking flow.</h2>
-          </div>
-          <div class="table-shell">
-            <table class="leaderboard-table">
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Model</th>
-                  <th>User</th>
-                  <th>Track</th>
-                  <th>Success rate</th>
-                  <th>Action steps</th>
-                  <th>Real time</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${topEntries.map((row, index) => `
-                  <tr>
-                    <td>#${index + 1}</td>
-                    <td>
-                      <div class="table-primary">
-                        ${escapeHtml(row.model_name)}
-                        ${row.evaluation_id ? `<a href="${routeHref(`results/${row.evaluation_id}`)}">View result</a>` : ""}
-                      </div>
-                    </td>
-                    <td>${escapeHtml(row.username_display)}</td>
-                    <td>${escapeHtml(row.track_label)}</td>
-                    <td>${formatPercent(row.success_rate)}</td>
-                    <td>${formatSteps(row.action_steps)}</td>
-                    <td>${formatSeconds(row.real_time)}</td>
-                  </tr>
-                `).join("")}
-              </tbody>
-            </table>
-          </div>
-          <div class="section-actions">
-            <a href="${routeHref("leaderboard")}" class="button button-primary">Open full leaderboard</a>
-          </div>
+        <div class="metric-strip">
+          <span><strong>Success rate</strong> task completion</span>
+          <span><strong>Action steps</strong> execution efficiency</span>
+          <span><strong>Real time</strong> deployment speed</span>
         </div>
       </section>
     `;
@@ -924,109 +831,53 @@
 
   function renderDataPage() {
     return `
-      <section class="page-hero shell">
-        <span class="eyebrow">Data and generation</span>
-        <h1>From teleoperated real trajectories to large-scale randomized simulation streams.</h1>
-        <p class="lead narrow">
-          RoboSynChallenge combines a smaller curated real set with a larger synthetic corpus generated
-          using RoboSynChallenge. The site keeps both the data links and the collection protocol visible
-          so participants can reason about what is official, what is additional, and what is still held out.
+      <section class="page-hero shell data-hero">
+        <span class="eyebrow">Competition data</span>
+        <h1>Train with scale. Ground in reality.</h1>
+        <p class="lead data-lead">
+          RoboSynChallenge pairs procedurally generated manipulation trials with a small, structured
+          real-world dataset to support data-efficient Sim2Real learning.
         </p>
         <div class="cta-row">
-          <a href="${SIMULATION_REPO_URL}" target="_blank" rel="noreferrer" class="button button-primary">Simulation platform</a>
-          ${DATASET_URL
-            ? `<a href="${escapeHtml(DATASET_URL)}" target="_blank" rel="noreferrer" class="button button-secondary">${escapeHtml(DATASET_LABEL)}</a>`
-            : `<span class="button button-disabled">Hugging Face release coming soon</span>`}
+          <a href="${DATA_COLLECTION_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-primary">Open generation toolkit ↗</a>
+          <a href="${DATASET_URL}" target="_blank" rel="noreferrer" class="button button-secondary">${DATASET_LABEL} ↗</a>
+          <a href="${TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
         </div>
       </section>
 
-      <section class="section shell">
-        <div class="split-grid">
-          <article class="card">
-            <span class="tag">Official real data</span>
-            <h2>Teleoperation collection under five real-world conditions</h2>
-            <p>
-              Each task is recorded across five experimental conditions, then expanded with four position
-              variations and three orientation settings for 60 samples per task. This gives physical
-              correspondence for a limited but carefully structured slice of the challenge.
-            </p>
-            <div class="table-shell compact">
-              <table class="leaderboard-table compact">
-                <thead>
-                  <tr>
-                    <th>Background</th>
-                    <th>Lighting</th>
-                    <th>Additionals</th>
-                    <th>Description</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${REAL_COLLECTION_CONDITIONS.map((condition) => `
-                    <tr>
-                      <td>${escapeHtml(condition.background)}</td>
-                      <td>${escapeHtml(condition.lighting)}</td>
-                      <td>${escapeHtml(condition.additionals)}</td>
-                      <td>${escapeHtml(condition.description)}</td>
-                    </tr>
-                  `).join("")}
-                </tbody>
-              </table>
+      <section class="section shell data-section">
+        <div class="data-columns">
+          <article class="data-panel data-panel-real">
+            <header class="data-panel-header">
+              <div><span class="tag">Real-world data</span><h2>Carefully collected demonstrations</h2></div>
+              <strong class="data-count">60<small>trials / task</small></strong>
+            </header>
+            <p>Teleoperated dual-arm trajectories provide physical grounding across controlled changes in appearance, lighting, clutter, position, and orientation.</p>
+            <img src="static/assets/realworld-env.png" alt="RoboSynChallenge real-world dual-arm collection platform">
+            <div class="data-facts">
+              <span><strong>5</strong> collection conditions</span>
+              <span><strong>4</strong> position variations</span>
+              <span><strong>3</strong> orientation settings</span>
+            </div>
+            <div class="condition-list">
+              ${REAL_COLLECTION_CONDITIONS.map((condition) => `
+                <div><strong>${escapeHtml(condition.background)} background</strong><span>${escapeHtml(condition.lighting)} · ${escapeHtml(condition.additionals)}</span></div>
+              `).join("")}
             </div>
           </article>
 
-          <article class="card">
-            <span class="tag">Official simulated data</span>
-            <h2>1000 randomized trials per task, generated procedurally</h2>
-            <p>
-              The synthetic corpus contains multi-modal interaction trajectories, RGB-D observations,
-              proprioceptive signals, structured task annotations, contact events, and success outcomes.
-              Its main job is to extend the diversity and scale that is too expensive to collect physically.
-            </p>
-            <img src="static/assets/robosynchallenge-pipeline.png" alt="Data generation pipeline">
-          </article>
-        </div>
-      </section>
-
-      <section class="section section-alt">
-        <div class="shell">
-          <div class="section-heading">
-            <span class="eyebrow">Domain randomization</span>
-            <h2>The simulation dataset intentionally perturbs appearance, geometry, sensing, and initial states.</h2>
-          </div>
-          <div class="three-up">
-            ${SIM_RANDOMIZATION.map((block) => `
-              <article class="card">
-                <h3>${escapeHtml(block.title)}</h3>
-                <div class="task-list">
-                  ${block.items.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-                </div>
-              </article>
-            `).join("")}
-          </div>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="section-heading">
-          <span class="eyebrow">Release policy</span>
-          <h2>Open training resources, confidential test settings, and a held-out real benchmark.</h2>
-        </div>
-        <div class="split-grid">
-          <article class="card card-soft">
-            <h3>What is released</h3>
-            <p>
-              We expose the simulation generator, baseline pipelines, preprocessing logic, sample
-              trajectories, and the official dataset links. The public website is prepared to show both
-              repository and Hugging Face entry points.
-            </p>
-          </article>
-          <article class="card card-soft">
-            <h3>What remains held out</h3>
-            <p>
-              Final evaluation stays confidential: teams do not see test labels or raw held-out episodes.
-              Performance is measured directly on the standardized physical setup, reducing leakage risk and
-              overfitting to a known validation split.
-            </p>
+          <article class="data-panel data-panel-sim">
+            <header class="data-panel-header">
+              <div><span class="tag">Simulated data</span><h2>Scale through procedural generation</h2></div>
+              <strong class="data-count">1,000<small>trials / task</small></strong>
+            </header>
+            <p>Multimodal trajectories combine RGB-D observations, robot state, actions, contact events, task annotations, and outcomes under broad domain randomization.</p>
+            <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge synthetic data generation pipeline">
+            <div class="randomization-list">
+              ${SIM_RANDOMIZATION.map((block) => `
+                <div><strong>${escapeHtml(block.title)}</strong><span>${block.items.map(escapeHtml).join(" · ")}</span></div>
+              `).join("")}
+            </div>
           </article>
         </div>
       </section>
@@ -1039,6 +890,7 @@
         <article class="auth-card">
           <span class="eyebrow">Token access</span>
           <h1>Sign in</h1>
+          <p class="construction-note">Under construction</p>
           <form class="panel-stack compact" data-form="login">
             <label class="field">
               <span>Email</span>
@@ -1075,13 +927,14 @@
             <span><strong>Suggested details:</strong> full name, affiliation, email, team name, and intended use</span>
             <span><strong>Organizer action:</strong> an admin creates the account and issues an access token</span>
           </div>
+          <p class="registration-email">
+            <strong>Registration email</strong>
+            <a href="mailto:robosynchallenge@gmail.com">robosynchallenge@gmail.com</a>
+          </p>
           <div class="cta-row">
-            <a href="mailto:neurips-robosyn@edem-ai.org?subject=RoboSynChallenge%20participant%20access%20request" class="button button-primary">Open email draft</a>
+            <a href="mailto:robosynchallenge@gmail.com?subject=RoboSynChallenge%20participant%20access%20request" class="button button-primary">Open email draft</a>
             <a href="${routeHref("login")}" class="button button-secondary">I already have a token</a>
           </div>
-          <p class="auth-footnote">
-            If you deploy this publicly, replace the email address above with your real organizer contact.
-          </p>
         </article>
       </section>
     `;
@@ -1691,70 +1544,49 @@
   function renderLeaderboardPage() {
     const rows = getLeaderboardRows();
     return `
-      <section class="page-hero shell">
-        <span class="eyebrow">Public ranking</span>
-        <h1>Success rate first, then action efficiency, then real-world time.</h1>
-        <p class="lead narrow">
-          The leaderboard is automatically refreshed from published evaluations and includes the official
-          baseline benchmark entries for pi0, pi0.5, and Motus across sim-only and real-only tracks.
-        </p>
+      <section class="page-hero shell leaderboard-hero">
+        <span class="eyebrow">Leaderboard</span>
+        <h1>Official results.</h1>
+        <p class="lead narrow">Ranked by success rate, with fewer action steps and lower execution time used as tie-breakers.</p>
       </section>
 
-      <section class="section shell">
-        <div class="top-grid">
-          ${rows.slice(0, 3).map((row, index) => `
-            <article class="card rank-card">
-              <span class="tag">#${index + 1}</span>
-              <h2>${escapeHtml(row.model_name)}</h2>
-              <div class="detail-list">
-                <span><strong>User:</strong> ${escapeHtml(row.username_display)}</span>
-                <span><strong>Track:</strong> ${escapeHtml(row.track_label)}</span>
-                <span><strong>Success rate:</strong> ${formatPercent(row.success_rate)}</span>
-                <span><strong>Action steps:</strong> ${formatSteps(row.action_steps)}</span>
-                <span><strong>Real time:</strong> ${formatSeconds(row.real_time)}</span>
-              </div>
-            </article>
-          `).join("")}
+      <section class="section shell leaderboard-section">
+        <div class="leaderboard-summary">
+          <span><strong>1</strong> Success rate</span>
+          <span><strong>2</strong> Action steps</span>
+          <span><strong>3</strong> Execution time</span>
+          <small>${rows.length} published results</small>
         </div>
-      </section>
-
-      <section class="section shell">
-        <div class="table-shell">
-          <table class="leaderboard-table">
+        <div class="table-shell leaderboard-shell">
+          <table class="leaderboard-table leaderboard-table-compact">
             <thead>
               <tr>
                 <th>Rank</th>
                 <th>Model</th>
-                <th>User</th>
-                <th>Track</th>
-                <th>Data regime</th>
-                <th>Success rate</th>
-                <th>Action steps</th>
-                <th>Real time</th>
-                <th>Type</th>
+                <th>Team</th>
+                <th>Success</th>
+                <th>Steps</th>
+                <th>Time</th>
               </tr>
             </thead>
             <tbody>
               ${rows.length
                 ? rows.map((row, index) => `
-                  <tr>
-                    <td>#${index + 1}</td>
+                  <tr class="${index < 3 ? "is-podium" : ""}">
+                    <td><strong class="rank-number">${index + 1}</strong></td>
                     <td>
-                      <div class="table-primary">
-                        ${escapeHtml(row.model_name)}
-                        ${row.evaluation_id ? `<a href="${routeHref(`results/${row.evaluation_id}`)}">View result</a>` : ""}
+                      <div class="leaderboard-model">
+                        <strong>${escapeHtml(row.model_name)}</strong>
+                        <div><span>${escapeHtml(row.rank_badge)}</span>${row.evaluation_id ? `<a href="${routeHref(`results/${row.evaluation_id}`)}">View result →</a>` : ""}</div>
                       </div>
                     </td>
                     <td>${escapeHtml(row.username_display)}</td>
-                    <td>${escapeHtml(row.track_label)}</td>
-                    <td>${escapeHtml(row.data_regime)}</td>
-                    <td>${formatPercent(row.success_rate)}</td>
+                    <td><strong class="score-primary">${formatPercent(row.success_rate)}</strong></td>
                     <td>${formatSteps(row.action_steps)}</td>
                     <td>${formatSeconds(row.real_time)}</td>
-                    <td>${escapeHtml(row.rank_badge)}</td>
                   </tr>
                 `).join("")
-                : `<tr><td colspan="9">No published results yet.</td></tr>`}
+                : `<tr><td colspan="6" class="empty-table">No published results yet.</td></tr>`}
             </tbody>
           </table>
         </div>
