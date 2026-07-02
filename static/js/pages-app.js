@@ -1,44 +1,19 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "robosynchallenge-pages-state-v2";
+  const STORAGE_KEY = "robosynchallenge-pages-state-v3";
   const DATASET_URL = "https://huggingface.co/RoboSynChallenge/datasets";
   const DATASET_LABEL = "Released data on Hugging Face";
   const SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge/tree/main";
   const TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/getting_started/overview.html";
+  const POLICY_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/policy/your_own_policy.html";
   const DATA_COLLECTION_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/collect_data.html";
   const REPORT_URL = "material/RoboSynChallenge-report.pdf";
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
 
-  const STATE_LABELS = {
-    joints: "Joints",
-    gripper: "Gripper",
-    eef_pose: "EEF pose (pos + rot)",
-  };
-
-  const IMAGE_LABELS = {
-    cam_high: "Cam high",
-    cam_left_wrist: "Cam left wrist",
-    cam_right_wrist: "Cam right wrist",
-  };
-
-  const ROTATION_LABELS = {
-    rot6d: "Rot6D",
-    quat: "Quaternion",
-    rpy: "RPY",
-  };
-
-  const DATA_SOURCE_LABELS = {
-    official_real: "Official real data",
-    official_simulated: "Official simulated data",
-    other: "Other data sources",
-  };
-
-  const TRACK_LABELS = {
-    hybrid: "Sim + Real",
-    "real-only": "Real only",
-    "sim-only": "Sim only",
-    custom: "Custom",
+  const EVALUATION_STAGE_LABELS = {
+    preliminary_simulation: "Preliminary simulation",
+    final_real_robot: "Final real robot",
   };
 
   const RANKING_LABELS = {
@@ -63,12 +38,12 @@
   ];
 
   const BENCHMARK_SUMMARY = [
-    { label: "pi0 (sim)", model_name: "pi0", track: "sim-only", data_regime: "Sim only", success_rate: 22.0, action_steps: 898.12, real_time: 90.56 },
-    { label: "pi0 (real)", model_name: "pi0", track: "real-only", data_regime: "Real only", success_rate: 22.5, action_steps: 881.15, real_time: 90.2 },
-    { label: "pi0.5 (sim)", model_name: "pi0.5", track: "sim-only", data_regime: "Sim only", success_rate: 38.5, action_steps: 797.55, real_time: 80.55 },
-    { label: "pi0.5 (real)", model_name: "pi0.5", track: "real-only", data_regime: "Real only", success_rate: 33.0, action_steps: 821.65, real_time: 82.35 },
-    { label: "Motus (sim)", model_name: "Motus", track: "sim-only", data_regime: "Sim only", success_rate: 31.5, action_steps: 778.8, real_time: 133.76 },
-    { label: "Motus (real)", model_name: "Motus", track: "real-only", data_regime: "Real only", success_rate: 27.5, action_steps: 721.35, real_time: 129.43 },
+    { label: "pi0 (sim)", model_name: "pi0", track: "sim-only", evaluation_stage: "preliminary_simulation", data_regime: "Sim only", success_rate: 22.0, action_steps: 898.12, real_time: 90.56 },
+    { label: "pi0 (real)", model_name: "pi0", track: "real-only", evaluation_stage: "final_real_robot", data_regime: "Real only", success_rate: 22.5, action_steps: 881.15, real_time: 90.2 },
+    { label: "pi0.5 (sim)", model_name: "pi0.5", track: "sim-only", evaluation_stage: "preliminary_simulation", data_regime: "Sim only", success_rate: 38.5, action_steps: 797.55, real_time: 80.55 },
+    { label: "pi0.5 (real)", model_name: "pi0.5", track: "real-only", evaluation_stage: "final_real_robot", data_regime: "Real only", success_rate: 33.0, action_steps: 821.65, real_time: 82.35 },
+    { label: "Motus (sim)", model_name: "Motus", track: "sim-only", evaluation_stage: "preliminary_simulation", data_regime: "Sim only", success_rate: 31.5, action_steps: 778.8, real_time: 133.76 },
+    { label: "Motus (real)", model_name: "Motus", track: "real-only", evaluation_stage: "final_real_robot", data_regime: "Real only", success_rate: 27.5, action_steps: 721.35, real_time: 129.43 },
   ];
 
   const BENCHMARK_TABLES_RAW = [
@@ -395,8 +370,39 @@
     };
   }
 
-  function trackLabel(value) {
-    return TRACK_LABELS[value] || value || "Custom";
+  function stageFromTrack(value) {
+    const text = String(value || "").toLowerCase();
+    if (text.includes("real")) return "final_real_robot";
+    if (text.includes("sim")) return "preliminary_simulation";
+    return "";
+  }
+
+  function stageLabel(value) {
+    return EVALUATION_STAGE_LABELS[value] || value || "Pending assignment";
+  }
+
+  function isHttpUrl(value) {
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch {
+      return false;
+    }
+  }
+
+  function isHuggingFaceUrl(value) {
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" && url.hostname === "huggingface.co";
+    } catch {
+      return false;
+    }
+  }
+
+  function externalLink(value, fallback = "Not provided") {
+    if (!value) return escapeHtml(fallback);
+    const safeValue = escapeHtml(value);
+    return `<a href="${safeValue}" target="_blank" rel="noreferrer">${safeValue}</a>`;
   }
 
   function rankingLabel(isRanked) {
@@ -413,10 +419,6 @@
 
   function getUserById(userId) {
     return state.users.find((user) => user.id === userId) || null;
-  }
-
-  function getModelById(modelId) {
-    return state.models.find((model) => model.id === modelId) || null;
   }
 
   function getSubmissionById(submissionId) {
@@ -436,7 +438,7 @@
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (!raw) return freshState();
       const parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== 2) return freshState();
+      if (!parsed || parsed.version !== 3) return freshState();
       return parsed;
     } catch {
       return freshState();
@@ -474,7 +476,7 @@
     };
 
     return {
-      version: 2,
+      version: 3,
       session: { userId: null },
       latestToken: {
         action: "issued",
@@ -484,7 +486,6 @@
       },
       accessRequests: [],
       users: [adminUser, seededUser],
-      models: [],
       submissions: [],
       evaluations: [],
       baselines: BASELINE_SEEDS.map((baseline, index) => ({
@@ -507,25 +508,10 @@
     navigate("home");
   }
 
-  function userModels(userId) {
-    return state.models
-      .filter((model) => model.ownerId === userId || model.owner_id === userId)
-      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1));
-  }
-
   function userSubmissions(userId) {
     return state.submissions
       .filter((submission) => submission.owner_id === userId)
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-  }
-
-  function computeSubmissionTrack(dataSources) {
-    const hasReal = dataSources.includes(DATA_SOURCE_LABELS.official_real);
-    const hasSim = dataSources.includes(DATA_SOURCE_LABELS.official_simulated);
-    if (hasReal && hasSim) return "hybrid";
-    if (hasReal) return "real-only";
-    if (hasSim) return "sim-only";
-    return "custom";
   }
 
   function getLeaderboardRows() {
@@ -535,13 +521,14 @@
       const baselineResult =
         BASELINE_RESULT_BY_BASELINE_ID.get(baseline.id) ||
         BASELINE_RESULT_BY_MODEL_TRACK.get(`${baseline.model_name}|${baseline.track}`);
+      const stageValue = baseline.evaluation_stage || stageFromTrack(baseline.track);
       rows.push({
         kind: "baseline",
         id: baseline.id,
         model_name: baseline.model_name,
         username_display: baseline.username_display,
         affiliation: baseline.affiliation,
-        track_label: trackLabel(baseline.track),
+        stage_label: stageLabel(stageValue),
         data_regime: baseline.data_regime,
         success_rate: baseline.success_rate,
         action_steps: baseline.action_steps,
@@ -558,14 +545,15 @@
         const submission = getSubmissionById(evaluation.submission_id);
         if (!submission || !submission.is_ranked) return;
         const user = getUserById(submission.owner_id);
+        const stageValue = evaluation.evaluation_stage || submission.evaluation_stage;
         rows.push({
           kind: "submission",
           id: submission.id,
           model_name: submission.display_name,
           username_display: user ? user.username : "Participant",
           affiliation: user ? user.affiliation : "",
-          track_label: submission.track_label || trackLabel(submission.track),
-          data_regime: submission.data_sources.join(", "),
+          stage_label: stageLabel(stageValue),
+          data_regime: submission.data_source_text,
           success_rate: evaluation.success_rate,
           action_steps: evaluation.action_steps,
           real_time: evaluation.real_time,
@@ -600,7 +588,6 @@
     ];
 
     if (user) {
-      links.push(["models", "My Models"]);
       links.push(["dashboard", "My Submissions"]);
       if (isAdmin(user)) links.push(["admin", "Admin"]);
     }
@@ -658,7 +645,7 @@
           <article class="card">
             <span class="tag">Account access</span>
             <div class="task-list">
-              <span>After signing in you can register models and submit evaluation requests.</span>
+              <span>After signing in you can submit evaluation artifacts and track requests.</span>
               <span>Public leaderboard entries and published result viewers remain visible without sign-in.</span>
             </div>
           </article>
@@ -745,10 +732,10 @@
             <h2>Key dates for 2026.</h2>
           </div>
           <ol class="competition-timeline">
-            <li><time>July 13</time><div><h3>Registration</h3><p>Register your team and receive EmbodiChain, the synthetic dataset, and baseline models.</p></div></li>
+            <li><time>July 13</time><div><h3>Registration</h3><p>Register your team and receive EmbodiChain, the synthetic dataset, and baseline policies.</p></div></li>
             <li><time>July 13 – October 11</time><div><h3>Preliminary round</h3><p>Train and submit for randomized simulation evaluation. No physical robot is required.</p></div></li>
             <li><time>October 18</time><div><h3>Finalists announced</h3><p>Top-ranked teams advance to the real-robot final.</p></div></li>
-            <li><time>October 18 – November 15</time><div><h3>Final round</h3><p>Models are evaluated on a unified dual-arm platform. Every finalist receives a dedicated visual results page.</p></div></li>
+            <li><time>October 18 – November 15</time><div><h3>Final round</h3><p>Policies are evaluated on a unified dual-arm platform. Every finalist receives a dedicated visual results page.</p></div></li>
             <li><time>Early December</time><div><h3>Awards and showcase</h3><p>Winning teams are invited to present and receive awards at NeurIPS 2026.</p></div></li>
           </ol>
         </div>
@@ -770,7 +757,7 @@
         <div class="metric-strip">
           <span><strong>Success rate</strong> task completion</span>
           <span><strong>Action steps</strong> execution efficiency</span>
-          <span><strong>Real time</strong> deployment speed</span>
+          <span><strong>Inference time</strong> policy runtime</span>
         </div>
       </section>
     `;
@@ -796,7 +783,7 @@
                 <span class="eyebrow">Benchmark block ${blockIndex + 1}</span>
                 <h2>${escapeHtml(block.title)}</h2>
               </div>
-              <p class="field-note">Bold values mark the best SR, lowest action steps, and lowest real time within each task column.</p>
+              <p class="field-note">Bold values mark the best SR, lowest action steps, and lowest inference time within each task column.</p>
               <div class="table-shell">
                 <table class="leaderboard-table">
                   <thead>
@@ -805,7 +792,7 @@
                       ${block.tasks.map((task) => `<th colspan="3">${escapeHtml(task)}</th>`).join("")}
                     </tr>
                     <tr>
-                      ${block.tasks.map(() => "<th>SR</th><th>Steps</th><th>Time</th>").join("")}
+                      ${block.tasks.map(() => "<th>SR</th><th>Steps</th><th>Inference</th>").join("")}
                     </tr>
                   </thead>
                   <tbody>
@@ -919,7 +906,7 @@
           <h1>Request an account token</h1>
           <p class="lead">
             RoboSynChallenge uses a token-based access model. Participants receive an email-and-token pair
-            from the organizers, then use that token to sign in and manage model links and evaluation
+            from the organizers, then use that token to sign in and manage policy evaluation
             submissions.
           </p>
           <div class="task-list">
@@ -942,140 +929,45 @@
 
   function renderEvaluationPage() {
     const user = currentUser();
-    if (!user) {
-      return `
-        <section class="page-hero shell">
-          <span class="eyebrow">Submission portal</span>
-          <h1>Declare your observation space, action protocol, and data provenance before robot testing.</h1>
-          <p class="lead narrow">
-            The evaluation interface is designed around your actual deployment contract: what observations
-            your policy consumes, what actions it returns, how chunked execution works, and where the
-            training data came from.
-          </p>
-        </section>
-        <section class="section section-alt">
-          <div class="shell auth-grid">
-            <article class="auth-card">
-              <span class="tag">Sign in required</span>
-              <h2>Create an account to submit</h2>
-              <p>
-                Public users can browse pages and results, but evaluation scheduling is tied to issued
-                participant accounts and access tokens.
-              </p>
-              <div class="cta-row">
-                <a href="${routeHref("register")}" class="button button-primary">Request access</a>
-                <a href="${routeHref("login")}" class="button button-secondary">Sign in</a>
-              </div>
-            </article>
-            <article class="card">
-              <span class="tag">Submission checklist</span>
-              <div class="task-list">
-                <span>Choose state and or image inputs</span>
-                <span>Specify rotation format if using eef pose</span>
-                <span>Provide full joints + gripper or full eef pose + gripper outputs</span>
-                <span>Set output chunk size and execution chunk size</span>
-                <span>Disclose whether you used official real and simulated data</span>
-              </div>
-            </article>
-          </div>
-        </section>
-      `;
-    }
-
-    const availableModels = userModels(user.id);
-    if (!availableModels.length) {
-      return `
-        <section class="page-hero shell">
-          <span class="eyebrow">Submission portal</span>
-          <h1>Declare your observation space, action protocol, and data provenance before robot testing.</h1>
-          <p class="lead narrow">
-            The evaluation interface is designed around your actual deployment contract: what observations
-            your policy consumes, what actions it returns, how chunked execution works, and where the
-            training data came from.
-          </p>
-        </section>
-        <section class="section section-alt">
-          <div class="shell auth-grid">
-            <article class="auth-card">
-              <span class="tag">Model registry required</span>
-              <h2>Create a base model entry first</h2>
-              <p>
-                The evaluation workflow requires model registration. Save a Hugging Face or GitHub-backed
-                base model first, then return here to submit a run.
-              </p>
-              <div class="cta-row">
-                <a href="${routeHref("models")}" class="button button-primary">Open My Models</a>
-                <a href="${routeHref("leaderboard")}" class="button button-secondary">Browse leaderboard</a>
-              </div>
-            </article>
-            <article class="card">
-              <span class="tag">Submission checklist</span>
-              <div class="task-list">
-                <span>Register at least one base model link</span>
-                <span>Choose state and or image inputs</span>
-                <span>Provide full joints + gripper or full eef pose + gripper outputs</span>
-                <span>Disclose whether you used official real and simulated data</span>
-              </div>
-            </article>
-          </div>
-        </section>
-      `;
-    }
-
-    return `
-      <section class="page-hero shell">
-        <span class="eyebrow">Submission portal</span>
-        <h1>Declare your observation space, action protocol, and data provenance before robot testing.</h1>
-        <p class="lead narrow">
-          The evaluation interface is designed around your actual deployment contract: what observations
-          your policy consumes, what actions it returns, how chunked execution works, and where the
-          training data came from.
-        </p>
-      </section>
-
-      <section class="section shell">
-        <div class="three-up">
-          <article class="card">
-            <h3>Metric bundle</h3>
-            <p>Success rate, average action steps up to 1000, and measured real time.</p>
-          </article>
-          <article class="card">
-            <h3>Submission artifact</h3>
-            <p>Select a registered base model instead of uploading checkpoints directly to the website.</p>
-          </article>
-          <article class="card">
-            <h3>Admin workflow</h3>
-            <p>Admins schedule evaluations, upload result videos, and publish metrics to the public leaderboard.</p>
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell">
+    const submitAction = user
+      ? `<button type="button" class="button button-primary" data-action="focus-policy-submit">Submit Policy</button>`
+      : `<a href="${routeHref("login")}" class="button button-primary">Submit Policy</a>`;
+    const submissionForm = user ? `
+      <section class="section shell" data-policy-submit>
         <form class="panel-stack" data-form="evaluation">
           <article class="card">
             <div class="section-heading left">
-              <span class="eyebrow">Basic info</span>
-              <h2>Policy identity</h2>
+              <span class="eyebrow">Policy submission</span>
+              <h2>Required fields</h2>
             </div>
             <div class="form-grid">
               <label class="field">
-                <span>Base model</span>
-                <select name="model_id" required>
-                  <option value="">Select one of your registered base models</option>
-                  ${availableModels.map((model) => `<option value="${escapeHtml(model.id)}">${escapeHtml(model.display_name)}</option>`).join("")}
-                </select>
+                <span>Artifact name</span>
+                <input type="text" name="artifact_name" placeholder="Policy artifact name" required>
               </label>
-              <label class="field field-span-2">
+              <label class="field">
                 <span>Experiment name</span>
-                <input type="text" name="title" placeholder="Hybrid transfer ablation on official sim + real" required>
+                <input type="text" name="title" placeholder="Experiment name" required>
               </label>
               <label class="field field-span-2">
                 <span>Short description</span>
-                <textarea name="short_description" rows="4" placeholder="What the policy is, how it was trained, and why it should transfer well." required></textarea>
+                <textarea name="short_description" rows="4" placeholder="Short description" required></textarea>
               </label>
               <label class="field field-span-2">
-                <span>Technical notes</span>
-                <textarea name="technical_notes" rows="4" placeholder="Runtime expectations, entrypoints, evaluation assumptions, or dependency constraints."></textarea>
+                <span>Code URL</span>
+                <input type="url" name="code_link" placeholder="https://github.com/your-org/your-policy" required>
+              </label>
+              <label class="field field-span-2">
+                <span>Hugging Face checkpoint URL</span>
+                <input type="url" name="checkpoint_link" placeholder="https://huggingface.co/your-org/your-policy-ckpt" required>
+              </label>
+              <label class="field field-span-2">
+                <span>Data source</span>
+                <textarea name="data_source_text" rows="4" placeholder="Data source" required></textarea>
+              </label>
+              <label class="field field-span-2">
+                <span>Run and dependency notes</span>
+                <textarea name="technical_notes" rows="5" placeholder="Run notes" required></textarea>
               </label>
               <label class="choice-inline">
                 <input type="checkbox" name="is_ranked" checked>
@@ -1084,236 +976,61 @@
             </div>
           </article>
 
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Data disclosure</span>
-              <h2>Training data sources</h2>
-            </div>
-            <div class="checkbox-grid">
-              ${Object.entries(DATA_SOURCE_LABELS).map(([key, label]) => `
-                <label class="choice-card">
-                  <input type="checkbox" name="data_source_${escapeHtml(key)}" id="data_source_${escapeHtml(key)}">
-                  <span>${escapeHtml(label)}</span>
-                </label>
-              `).join("")}
-            </div>
-            <label class="field toggle-target is-hidden" data-toggle-target="data_source_other">
-              <span>Describe additional data sources</span>
-              <textarea name="other_data_source_text" rows="3" placeholder="Explain what additional real or simulated data you used."></textarea>
-            </label>
-          </article>
-
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Input schema</span>
-              <h2>Observation modalities</h2>
-            </div>
-            <div class="form-columns">
-              <div>
-                <h3>State inputs</h3>
-                <div class="checkbox-grid">
-                  ${Object.entries(STATE_LABELS).map(([key, label]) => `
-                    <label class="choice-card">
-                      <input type="checkbox" name="input_state_${escapeHtml(key)}">
-                      <span>${escapeHtml(label)}</span>
-                    </label>
-                  `).join("")}
-                </div>
-                <label class="field inline-field">
-                  <span>EEF rotation representation</span>
-                  <select name="input_rotation_format">
-                    ${Object.entries(ROTATION_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`).join("")}
-                  </select>
-                </label>
-              </div>
-              <div>
-                <h3>Image inputs</h3>
-                <div class="checkbox-grid">
-                  ${Object.entries(IMAGE_LABELS).map(([key, label]) => `
-                    <label class="choice-card">
-                      <input type="checkbox" name="input_image_${escapeHtml(key)}">
-                      <span>${escapeHtml(label)}</span>
-                    </label>
-                  `).join("")}
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Output schema</span>
-              <h2>Action contract</h2>
-            </div>
-            <div class="output-matrix">
-              <div class="output-header">Channel</div>
-              <div class="output-header">Emit</div>
-              <div class="output-header">Use delta</div>
-
-              <div class="output-label">Joints</div>
-              <label class="choice-inline"><input type="checkbox" name="output_joints"><span>enabled</span></label>
-              <label class="choice-inline"><input type="checkbox" name="output_joints_delta"><span>delta</span></label>
-
-              <div class="output-label">Gripper</div>
-              <label class="choice-inline"><input type="checkbox" name="output_gripper"><span>enabled</span></label>
-              <label class="choice-inline"><input type="checkbox" name="output_gripper_delta"><span>delta</span></label>
-
-              <div class="output-label">EEF pose</div>
-              <label class="choice-inline"><input type="checkbox" name="output_eef_pose"><span>enabled</span></label>
-              <label class="choice-inline"><input type="checkbox" name="output_eef_pose_delta"><span>delta</span></label>
-            </div>
-
-            <div class="form-grid">
-              <label class="field">
-                <span>EEF action rotation representation</span>
-                <select name="output_rotation_format">
-                  ${Object.entries(ROTATION_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`).join("")}
-                </select>
-              </label>
-              <label class="field">
-                <span>output_chunk_size</span>
-                <input type="number" min="1" step="1" name="output_chunk_size" id="output_chunk_size" value="16">
-              </label>
-            </div>
-            <p class="field-note">
-              The action output must contain either a full joints + gripper bundle or a full eef pose +
-              gripper bundle. Delta toggles are optional per enabled field.
-            </p>
-          </article>
-
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Execution protocol</span>
-              <h2>Robot-side decoding</h2>
-            </div>
-            <div class="form-grid">
-              <label class="field">
-                <span>Gripper threshold</span>
-                <input type="number" min="0" max="0.1" step="0.001" name="gripper_threshold" value="0.05">
-              </label>
-              <label class="field">
-                <span>execution_chunk_size</span>
-                <input type="number" min="1" step="1" name="execution_chunk_size" id="execution_chunk_size" value="8">
-              </label>
-            </div>
-            <p class="field-note" data-execution-hint>
-              execution_chunk_size must stay smaller than output_chunk_size.
-            </p>
-          </article>
-
           <div class="section-actions">
-            <button type="submit" class="button button-primary">Submit for evaluation</button>
+            <button type="submit" class="button button-primary">Submit Policy</button>
           </div>
         </form>
       </section>
-    `;
-  }
+    ` : "";
 
-  function renderModelsPage() {
-    const user = currentUser();
-    if (!user) {
-      return renderAuthGate(
-        "Sign in to manage model links",
-        "Model registration is tied to your participant identity.",
-        { route: "login", label: "Sign in" },
-        { route: "register", label: "Request access" }
-      );
-    }
-
-    const models = userModels(user.id);
     return `
-      <section class="page-hero shell">
-        <span class="eyebrow">Model registry</span>
-        <h1>Register the Hugging Face and GitHub links that identify your base models.</h1>
-        <p class="lead narrow">
-          Evaluation submissions now reference a saved base model instead of uploading checkpoints to the
-          website. This keeps the platform light while preserving clear provenance for each run.
+      <section class="page-hero shell data-hero">
+        <span class="eyebrow">Evaluation</span>
+        <h1>Sim first. Robot final.</h1>
+        <p class="lead data-lead">
+          RoboSynChallenge evaluation includes one simulation-only preliminary round and one real-robot
+          final round. Published results report success rate, action steps, and inference time.
         </p>
+        <div class="cta-row">
+          ${submitAction}
+          <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-secondary">Policy tutorial ↗</a>
+          <a href="${routeHref("leaderboard")}" class="button button-ghost">View leaderboard</a>
+        </div>
       </section>
 
-      <section class="section shell">
-        <div class="split-grid">
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">New model</span>
-              <h2>Add a base model</h2>
+      <section class="section shell data-section">
+        <div class="data-columns">
+          <article class="data-panel data-panel-sim evaluation-panel evaluation-panel-sim">
+            <header class="data-panel-header">
+              <div><span class="tag">Preliminary round</span><h2>Simulation-only evaluation</h2></div>
+              <strong class="data-count">01<small>stage</small></strong>
+            </header>
+            <p>Policies are evaluated in RoboSynChallenge simulation before finalists are selected.</p>
+            <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge simulation evaluation pipeline">
+            <div class="randomization-list">
+              <div><strong>Simulation only.</strong><span>No physical robot is used in the preliminary round.</span></div>
+              <div><strong>Same metrics.</strong><span>Success rate, action steps, and inference time are reported.</span></div>
+              <div><strong>Finalists advance.</strong><span>Top teams move to the real-robot final round.</span></div>
             </div>
-            <form class="panel-stack compact" data-form="create-model">
-              <div class="form-grid">
-                <label class="field">
-                  <span>Base model name</span>
-                  <input type="text" name="display_name" placeholder="pi0.5 hybrid transfer" required>
-                </label>
-                <label class="field">
-                  <span>Checkpoint link</span>
-                  <input type="url" name="checkpoint_link" placeholder="https://huggingface.co/your-org/model">
-                </label>
-                <label class="field field-span-2">
-                  <span>Code link</span>
-                  <input type="url" name="code_link" placeholder="https://github.com/your-org/your-repo">
-                </label>
-              </div>
-              <button type="submit" class="button button-primary">Save model</button>
-            </form>
           </article>
 
-          <article class="card card-soft">
-            <span class="tag">Expected usage</span>
-            <div class="task-list">
-              <span>Store weights on Hugging Face and source code on GitHub when possible.</span>
-              <span>Each evaluation submission picks one registered base model.</span>
-              <span>Admins can inspect these links without handling heavyweight uploads.</span>
+          <article class="data-panel data-panel-real evaluation-panel evaluation-panel-real">
+            <header class="data-panel-header">
+              <div><span class="tag">Final round</span><h2>Real-robot evaluation</h2></div>
+              <strong class="data-count">02<small>stage</small></strong>
+            </header>
+            <p>Finalist policies are run by organizers on the standardized RoboSynChallenge real-robot setup.</p>
+            <img src="static/assets/realworld-env.png" alt="RoboSynChallenge real-robot evaluation platform">
+            <div class="randomization-list">
+              <div><strong>Robot only.</strong><span>The final round runs on the real RoboSynChallenge platform.</span></div>
+              <div><strong>Same metrics.</strong><span>Success rate, action steps, and inference time are reported.</span></div>
+              <div><strong>Final ranking.</strong><span>Published results determine the final leaderboard.</span></div>
             </div>
           </article>
         </div>
       </section>
 
-      <section class="section shell">
-        <div class="section-heading">
-          <span class="eyebrow">Saved entries</span>
-          <h2>${models.length} base model${models.length === 1 ? "" : "s"}</h2>
-        </div>
-        ${models.length
-          ? `
-            <div class="panel-stack">
-              ${models.map((model) => `
-                <article class="card">
-                  <form class="panel-stack compact" data-form="edit-model">
-                    <input type="hidden" name="model_id" value="${escapeHtml(model.id)}">
-                    <div class="form-grid">
-                      <label class="field">
-                        <span>Base model name</span>
-                        <input type="text" name="display_name" value="${escapeHtml(model.display_name)}" required>
-                      </label>
-                      <label class="field">
-                        <span>Checkpoint link</span>
-                        <input type="url" name="checkpoint_link" value="${escapeHtml(model.checkpoint_link || "")}">
-                      </label>
-                      <label class="field field-span-2">
-                        <span>Code link</span>
-                        <input type="url" name="code_link" value="${escapeHtml(model.code_link || "")}">
-                      </label>
-                    </div>
-                    <div class="detail-list">
-                      <span><strong>Updated:</strong> ${escapeHtml(formatDateTime(model.updated_at))}</span>
-                      <span><strong>Checkpoint:</strong> ${escapeHtml(model.checkpoint_link || "Not provided")}</span>
-                      <span><strong>Code:</strong> ${escapeHtml(model.code_link || "Not provided")}</span>
-                    </div>
-                    <div class="section-actions">
-                      <button type="submit" class="button button-secondary">Save changes</button>
-                      <button type="button" class="button button-danger" data-action="delete-model" data-model-id="${escapeHtml(model.id)}">Delete model</button>
-                    </div>
-                  </form>
-                </article>
-              `).join("")}
-            </div>
-          `
-          : `
-            <article class="card">
-              <p>No base models saved yet. Add one above before creating an evaluation submission.</p>
-            </article>
-          `}
-      </section>
+      ${submissionForm}
     `;
   }
 
@@ -1332,10 +1049,10 @@
     return `
       <section class="page-hero shell">
         <span class="eyebrow">My submissions</span>
-        <h1>Track your evaluation requests, schedules, and published results.</h1>
+        <h1>Monitor your artifact submissions, schedules, and published results.</h1>
         <p class="lead narrow">
-          Each entry records the selected base model, declared modalities, data sources, admin schedule,
-          and any published evaluation results.
+          Each record stores the submitted code URL, Hugging Face checkpoint, data source, organizer
+          schedule, evaluation stage, and any published metrics.
         </p>
       </section>
 
@@ -1351,7 +1068,6 @@
             <span class="tag">Quick actions</span>
             <div class="cta-row">
               <a href="${routeHref("evaluation")}" class="button button-primary">New submission</a>
-              <a href="${routeHref("models")}" class="button button-secondary">Manage models</a>
               <a href="${routeHref("leaderboard")}" class="button button-secondary">Public leaderboard</a>
             </div>
           </article>
@@ -1367,9 +1083,9 @@
           <table class="leaderboard-table">
             <thead>
               <tr>
-                <th>Base model</th>
+                <th>Artifact</th>
                 <th>Experiment</th>
-                <th>Track</th>
+                <th>Evaluation stage</th>
                 <th>Run type</th>
                 <th>Status</th>
                 <th>Schedule</th>
@@ -1383,7 +1099,7 @@
                     <td>
                       <div class="table-primary">
                         <a href="${routeHref(`submission/${submission.id}`)}">${escapeHtml(submission.display_name)}</a>
-                        <span>${submission.code_link || submission.checkpoint_link ? "External links attached" : "No external link attached"}</span>
+                        <span>${submission.code_link && submission.checkpoint_link ? "Code and checkpoint attached" : "Artifact links incomplete"}</span>
                       </div>
                     </td>
                     <td>
@@ -1392,7 +1108,7 @@
                         <span>${escapeHtml(submission.short_description.length > 88 ? `${submission.short_description.slice(0, 88)}...` : submission.short_description)}</span>
                       </div>
                     </td>
-                    <td>${escapeHtml(submission.track_label)}</td>
+                    <td>${escapeHtml(stageLabel(submission.evaluation_stage))}</td>
                     <td>${escapeHtml(submission.ranking_label)}</td>
                     <td><span class="status-pill status-${escapeHtml(submission.status)}">${escapeHtml(humanStatus(submission.status))}</span></td>
                     <td>${escapeHtml(formatDateTime(submission.evaluation_schedule_at))}</td>
@@ -1427,6 +1143,7 @@
 
     const evaluation = getEvaluationById(submission.evaluation_id);
     const episodes = evaluation ? evaluation.episodes || [] : [];
+    const stageValue = evaluation?.evaluation_stage || submission.evaluation_stage;
 
     return `
       <section class="page-hero shell">
@@ -1447,45 +1164,17 @@
             <div class="detail-list">
               <span><strong>Owner:</strong> ${escapeHtml(getUserById(submission.owner_id)?.username || "Unknown")}</span>
               <span><strong>Experiment:</strong> ${escapeHtml(submission.title)}</span>
-              <span><strong>Track:</strong> ${escapeHtml(submission.track_label)}</span>
+              <span><strong>Evaluation stage:</strong> ${escapeHtml(stageLabel(stageValue))}</span>
               <span><strong>Run type:</strong> ${escapeHtml(submission.ranking_label)}</span>
               <span><strong>Schedule:</strong> ${escapeHtml(formatDateTime(submission.evaluation_schedule_at))}</span>
               <span><strong>Published:</strong> ${submission.evaluation_published ? "Yes" : "No"}</span>
             </div>
           </article>
           <article class="card">
-            <span class="tag">Protocol</span>
+            <span class="tag">Artifact links</span>
             <div class="detail-list">
-              <span><strong>output_chunk_size:</strong> ${escapeHtml(submission.output_chunk_size)}</span>
-              <span><strong>execution_chunk_size:</strong> ${escapeHtml(submission.execution_chunk_size)}</span>
-              <span><strong>gripper_threshold:</strong> ${escapeHtml(submission.gripper_threshold)}</span>
-              <span><strong>Input rot:</strong> ${escapeHtml(ROTATION_LABELS[submission.input_rotation_format] || "N/A")}</span>
-              <span><strong>Output rot:</strong> ${escapeHtml(ROTATION_LABELS[submission.output_rotation_format] || "N/A")}</span>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="three-up">
-          <article class="card">
-            <h3>Data sources</h3>
-            <div class="task-list">
-              ${submission.data_sources.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-              ${submission.other_data_source_text ? `<span>${escapeHtml(submission.other_data_source_text)}</span>` : ""}
-            </div>
-          </article>
-          <article class="card">
-            <h3>Inputs</h3>
-            <div class="task-list">
-              ${submission.input_state.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-              ${submission.input_images.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
-            </div>
-          </article>
-          <article class="card">
-            <h3>Outputs</h3>
-            <div class="task-list">
-              ${submission.output_actions.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}
+              <span><strong>Code:</strong> ${externalLink(submission.code_link)}</span>
+              <span><strong>Hugging Face checkpoint:</strong> ${externalLink(submission.checkpoint_link)}</span>
             </div>
           </article>
         </div>
@@ -1494,18 +1183,25 @@
       <section class="section shell">
         <div class="split-grid">
           <article class="card">
-            <span class="tag">Model registry</span>
-            <div class="detail-list">
-              <span><strong>Base model:</strong> ${escapeHtml(submission.display_name)}</span>
-              <span><strong>Checkpoint:</strong> ${escapeHtml(submission.checkpoint_link || "Not provided")}</span>
-              <span><strong>Code:</strong> ${escapeHtml(submission.code_link || "Not provided")}</span>
-            </div>
+            <h3>Data source</h3>
+            <p>${escapeHtml(submission.data_source_text || "Not provided")}</p>
           </article>
           <article class="card">
-            <span class="tag">Admin notes</span>
-            <p>${escapeHtml(submission.admin_schedule_note || submission.evaluation_notes || "No admin notes yet.")}</p>
+            <h3>Run and dependency notes</h3>
+            <p>${escapeHtml(submission.technical_notes || "Not provided")}</p>
           </article>
         </div>
+      </section>
+
+      <section class="section shell">
+        <article class="card card-soft">
+          <span class="tag">Policy integration contract</span>
+          <div class="task-list">
+            <span>Code should expose the RoboSynChallenge policy adapter entrypoints.</span>
+            <span>Expected runnable files include <code>eval.sh</code>, <code>deploy_policy.yml</code>, and <code>deploy_policy.py</code>.</span>
+            <span>Organizer evaluation uses the submitted artifact and Hugging Face checkpoint link.</span>
+          </div>
+        </article>
       </section>
 
       ${episodes.length ? `
@@ -1547,14 +1243,14 @@
       <section class="page-hero shell leaderboard-hero">
         <span class="eyebrow">Leaderboard</span>
         <h1>Official results.</h1>
-        <p class="lead narrow">Ranked by success rate, with fewer action steps and lower execution time used as tie-breakers.</p>
+        <p class="lead narrow">Ranked by success rate, with fewer action steps and lower inference time used as tie-breakers.</p>
       </section>
 
       <section class="section shell leaderboard-section">
         <div class="leaderboard-summary">
           <span><strong>1</strong> Success rate</span>
           <span><strong>2</strong> Action steps</span>
-          <span><strong>3</strong> Execution time</span>
+          <span><strong>3</strong> Inference time</span>
           <small>${rows.length} published results</small>
         </div>
         <div class="table-shell leaderboard-shell">
@@ -1564,9 +1260,10 @@
                 <th>Rank</th>
                 <th>Model</th>
                 <th>Team</th>
+                <th>Stage</th>
                 <th>Success</th>
                 <th>Steps</th>
-                <th>Time</th>
+                <th>Inference</th>
               </tr>
             </thead>
             <tbody>
@@ -1581,12 +1278,13 @@
                       </div>
                     </td>
                     <td>${escapeHtml(row.username_display)}</td>
+                    <td>${escapeHtml(row.stage_label)}</td>
                     <td><strong class="score-primary">${formatPercent(row.success_rate)}</strong></td>
                     <td>${formatSteps(row.action_steps)}</td>
                     <td>${formatSeconds(row.real_time)}</td>
                   </tr>
                 `).join("")
-                : `<tr><td colspan="6" class="empty-table">No published results yet.</td></tr>`}
+                : `<tr><td colspan="7" class="empty-table">No published results yet.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1622,7 +1320,7 @@
             <strong>${formatSteps(evaluation.action_steps)}</strong>
           </article>
           <article class="card metric-card">
-            <span>Real time</span>
+            <span>Inference time</span>
             <strong>${formatSeconds(evaluation.real_time)}</strong>
           </article>
         </div>
@@ -1652,7 +1350,7 @@
           </article>
 
           <article class="card sidecard">
-            <span class="tag">${escapeHtml(evaluation.track_label || "Published result")}</span>
+            <span class="tag">${escapeHtml(stageLabel(evaluation.evaluation_stage || stageFromTrack(evaluation.track)))}</span>
             <h2 data-current-task>${escapeHtml(firstEpisode ? firstEpisode.task_name : "Episode pending")}</h2>
             <div class="detail-list episode-detail-list">
               <span><strong>Setup:</strong> <span data-current-setup>${escapeHtml(firstEpisode ? structuredEpisodeDetails(firstEpisode).setup : "Not specified")}</span></span>
@@ -1681,8 +1379,8 @@
         <span class="eyebrow">Administrator console</span>
         <h1>Issue access tokens, schedule runs, publish results, and seed baselines.</h1>
         <p class="lead narrow">
-          This console is the operational layer of the competition site. It stays light by issuing account
-          tokens, referencing external model links, and exposing public leaderboard data as JSON.
+          This console is the operational layer of the competition site. It stores artifact links,
+          assigns evaluation stages, and publishes public leaderboard metrics.
         </p>
       </section>
 
@@ -1761,14 +1459,14 @@
                   <input type="text" name="affiliation" placeholder="RoboSynChallenge">
                 </label>
                 <label class="field">
-                  <span>Track</span>
-                  <select name="track">
-                    ${Object.entries(TRACK_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`).join("")}
+                  <span>Evaluation stage</span>
+                  <select name="evaluation_stage" required>
+                    ${Object.entries(EVALUATION_STAGE_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`).join("")}
                   </select>
                 </label>
                 <label class="field">
-                  <span>Data regime label</span>
-                  <input type="text" name="data_regime" placeholder="Official sim + real" required>
+                  <span>Data source label</span>
+                  <input type="text" name="data_regime" placeholder="Official simulation" required>
                 </label>
                 <label class="field">
                   <span>Success rate</span>
@@ -1779,7 +1477,7 @@
                   <input type="number" step="0.1" name="action_steps" placeholder="402" required>
                 </label>
                 <label class="field">
-                  <span>Real time</span>
+                  <span>Inference time</span>
                   <input type="number" step="0.1" name="real_time" placeholder="72.5" required>
                 </label>
                 <label class="field field-span-2">
@@ -1833,10 +1531,10 @@
           <table class="leaderboard-table">
             <thead>
               <tr>
-                <th>Base model</th>
+                <th>Artifact</th>
                 <th>Experiment</th>
                 <th>User</th>
-                <th>Run type</th>
+                <th>Stage</th>
                 <th>Status</th>
                 <th>Schedule</th>
                 <th>Published</th>
@@ -1850,7 +1548,7 @@
                     <td>${escapeHtml(submission.display_name || submission.title)}</td>
                     <td>${escapeHtml(submission.title)}</td>
                     <td>${escapeHtml(getUserById(submission.owner_id)?.username || "Unknown")}</td>
-                    <td>${escapeHtml(submission.ranking_label)}</td>
+                    <td>${escapeHtml(stageLabel(submission.evaluation_stage))}</td>
                     <td>${escapeHtml(humanStatus(submission.status))}</td>
                     <td>${escapeHtml(formatDateTime(submission.evaluation_schedule_at))}</td>
                     <td>${submission.evaluation_published ? "Yes" : "No"}</td>
@@ -1878,6 +1576,7 @@
     const evaluation = getEvaluationById(submission.evaluation_id);
     const owner = getUserById(submission.owner_id);
     const episodes = evaluation ? evaluation.episodes || [] : [];
+    const stageValue = evaluation?.evaluation_stage || submission.evaluation_stage;
 
     return `
       <section class="page-hero shell">
@@ -1896,24 +1595,22 @@
             <div class="detail-list">
               <span><strong>Email:</strong> ${escapeHtml(owner?.email || "Unknown")}</span>
               <span><strong>Affiliation:</strong> ${escapeHtml(owner?.affiliation || "Not provided")}</span>
-              <span><strong>Base model:</strong> ${escapeHtml(submission.display_name)}</span>
-              <span><strong>Checkpoint:</strong> ${escapeHtml(submission.checkpoint_link || "Not provided")}</span>
-              <span><strong>Code:</strong> ${escapeHtml(submission.code_link || "Not provided")}</span>
+              <span><strong>Artifact:</strong> ${escapeHtml(submission.display_name)}</span>
+              <span><strong>Checkpoint:</strong> ${externalLink(submission.checkpoint_link)}</span>
+              <span><strong>Code:</strong> ${externalLink(submission.code_link)}</span>
             </div>
           </article>
 
           <article class="card">
             <div class="section-heading left">
-              <span class="eyebrow">Declared protocol</span>
-              <h2>${escapeHtml(submission.track_label)}</h2>
+              <span class="eyebrow">Submitted artifact</span>
+              <h2>${escapeHtml(stageLabel(stageValue))}</h2>
             </div>
             <div class="detail-list">
               <span><strong>Experiment:</strong> ${escapeHtml(submission.title)}</span>
               <span><strong>Run type:</strong> ${escapeHtml(submission.ranking_label)}</span>
-              <span><strong>Inputs:</strong> ${escapeHtml([...submission.input_state, ...submission.input_images].join(", "))}</span>
-              <span><strong>Outputs:</strong> ${escapeHtml(submission.output_actions.join(", "))}</span>
-              <span><strong>Data sources:</strong> ${escapeHtml(submission.data_sources.join(", "))}</span>
-              <span><strong>Chunking:</strong> ${escapeHtml(`${submission.execution_chunk_size} / ${submission.output_chunk_size}`)}</span>
+              <span><strong>Data source:</strong> ${escapeHtml(submission.data_source_text || "Not provided")}</span>
+              <span><strong>Run notes:</strong> ${escapeHtml(submission.technical_notes || "Not provided")}</span>
             </div>
           </article>
         </div>
@@ -1929,6 +1626,13 @@
             <form class="panel-stack compact" data-form="admin-update-evaluation">
               <input type="hidden" name="submission_id" value="${escapeHtml(submission.id)}">
               <div class="form-grid">
+                <label class="field">
+                  <span>Evaluation stage</span>
+                  <select name="evaluation_stage" required>
+                    <option value="">Select stage</option>
+                    ${Object.entries(EVALUATION_STAGE_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}" ${stageValue === key ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
+                  </select>
+                </label>
                 <label class="field">
                   <span>Status</span>
                   <select name="status">
@@ -1948,7 +1652,7 @@
                   <input type="number" step="0.1" name="action_steps" value="${escapeHtml(evaluation?.action_steps ?? "")}">
                 </label>
                 <label class="field">
-                  <span>Real time</span>
+                  <span>Inference time</span>
                   <input type="number" step="0.1" name="real_time" value="${escapeHtml(evaluation?.real_time ?? "")}">
                 </label>
                 <label class="field field-span-2">
@@ -2071,7 +1775,6 @@
     if (route === "login") return { name: "login" };
     if (route === "register") return { name: "register" };
     if (route === "evaluation") return { name: "evaluation" };
-    if (route === "models") return { name: "models" };
     if (route === "dashboard") return { name: "dashboard" };
     if (route === "leaderboard") return { name: "leaderboard" };
     if (route === "admin") return { name: "admin" };
@@ -2099,9 +1802,6 @@
       case "evaluation":
         renderSection(renderEvaluationPage(), "Evaluation");
         break;
-      case "models":
-        renderSection(renderModelsPage(), "My Models");
-        break;
       case "dashboard":
         renderSection(renderDashboardPage(), "Dashboard");
         break;
@@ -2126,40 +1826,7 @@
     }
   }
 
-  function initEvalHelpers() {
-    const evalForm = appEl.querySelector('[data-form="evaluation"]');
-    if (!evalForm) return;
-
-    const otherToggle = evalForm.querySelector("#data_source_other");
-    const otherTarget = evalForm.querySelector('[data-toggle-target="data_source_other"]');
-    const outputChunk = evalForm.querySelector("#output_chunk_size");
-    const executionChunk = evalForm.querySelector("#execution_chunk_size");
-    const executionHint = evalForm.querySelector("[data-execution-hint]");
-
-    const syncOtherSource = () => {
-      if (!otherToggle || !otherTarget) return;
-      otherTarget.classList.toggle("is-hidden", !otherToggle.checked);
-    };
-
-    const syncChunkHint = () => {
-      if (!outputChunk || !executionChunk || !executionHint) return;
-      const outputValue = Number(outputChunk.value || 0);
-      const executionValue = Number(executionChunk.value || 0);
-      const valid = outputValue > 0 && executionValue > 0 && executionValue < outputValue;
-      executionHint.classList.toggle("is-error", !valid);
-      executionHint.textContent = valid
-        ? `execution_chunk_size ${executionValue} is valid for output_chunk_size ${outputValue}.`
-        : "execution_chunk_size must stay strictly smaller than output_chunk_size.";
-      executionChunk.max = outputValue > 0 ? String(outputValue - 1) : "";
-    };
-
-    syncOtherSource();
-    syncChunkHint();
-
-    otherToggle?.addEventListener("change", syncOtherSource);
-    outputChunk?.addEventListener("input", syncChunkHint);
-    executionChunk?.addEventListener("input", syncChunkHint);
-  }
+  function initEvalHelpers() {}
 
   function initResultViewer() {
     const viewer = appEl.querySelector("[data-result-viewer]");
@@ -2246,11 +1913,6 @@
     loadEpisode(0);
   }
 
-  function readCheckedValues(formData, prefix, labelMap) {
-    return Object.entries(labelMap)
-      .filter(([key]) => formData.has(`${prefix}${key}`))
-      .map(([, label]) => label);
-  }
 
   function handleLogin(form) {
     const formData = new FormData(form);
@@ -2334,75 +1996,7 @@
     state.session.userId = user.id;
     saveState();
     pushFlash("success", `Account token issued for ${username}.`);
-    navigate("models");
-  }
-
-  function handleCreateModel(form) {
-    const user = currentUser();
-    if (!user) {
-      pushFlash("error", "Sign in to save a model.");
-      return;
-    }
-    const formData = new FormData(form);
-    const displayName = String(formData.get("display_name") || "").trim();
-    const checkpointLink = String(formData.get("checkpoint_link") || "").trim();
-    const codeLink = String(formData.get("code_link") || "").trim();
-    if (!displayName) {
-      pushFlash("error", "Base model name is required.");
-      return;
-    }
-
-    state.models.unshift({
-      id: uid("model"),
-      owner_id: user.id,
-      display_name: displayName,
-      checkpoint_link: checkpointLink,
-      code_link: codeLink,
-      created_at: nowIso(),
-      updated_at: nowIso(),
-    });
-    saveState();
-    pushFlash("success", `Saved base model ${displayName}.`);
-    render();
-  }
-
-  function handleEditModel(form) {
-    const user = currentUser();
-    if (!user) return;
-    const formData = new FormData(form);
-    const modelId = String(formData.get("model_id") || "");
-    const model = getModelById(modelId);
-    if (!model || (model.owner_id !== user.id && model.ownerId !== user.id)) {
-      pushFlash("error", "Model not found.");
-      return;
-    }
-
-    model.display_name = String(formData.get("display_name") || "").trim();
-    model.checkpoint_link = String(formData.get("checkpoint_link") || "").trim();
-    model.code_link = String(formData.get("code_link") || "").trim();
-    model.updated_at = nowIso();
-    saveState();
-    pushFlash("success", `Updated base model ${model.display_name}.`);
-    render();
-  }
-
-  function handleDeleteModel(modelId) {
-    const user = currentUser();
-    if (!user) return;
-    const model = getModelById(modelId);
-    if (!model || (model.owner_id !== user.id && model.ownerId !== user.id)) {
-      pushFlash("error", "Model not found.");
-      return;
-    }
-    const hasSubmissions = state.submissions.some((submission) => submission.model_id === modelId);
-    if (hasSubmissions) {
-      pushFlash("error", "This model is already referenced by a submission and cannot be deleted.");
-      return;
-    }
-    state.models = state.models.filter((item) => item.id !== modelId);
-    saveState();
-    pushFlash("success", `Deleted base model ${model.display_name}.`);
-    render();
+    navigate("evaluation");
   }
 
   function handleEvaluationSubmit(form) {
@@ -2413,91 +2007,53 @@
     }
 
     const formData = new FormData(form);
-    const modelId = String(formData.get("model_id") || "");
-    const model = getModelById(modelId);
-    if (!model) {
-      pushFlash("error", "Select a registered base model.");
-      return;
-    }
-
+    const artifactName = String(formData.get("artifact_name") || "").trim();
     const title = String(formData.get("title") || "").trim();
     const shortDescription = String(formData.get("short_description") || "").trim();
+    const codeLink = String(formData.get("code_link") || "").trim();
+    const checkpointLink = String(formData.get("checkpoint_link") || "").trim();
+    const dataSourceText = String(formData.get("data_source_text") || "").trim();
     const technicalNotes = String(formData.get("technical_notes") || "").trim();
-    const dataSources = readCheckedValues(formData, "data_source_", DATA_SOURCE_LABELS);
-    const otherDataSourceText = String(formData.get("other_data_source_text") || "").trim();
-    const inputState = readCheckedValues(formData, "input_state_", STATE_LABELS);
-    const inputImages = readCheckedValues(formData, "input_image_", IMAGE_LABELS);
-    const inputRotationFormat = String(formData.get("input_rotation_format") || "rot6d");
-    const outputRotationFormat = String(formData.get("output_rotation_format") || "rot6d");
-    const outputChunkSize = Number(formData.get("output_chunk_size") || 0);
-    const executionChunkSize = Number(formData.get("execution_chunk_size") || 0);
-    const gripperThreshold = Number(formData.get("gripper_threshold") || 0);
     const isRanked = formData.has("is_ranked");
 
-    const outputJoints = formData.has("output_joints");
-    const outputGripper = formData.has("output_gripper");
-    const outputEefPose = formData.has("output_eef_pose");
-    const outputActions = [];
-    if (outputJoints) outputActions.push(formData.has("output_joints_delta") ? "Joints delta" : "Joints");
-    if (outputGripper) outputActions.push(formData.has("output_gripper_delta") ? "Gripper delta" : "Gripper");
-    if (outputEefPose) outputActions.push(formData.has("output_eef_pose_delta") ? "EEF pose delta" : "EEF pose");
-
-    if (!title || !shortDescription) {
-      pushFlash("error", "Experiment name and short description are required.");
+    if (!artifactName || !title || !shortDescription) {
+      pushFlash("error", "Artifact name, experiment name, and short description are required.");
       return;
     }
-    if (!dataSources.length) {
-      pushFlash("error", "Choose at least one training data source.");
+    if (!isHttpUrl(codeLink)) {
+      pushFlash("error", "Provide a valid code URL.");
       return;
     }
-    if (dataSources.includes(DATA_SOURCE_LABELS.other) && !otherDataSourceText) {
-      pushFlash("error", "Describe the additional data sources when selecting 'Other data sources'.");
+    if (!isHuggingFaceUrl(checkpointLink)) {
+      pushFlash("error", "Checkpoint link must be a https://huggingface.co/... URL.");
       return;
     }
-    if (!inputState.length && !inputImages.length) {
-      pushFlash("error", "Choose at least one input modality.");
+    if (!dataSourceText) {
+      pushFlash("error", "Describe the data source used by this artifact.");
       return;
     }
-    if (!(outputJoints && outputGripper) && !(outputEefPose && outputGripper)) {
-      pushFlash("error", "Outputs must include full joints + gripper or full eef pose + gripper.");
-      return;
-    }
-    if (!(outputChunkSize > 0 && executionChunkSize > 0 && executionChunkSize < outputChunkSize)) {
-      pushFlash("error", "execution_chunk_size must stay strictly smaller than output_chunk_size.");
-      return;
-    }
-    if (gripperThreshold < 0 || gripperThreshold > 0.1) {
-      pushFlash("error", "Gripper threshold must stay between 0 and 0.1.");
+    if (!technicalNotes) {
+      pushFlash("error", "Run and dependency notes are required.");
       return;
     }
 
     const submissionId = uid("submission");
     const evaluationId = uid("evaluation");
-    const track = computeSubmissionTrack(dataSources);
     const submission = {
       id: submissionId,
       owner_id: user.id,
-      model_id: model.id,
-      display_name: model.display_name,
-      checkpoint_link: model.checkpoint_link,
-      code_link: model.code_link,
+      display_name: artifactName,
+      artifact_name: artifactName,
+      checkpoint_link: checkpointLink,
+      code_link: codeLink,
       title,
       short_description: shortDescription,
       technical_notes: technicalNotes,
+      data_source_text: dataSourceText,
       is_ranked: isRanked,
-      data_sources: dataSources,
-      other_data_source_text: otherDataSourceText,
-      input_state: inputState,
-      input_images: inputImages,
-      input_rotation_format: inputRotationFormat,
-      output_actions: outputActions,
-      output_rotation_format: outputRotationFormat,
-      output_chunk_size: outputChunkSize,
-      execution_chunk_size: executionChunkSize,
-      gripper_threshold: gripperThreshold,
-      track,
-      track_label: trackLabel(track),
       ranking_label: rankingLabel(isRanked),
+      evaluation_stage: "",
+      stage_label: stageLabel(""),
       status: "submitted",
       admin_schedule_note: "",
       evaluation_id: evaluationId,
@@ -2510,11 +2066,12 @@
     const evaluation = {
       id: evaluationId,
       submission_id: submissionId,
-      display_name: `${model.display_name} | ${title}`,
+      display_name: `${artifactName} | ${title}`,
       short_description: shortDescription,
       status: "submitted",
       source_kind: "submission",
-      track_label: trackLabel(track),
+      evaluation_stage: "",
+      stage_label: stageLabel(""),
       schedule_at: "",
       published: false,
       published_at: "",
@@ -2529,7 +2086,7 @@
     state.submissions.unshift(submission);
     state.evaluations.unshift(evaluation);
     saveState();
-    pushFlash("success", "Submission recorded. An administrator can now schedule and publish it.");
+    pushFlash("success", "Artifact submission recorded. An administrator can now schedule and publish it.");
     navigate(`submission/${submissionId}`);
   }
 
@@ -2594,14 +2151,14 @@
     const modelName = String(formData.get("model_name") || "").trim();
     const usernameDisplay = String(formData.get("username_display") || "").trim();
     const affiliation = String(formData.get("affiliation") || "").trim();
-    const track = String(formData.get("track") || "custom");
+    const evaluationStage = String(formData.get("evaluation_stage") || "").trim();
     const dataRegime = String(formData.get("data_regime") || "").trim();
     const successRate = Number(formData.get("success_rate") || 0);
     const actionSteps = Number(formData.get("action_steps") || 0);
     const realTime = Number(formData.get("real_time") || 0);
     const notes = String(formData.get("notes") || "").trim();
-    if (!modelName || !usernameDisplay || !dataRegime) {
-      pushFlash("error", "Model name, display user, and data regime are required.");
+    if (!modelName || !usernameDisplay || !evaluationStage || !dataRegime) {
+      pushFlash("error", "Model name, display user, evaluation stage, and data source label are required.");
       return;
     }
     state.baselines.unshift({
@@ -2609,7 +2166,7 @@
       model_name: modelName,
       username_display: usernameDisplay,
       affiliation,
-      track,
+      evaluation_stage: evaluationStage,
       data_regime: dataRegime,
       success_rate: successRate,
       action_steps: actionSteps,
@@ -2637,6 +2194,7 @@
       return;
     }
 
+    const evaluationStage = String(formData.get("evaluation_stage") || "").trim();
     const status = String(formData.get("status") || "submitted");
     const scheduleAt = String(formData.get("schedule_at") || "").trim();
     const successRateRaw = String(formData.get("success_rate") || "").trim();
@@ -2646,6 +2204,8 @@
     const notes = String(formData.get("notes") || "").trim();
     const adminScheduleNote = String(formData.get("admin_schedule_note") || "").trim();
 
+    evaluation.evaluation_stage = evaluationStage;
+    evaluation.stage_label = stageLabel(evaluationStage);
     evaluation.status = status;
     evaluation.schedule_at = scheduleAt ? new Date(scheduleAt).toISOString() : "";
     evaluation.success_rate = successRateRaw ? Number(successRateRaw) : null;
@@ -2653,10 +2213,11 @@
     evaluation.real_time = realTimeRaw ? Number(realTimeRaw) : null;
     evaluation.notes = notes;
     evaluation.published = published;
-    evaluation.track_label = submission.track_label;
     if (published && !evaluation.published_at) evaluation.published_at = nowIso();
     if (!published) evaluation.published_at = "";
 
+    submission.evaluation_stage = evaluationStage;
+    submission.stage_label = stageLabel(evaluationStage);
     submission.status = status;
     submission.admin_schedule_note = adminScheduleNote;
     submission.evaluation_schedule_at = evaluation.schedule_at;
@@ -2741,12 +2302,18 @@
       const action = target.getAttribute("data-action");
       if (!action) return;
 
-      if (action === "logout") {
+      if (action === "focus-policy-submit") {
+        event.preventDefault();
+        const submitSection = appEl.querySelector("[data-policy-submit]");
+        if (!submitSection) {
+          navigate("login");
+          return;
+        }
+        submitSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        submitSection.querySelector("input, textarea, select, button")?.focus({ preventScroll: true });
+      } else if (action === "logout") {
         event.preventDefault();
         logoutUser();
-      } else if (action === "delete-model") {
-        event.preventDefault();
-        handleDeleteModel(target.getAttribute("data-model-id") || "");
       } else if (action === "regenerate-token") {
         event.preventDefault();
         handleRegenerateToken(target.getAttribute("data-user-id") || "");
@@ -2765,8 +2332,6 @@
 
       if (kind === "login") handleLogin(form);
       else if (kind === "register") handleRegister(form);
-      else if (kind === "create-model") handleCreateModel(form);
-      else if (kind === "edit-model") handleEditModel(form);
       else if (kind === "evaluation") handleEvaluationSubmit(form);
       else if (kind === "admin-create-participant") handleAdminCreateParticipant(form);
       else if (kind === "admin-create-baseline") handleAdminCreateBaseline(form);

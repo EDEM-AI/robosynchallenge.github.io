@@ -726,6 +726,14 @@ code {
   background: linear-gradient(160deg, rgba(216, 230, 243, 0.86), rgba(255, 255, 255, 0.9) 44%);
 }
 
+.evaluation-panel-sim .data-count {
+  color: #345469;
+}
+
+.evaluation-panel-real .data-count {
+  color: var(--success);
+}
+
 .data-panel-header {
   display: flex;
   justify-content: space-between;
