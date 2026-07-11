@@ -659,23 +659,28 @@
       <section class="hero home-hero">
         <div class="shell home-hero-grid">
           <div class="hero-copy">
-            <div class="hero-affiliation">
-              <img src="static/assets/neurips-logo.svg" alt="NeurIPS">
-              <span>2026 Competition</span>
-            </div>
             <h1>RoboSynChallenge:</h1>
             <h2>Mastering Real-World Dexterity via Generalizing Synthesized Manipulation Skills.</h2>
             <p class="lead">
-              Build a generalizable dual-arm manipulation policy with official synthetic data and limited
-              real data. Qualify in simulation, then prove it on a standardized real-robot platform.
+              General-purpose robot manipulation needs policies that can learn from broad experience and
+              remain reliable in unfamiliar real-world scenes. Yet real robot data is scarce, costly, and
+              hardware-specific, while simulation scales but often breaks across the Sim2Real gap.
+              RoboSynChallenge turns this bottleneck into a benchmark: teams train with scalable synthetic
+              data plus limited real demonstrations, qualify in simulation, and prove generalization on a
+              standardized real-robot platform.
             </p>
+            <div class="hero-thesis" aria-label="Challenge motivation">
+              <span><strong>Scarce real data</strong> limits scalable robot learning</span>
+              <span><strong>Synthetic trials</strong> expand training diversity</span>
+              <span><strong>Real-robot evaluation</strong> measures true transfer</span>
+            </div>
             <div class="cta-row">
               <a href="${routeHref("register")}" class="button button-primary">Register your team</a>
               <a href="${SIMULATION_REPO_URL}" target="_blank" rel="noreferrer" class="button button-secondary">GitHub codebase ↗</a>
               <a href="${TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
               <a href="${REPORT_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read report ↗</a>
             </div>
-            <p class="hero-note">Registration opens July 13 · Preliminary evaluation requires no physical robot</p>
+            <p class="hero-note">Registration opens July 13 · Updates close November 15 · Final evaluation starts November 15</p>
           </div>
           <figure class="home-hero-figure">
             <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge pipeline from synthetic data generation to real-world evaluation">
@@ -708,18 +713,18 @@
           <article class="stage-card">
             <span class="stage-number">01</span>
             <div>
-              <span class="tag">Preliminary round</span>
-              <h3>Generalize in simulation</h3>
-              <p>Train with official synthetic and limited real data, then submit your model for randomized simulation evaluation. No robot hardware is needed.</p>
+              <span class="tag">Preliminary evaluation</span>
+              <h3>Train, then qualify in simulation</h3>
+              <p>Train from July 13 to October 11. Simulation evaluation runs October 11–18, with finalists announced on October 18.</p>
             </div>
           </article>
           <div class="stage-arrow" aria-hidden="true">→</div>
           <article class="stage-card stage-card-final">
             <span class="stage-number">02</span>
             <div>
-              <span class="tag">Final round</span>
-              <h3>Perform in the real world</h3>
-              <p>Top teams deploy on the same dual-arm platform across changing backgrounds, lighting, object placement, and distractors.</p>
+              <span class="tag">Final evaluation</span>
+              <h3>Update, then prove it on robots</h3>
+              <p>Finalists update models until November 15. Final evaluation then starts on the unified dual-arm robot platform.</p>
             </div>
           </article>
         </div>
@@ -732,10 +737,11 @@
             <h2>Key dates for 2026.</h2>
           </div>
           <ol class="competition-timeline">
-            <li><time>July 13</time><div><h3>Registration</h3><p>Register your team and receive EmbodiChain, the synthetic dataset, and baseline policies.</p></div></li>
-            <li><time>July 13 – October 11</time><div><h3>Preliminary round</h3><p>Train and submit for randomized simulation evaluation. No physical robot is required.</p></div></li>
-            <li><time>October 18</time><div><h3>Finalists announced</h3><p>Top-ranked teams advance to the real-robot final.</p></div></li>
-            <li><time>October 18 – November 15</time><div><h3>Final round</h3><p>Policies are evaluated on a unified dual-arm platform. Every finalist receives a dedicated visual results page.</p></div></li>
+            <li><time>July 13</time><div><h3>Registration</h3><p>Teams receive the codebase, tutorial, released data, and baselines.</p></div></li>
+            <li><time>July 13 – October 11</time><div><h3>Training period</h3><p>Train and improve models with official synthetic and limited real data.</p></div></li>
+            <li><time>October 11 – 18</time><div><h3>Preliminary evaluation & finalists</h3><p>Models are evaluated in simulation; finalists are announced on October 18.</p></div></li>
+            <li><time>October 18 – November 15</time><div><h3>Model update period</h3><p>Finalists continue updating models before the final submission deadline.</p></div></li>
+            <li><time>Starts November 15</time><div><h3>Final evaluation</h3><p>Final submissions are evaluated on the unified real dual-arm robot platform.</p></div></li>
             <li><time>Early December</time><div><h3>Awards and showcase</h3><p>Winning teams are invited to present and receive awards at NeurIPS 2026.</p></div></li>
           </ol>
         </div>
