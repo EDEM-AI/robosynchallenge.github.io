@@ -1564,6 +1564,16 @@ code {
 }
 
 @media (max-width: 860px) {
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  .shell {
+    width: 100%;
+    padding-inline: 16px;
+  }
+
   .header-row {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -1579,6 +1589,24 @@ code {
   .brand {
     grid-area: brand;
     min-width: 0;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .brand-mark,
+  .brand-event-logo {
+    flex: 0 0 auto;
+  }
+
+  .brand-copy {
+    min-width: 0;
+  }
+
+  .brand-copy strong,
+  .brand-copy small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .brand-event-logo {
@@ -1703,6 +1731,11 @@ code {
     padding-inline: 18px;
   }
 
+  .data-columns,
+  .data-panel {
+    min-width: 0;
+  }
+
   .evaluation-video-wall {
     display: grid;
     gap: 10px;
@@ -1718,17 +1751,24 @@ code {
   .evaluation-video-row-3,
   .evaluation-video-row-4 {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 225px;
     grid-template-columns: none;
     gap: 8px;
     min-height: 0;
+    width: 100%;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
     padding: 2px 0 10px;
     scroll-snap-type: x proximity;
     scrollbar-width: thin;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .evaluation-video-row-4 {
+    grid-template-columns: repeat(4, minmax(225px, 1fr));
+  }
+
+  .evaluation-video-row-3 {
+    grid-template-columns: repeat(3, minmax(225px, 1fr));
   }
 
   .evaluation-video-wall video {
@@ -1763,9 +1803,11 @@ code {
     padding-inline: 16px;
   }
 
-  .evaluation-video-row,
-  .evaluation-video-row-3,
   .evaluation-video-row-4 {
-    grid-auto-columns: 225px;
+    grid-template-columns: repeat(4, minmax(225px, 1fr));
+  }
+
+  .evaluation-video-row-3 {
+    grid-template-columns: repeat(3, minmax(225px, 1fr));
   }
 }
