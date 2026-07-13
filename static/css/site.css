@@ -1565,15 +1565,35 @@ code {
 
 @media (max-width: 860px) {
   .header-row {
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "brand brand"
+      "toggle actions"
+      "nav nav";
+    align-items: center;
+    gap: 14px 12px;
     padding: 14px 0;
   }
 
+  .brand {
+    grid-area: brand;
+    min-width: 0;
+  }
+
+  .brand-event-logo {
+    width: 112px;
+  }
+
   .nav-toggle {
+    grid-area: toggle;
     display: inline-flex;
+    justify-self: start;
+    white-space: nowrap;
   }
 
   .site-nav {
+    grid-area: nav;
     display: none;
     width: 100%;
     flex-direction: column;
@@ -1586,8 +1606,17 @@ code {
   }
 
   .header-actions {
-    width: 100%;
+    grid-area: actions;
+    width: auto;
     justify-content: flex-end;
+    justify-self: end;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .header-actions .button {
+    padding: 11px 14px;
+    white-space: nowrap;
   }
 
   .form-grid {
@@ -1602,8 +1631,35 @@ code {
     grid-template-columns: 1fr;
   }
 
+  .site-footer {
+    margin-top: 48px;
+    padding: 34px 0 24px;
+  }
+
+  .footer-grid {
+    gap: 30px;
+  }
+
+  .footer-grid > div {
+    display: grid;
+    gap: 10px;
+  }
+
+  .footer-grid p {
+    margin: 0;
+    line-height: 1.65;
+  }
+
+  .footer-grid a {
+    margin-top: 0;
+    padding: 3px 0;
+  }
+
   .footer-bottom {
     flex-direction: column;
+    gap: 8px;
+    margin-top: 28px;
+    padding-top: 18px;
   }
 
   .home-hero {
@@ -1642,12 +1698,45 @@ code {
     flex-direction: column;
   }
 
-  .data-panel-header {
-    display: grid;
+  .data-section.shell {
+    width: 100%;
+    padding-inline: 18px;
   }
 
-  .data-count {
-    text-align: left;
+  .evaluation-video-wall {
+    display: grid;
+    gap: 10px;
+    width: 100%;
+    aspect-ratio: auto;
+    overflow: visible;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .evaluation-video-row,
+  .evaluation-video-row-3,
+  .evaluation-video-row-4 {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 225px;
+    grid-template-columns: none;
+    gap: 8px;
+    min-height: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 0 10px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .evaluation-video-wall video {
+    aspect-ratio: 4 / 3;
+    height: auto;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    scroll-snap-align: start;
   }
 
   .data-facts {
@@ -1666,5 +1755,17 @@ code {
   .leaderboard-summary small {
     width: 100%;
     margin: 4px 0 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .data-section.shell {
+    padding-inline: 16px;
+  }
+
+  .evaluation-video-row,
+  .evaluation-video-row-3,
+  .evaluation-video-row-4 {
+    grid-auto-columns: 225px;
   }
 }
