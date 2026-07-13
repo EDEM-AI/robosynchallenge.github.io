@@ -17,16 +17,16 @@
   };
 
   const EVALUATION_VIDEO_ASSETS = [
-    { file: "click_bell.mp4", label: "Click bell" },
-    { file: "drawer_open_place.mp4", label: "Drawer open place" },
-    { file: "handle_basket.mp4", label: "Handle basket" },
-    { file: "item_assembly.mp4", label: "Item assembly" },
-    { file: "items_handover.mp4", label: "Items handover" },
-    { file: "manipulate_pipette.mp4", label: "Manipulate pipette" },
-    { file: "mixer_operating.mp4", label: "Mixer operating" },
-    { file: "sample_loading.mp4", label: "Sample loading" },
     { file: "table_rearrangement.mp4", label: "Table rearrangement" },
+    { file: "click_bell.mp4", label: "Click bell" },
     { file: "water_pouring.mp4", label: "Water pouring" },
+    { file: "handle_basket.mp4", label: "Handle basket" },
+    { file: "items_handover.mp4", label: "Items handover" },
+    { file: "drawer_open_place.mp4", label: "Drawer open place" },
+    { file: "mixer_operating.mp4", label: "Mixer operating" },
+    { file: "item_assembly.mp4", label: "Item assembly" },
+    { file: "manipulate_pipette.mp4", label: "Manipulate pipette" },
+    { file: "sample_loading.mp4", label: "Sample loading" },
   ];
 
   const RANKING_LABELS = {
