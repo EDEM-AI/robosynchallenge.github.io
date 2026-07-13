@@ -1694,6 +1694,44 @@ code {
     padding-top: 48px;
   }
 
+  .home-hero-grid,
+  .hero-copy,
+  .home-hero .lead,
+  .hero-thesis,
+  .hero-thesis span,
+  .home-hero-figure,
+  .home-hero-figure figcaption,
+  .hero-note,
+  .cta-row {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .home-hero h1 {
+    font-size: clamp(2.75rem, 11vw, 3.25rem);
+    overflow-wrap: anywhere;
+  }
+
+  .home-hero h2,
+  .home-hero .lead,
+  .hero-thesis span,
+  .hero-note,
+  .home-hero-figure figcaption {
+    overflow-wrap: anywhere;
+  }
+
+  .home-hero h2 {
+    margin-top: 0;
+    font-size: clamp(1.45rem, 6vw, 2rem);
+    line-height: 1.1;
+  }
+
+  .home-hero .cta-row .button {
+    max-width: 100%;
+    white-space: normal;
+    text-align: center;
+  }
+
   .home-hero-figure figcaption {
     grid-template-columns: 1fr;
     gap: 6px;
@@ -1734,6 +1772,29 @@ code {
   .data-columns,
   .data-panel {
     min-width: 0;
+  }
+
+  .data-panel-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px;
+  }
+
+  .data-panel-header > div {
+    min-width: 0;
+  }
+
+  .data-panel h2 {
+    overflow-wrap: anywhere;
+  }
+
+  .data-count {
+    min-width: 4.7rem;
+    justify-items: end;
+  }
+
+  .data-count small {
+    white-space: nowrap;
   }
 
   .evaluation-video-wall {
@@ -1801,6 +1862,15 @@ code {
 @media (max-width: 520px) {
   .data-section.shell {
     padding-inline: 16px;
+  }
+
+  .data-panel-header {
+    grid-template-columns: 1fr;
+  }
+
+  .data-count {
+    justify-items: start;
+    text-align: left;
   }
 
   .evaluation-video-row-4 {
