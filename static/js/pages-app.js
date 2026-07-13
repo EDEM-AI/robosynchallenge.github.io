@@ -16,6 +16,19 @@
     final_real_robot: "Final real robot",
   };
 
+  const EVALUATION_VIDEO_ASSETS = [
+    { file: "click_bell.mp4", label: "Click bell" },
+    { file: "drawer_open_place.mp4", label: "Drawer open place" },
+    { file: "handle_basket.mp4", label: "Handle basket" },
+    { file: "item_assembly.mp4", label: "Item assembly" },
+    { file: "items_handover.mp4", label: "Items handover" },
+    { file: "manipulate_pipette.mp4", label: "Manipulate pipette" },
+    { file: "mixer_operating.mp4", label: "Mixer operating" },
+    { file: "sample_loading.mp4", label: "Sample loading" },
+    { file: "table_rearrangement.mp4", label: "Table rearrangement" },
+    { file: "water_pouring.mp4", label: "Water pouring" },
+  ];
+
   const RANKING_LABELS = {
     ranked: "Ranked",
     test: "Test run",
@@ -403,6 +416,27 @@
     if (!value) return escapeHtml(fallback);
     const safeValue = escapeHtml(value);
     return `<a href="${safeValue}" target="_blank" rel="noreferrer">${safeValue}</a>`;
+  }
+
+  function renderEvaluationVideoWall() {
+    const rows = [
+      EVALUATION_VIDEO_ASSETS.slice(0, 4),
+      EVALUATION_VIDEO_ASSETS.slice(4, 7),
+      EVALUATION_VIDEO_ASSETS.slice(7),
+    ];
+    return `
+      <div class="evaluation-video-wall" aria-label="Simulation evaluation task videos">
+        ${rows.map((row) => `
+          <div class="evaluation-video-row evaluation-video-row-${row.length}">
+            ${row.map((video) => `
+              <video muted loop autoplay playsinline preload="metadata" aria-label="${escapeHtml(video.label)}">
+                <source src="static/assets/evaluation-videos/${escapeHtml(video.file)}" type="video/mp4">
+              </video>
+            `).join("")}
+          </div>
+        `).join("")}
+      </div>
+    `;
   }
 
   function rankingLabel(isRanked) {
@@ -1012,7 +1046,7 @@
               <strong class="data-count">01<small>stage</small></strong>
             </header>
             <p>Policies are evaluated in RoboSynChallenge simulation before finalists are selected.</p>
-            <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge simulation evaluation pipeline">
+            ${renderEvaluationVideoWall()}
             <div class="randomization-list">
               <div><strong>Simulation only.</strong><span>No physical robot is used in the preliminary round.</span></div>
               <div><strong>Same metrics.</strong><span>Success rate, action steps, and inference time are reported.</span></div>
