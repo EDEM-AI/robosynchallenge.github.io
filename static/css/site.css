@@ -1271,6 +1271,26 @@ code {
   color: var(--danger);
 }
 
+.form-status {
+  min-height: 22px;
+  margin: -4px 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.form-status-pending {
+  color: var(--warning);
+}
+
+.form-status-success {
+  color: var(--success);
+}
+
+.form-status-error {
+  color: var(--danger);
+}
+
 .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

@@ -1,7 +1,11 @@
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "robosynchallenge-pages-state-v3";
+  const SESSION_STORAGE_KEY = "robosynchallenge-session-v1";
+  const ACCESS_REQUEST_STORAGE_KEY = "robosynchallenge-access-request-id-v1";
+  const CONFIG = window.ROBO_SYN_CONFIG || {};
+  const API_BASE_URL = String(CONFIG.API_BASE_URL || "").trim().replace(/\/+$/, "");
+  const CONTACT_EMAIL = String(CONFIG.CONTACT_EMAIL || "robosynchallenge@gmail.com").trim();
   const DATASET_URL = "https://huggingface.co/RoboSynChallenge/datasets";
   const DATASET_LABEL = "Released data on Hugging Face";
   const SIMULATION_REPO_URL = "https://github.com/EDEM-AI/RoboSynChallenge/tree/main";
@@ -27,6 +31,19 @@
     { file: "item_assembly.mp4", label: "Item assembly" },
     { file: "manipulate_pipette.mp4", label: "Manipulate pipette" },
     { file: "sample_loading.mp4", label: "Sample loading" },
+  ];
+
+  const REAL_EVALUATION_VIDEO_ASSETS = [
+    { file: "cobotmagic_Real_table_rearrangement.mp4", label: "Table rearrangement" },
+    { file: "cobotmagic_Real_click_bell.mp4", label: "Click bell" },
+    { file: "cobotmagic_Real_water_pouring.mp4", label: "Water pouring" },
+    { file: "cobotmagic_Real_handle_basket.mp4", label: "Handle basket" },
+    { file: "cobotmagic_Real_items_handover.mp4", label: "Items handover" },
+    { file: "cobotmagic_Real_drawer_open_place.mp4", label: "Drawer open place" },
+    { file: "cobotmagic_Real_mixer_operating.mp4", label: "Mixer operating" },
+    { file: "cobotmagic_Real_item_assembly.mp4", label: "Item assembly" },
+    { file: "cobotmagic_Real_manipulate_pipette.mp4", label: "Manipulate pipette" },
+    { file: "cobotmagic_Real_sample_loading.mp4", label: "Sample loading" },
   ];
 
   const RANKING_LABELS = {
@@ -242,8 +259,17 @@
   const navToggle = document.querySelector("[data-nav-toggle]");
   const navMenu = document.querySelector("[data-nav-menu]");
 
-  let state = loadState();
+  let state = loadSessionState();
+  const remoteState = {
+    submissionsLoaded: false,
+    submissionsLoading: false,
+    submissionsError: "",
+    leaderboardLoaded: false,
+    leaderboardLoading: false,
+    leaderboardError: "",
+  };
   let flashes = [];
+  let flashTimer = null;
   let viewerCleanup = null;
 
   function escapeHtml(value) {
@@ -267,6 +293,18 @@
     return `#/${String(route || "home").replace(/^\/+/, "")}`;
   }
 
+  function accessRequestId() {
+    try {
+      const existing = window.sessionStorage.getItem(ACCESS_REQUEST_STORAGE_KEY);
+      if (existing) return existing;
+      const generated = `RSC-REQ-2026-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      window.sessionStorage.setItem(ACCESS_REQUEST_STORAGE_KEY, generated);
+      return generated;
+    } catch {
+      return `RSC-REQ-2026-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    }
+  }
+
   function currentRoute() {
     const cleaned = window.location.hash.replace(/^#\/?/, "").replace(/^\/+/, "");
     return cleaned || "home";
@@ -277,8 +315,14 @@
   }
 
   function pushFlash(category, message) {
-    flashes.push({ category, message });
+    flashes = [{ category, message }];
     renderFlashes(false);
+    if (flashTimer) window.clearTimeout(flashTimer);
+    flashTimer = window.setTimeout(() => {
+      flashes = [];
+      renderFlashes(false);
+      flashTimer = null;
+    }, 6000);
   }
 
   function renderFlashes(consume = true) {
@@ -286,7 +330,11 @@
     flashZone.innerHTML = flashes
       .map((item) => `<div class="flash flash-${escapeHtml(item.category)}">${escapeHtml(item.message)}</div>`)
       .join("");
-    if (consume) flashes = [];
+    if (consume) {
+      flashes = [];
+      if (flashTimer) window.clearTimeout(flashTimer);
+      flashTimer = null;
+    }
   }
 
   function formatDateTime(value) {
@@ -418,19 +466,23 @@
     return `<a href="${safeValue}" target="_blank" rel="noreferrer">${safeValue}</a>`;
   }
 
-  function renderEvaluationVideoWall() {
+  function truthy(value) {
+    return value === true || ["true", "1", "yes"].includes(String(value || "").toLowerCase());
+  }
+
+  function renderEvaluationVideoWall(videos = EVALUATION_VIDEO_ASSETS, basePath = "static/assets/evaluation-videos", ariaLabel = "Simulation evaluation task videos") {
     const rows = [
-      EVALUATION_VIDEO_ASSETS.slice(0, 4),
-      EVALUATION_VIDEO_ASSETS.slice(4, 7),
-      EVALUATION_VIDEO_ASSETS.slice(7),
+      videos.slice(0, 4),
+      videos.slice(4, 7),
+      videos.slice(7),
     ];
     return `
-      <div class="evaluation-video-wall" aria-label="Simulation evaluation task videos">
+      <div class="evaluation-video-wall" aria-label="${escapeHtml(ariaLabel)}">
         ${rows.map((row) => `
           <div class="evaluation-video-row evaluation-video-row-${row.length}">
             ${row.map((video) => `
               <video muted loop autoplay playsinline preload="metadata" aria-label="${escapeHtml(video.label)}">
-                <source src="static/assets/evaluation-videos/${escapeHtml(video.file)}" type="video/mp4">
+                <source src="${escapeHtml(basePath)}/${escapeHtml(video.file)}" type="video/mp4">
               </video>
             `).join("")}
           </div>
@@ -448,11 +500,13 @@
   }
 
   function currentUser() {
-    return state.users.find((user) => user.id === state.session.userId) || null;
+    return state.user || null;
   }
 
   function getUserById(userId) {
-    return state.users.find((user) => user.id === userId) || null;
+    const user = currentUser();
+    if (user && (user.id === userId || user.email === userId)) return user;
+    return null;
   }
 
   function getSubmissionById(submissionId) {
@@ -460,142 +514,254 @@
   }
 
   function getEvaluationById(evaluationId) {
-    return (
-      state.evaluations.find((evaluation) => evaluation.id === evaluationId) ||
-      BASELINE_RESULT_BY_ID.get(evaluationId) ||
-      null
-    );
+    const direct = state.evaluations.find((evaluation) => evaluation.id === evaluationId);
+    if (direct) return direct;
+    const row = state.leaderboardRows.find((item) => item.evaluation_id === evaluationId || item.id === evaluationId);
+    if (row) {
+      return normalizeEvaluation({
+        id: row.evaluation_id || row.id,
+        display_name: row.model_name,
+        short_description: row.notes,
+        evaluation_stage: row.evaluation_stage,
+        status: "published",
+        published: true,
+        success_rate: row.success_rate,
+        action_steps: row.action_steps,
+        real_time: row.real_time,
+        notes: row.notes,
+        episodes: row.episodes,
+      });
+    }
+    return BASELINE_RESULT_BY_ID.get(evaluationId) || null;
   }
 
-  function loadState() {
+  function backendConfigured() {
+    return Boolean(API_BASE_URL);
+  }
+
+  function normalizeUser(user) {
+    if (!user) return null;
+    const email = String(user.email || "").trim().toLowerCase();
+    return {
+      id: String(user.id || user.user_id || email || "participant"),
+      username: String(user.username || user.team_name || email.split("@")[0] || "Participant"),
+      email,
+      team_name: String(user.team_name || user.username || ""),
+      affiliation: String(user.affiliation || ""),
+      bio: String(user.bio || user.intended_use || ""),
+      role: String(user.role || "participant"),
+      token_hint: String(user.token_hint || user.access_token_hint || ""),
+    };
+  }
+
+  function normalizeSubmission(submission) {
+    if (!submission) return null;
+    const id = String(submission.id || submission.submission_id || "");
+    const evaluationId = String(submission.evaluation_id || submission.evaluationId || "");
+    const isRanked = truthy(submission.is_ranked) || truthy(submission.ranked);
+    return {
+      id,
+      owner_id: String(submission.owner_id || submission.email || state.user?.id || ""),
+      display_name: String(submission.display_name || submission.artifact_name || submission.title || "Policy artifact"),
+      artifact_name: String(submission.artifact_name || submission.display_name || ""),
+      checkpoint_link: String(submission.checkpoint_link || ""),
+      code_link: String(submission.code_link || ""),
+      title: String(submission.title || submission.experiment_name || submission.display_name || "Submitted policy"),
+      short_description: String(submission.short_description || submission.description || ""),
+      technical_notes: String(submission.technical_notes || ""),
+      data_source_text: String(submission.data_source_text || submission.data_regime || ""),
+      is_ranked: isRanked,
+      ranking_label: submission.ranking_label || rankingLabel(isRanked),
+      evaluation_stage: String(submission.evaluation_stage || ""),
+      stage_label: stageLabel(submission.evaluation_stage || ""),
+      status: String(submission.status || "submitted"),
+      admin_schedule_note: String(submission.admin_schedule_note || ""),
+      evaluation_id: evaluationId,
+      evaluation_schedule_at: String(submission.evaluation_schedule_at || submission.schedule_at || ""),
+      evaluation_published: truthy(submission.evaluation_published) || truthy(submission.published),
+      evaluation_notes: String(submission.evaluation_notes || submission.notes || ""),
+      created_at: String(submission.created_at || submission.createdAt || nowIso()),
+    };
+  }
+
+  function normalizeEvaluation(evaluation) {
+    if (!evaluation) return null;
+    const evaluationStage = String(evaluation.evaluation_stage || "");
+    return {
+      id: String(evaluation.id || evaluation.evaluation_id || ""),
+      submission_id: String(evaluation.submission_id || ""),
+      display_name: String(evaluation.display_name || evaluation.model_name || "Published evaluation"),
+      short_description: String(evaluation.short_description || evaluation.notes || ""),
+      status: String(evaluation.status || "submitted"),
+      source_kind: String(evaluation.source_kind || "submission"),
+      evaluation_stage: evaluationStage,
+      stage_label: stageLabel(evaluationStage),
+      schedule_at: String(evaluation.schedule_at || ""),
+      published: truthy(evaluation.published),
+      published_at: String(evaluation.published_at || ""),
+      success_rate: evaluation.success_rate === "" || evaluation.success_rate == null ? null : Number(evaluation.success_rate),
+      action_steps: evaluation.action_steps === "" || evaluation.action_steps == null ? null : Number(evaluation.action_steps),
+      real_time: evaluation.real_time === "" || evaluation.real_time == null ? null : Number(evaluation.real_time),
+      notes: String(evaluation.notes || ""),
+      leaderboard_notes: String(evaluation.leaderboard_notes || ""),
+      episodes: Array.isArray(evaluation.episodes) ? evaluation.episodes : [],
+    };
+  }
+
+  function normalizeLeaderboardRow(row) {
+    if (!row) return null;
+    const evaluationStage = String(row.evaluation_stage || "");
+    return {
+      kind: String(row.kind || "submission"),
+      id: String(row.id || row.submission_id || row.evaluation_id || ""),
+      model_name: String(row.model_name || row.display_name || row.artifact_name || "Policy artifact"),
+      username_display: String(row.username_display || row.team_name || row.email || "Participant"),
+      affiliation: String(row.affiliation || ""),
+      stage_label: row.stage_label || stageLabel(evaluationStage),
+      evaluation_stage: evaluationStage,
+      data_regime: String(row.data_regime || row.data_source_text || ""),
+      success_rate: Number(row.success_rate || 0),
+      action_steps: Number(row.action_steps || 0),
+      real_time: Number(row.real_time || 0),
+      rank_badge: String(row.rank_badge || "Participant ranked"),
+      evaluation_id: String(row.evaluation_id || row.id || ""),
+      notes: String(row.notes || row.leaderboard_notes || ""),
+      episodes: Array.isArray(row.episodes) ? row.episodes : [],
+    };
+  }
+
+  function loadSessionState() {
     try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return freshState();
+      const raw = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+      if (!raw) return freshClientState();
       const parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== 3) return freshState();
-      return parsed;
+      if (!parsed || parsed.version !== 1) return freshClientState();
+      if (parsed.session?.expires_at && new Date(parsed.session.expires_at).getTime() <= Date.now()) {
+        window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+        return freshClientState();
+      }
+      return {
+        ...freshClientState(),
+        session: parsed.session || { session_id: "", expires_at: "" },
+        user: normalizeUser(parsed.user),
+      };
     } catch {
-      return freshState();
+      return freshClientState();
     }
   }
 
-  function saveState() {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  function saveSessionState() {
+    window.sessionStorage.setItem(
+      SESSION_STORAGE_KEY,
+      JSON.stringify({
+        version: 1,
+        session: state.session,
+        user: state.user,
+      })
+    );
   }
 
-  function freshState() {
-    const createdAt = nowIso();
-    const adminUser = {
-      id: "user-admin",
-      username: "robosyn-admin",
-      email: "admin@robosynchallenge.local",
-      affiliation: "RoboSynChallenge",
-      bio: "Organizer administrator account.",
-      role: "admin",
-      token: "RSC-ADMIN-2026",
-      createdAt,
-      access_token_hint: "RSC-ADM****",
-    };
+  function clearSessionState() {
+    window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    state = freshClientState();
+  }
 
-    const seededUser = {
-      id: "user-seeded",
-      username: "team-alpha",
-      email: "team-alpha@robosynchallenge.local",
-      affiliation: "EDEM AI Lab",
-      bio: "",
-      role: "participant",
-      token: "RSC-TEAM-ALPHA",
-      createdAt,
-      access_token_hint: "RSC-TEA****",
-    };
-
+  function freshClientState() {
     return {
-      version: 3,
-      session: { userId: null },
-      latestToken: {
-        action: "issued",
-        username: seededUser.username,
-        email: seededUser.email,
-        token: seededUser.token,
-      },
-      accessRequests: [],
-      users: [adminUser, seededUser],
+      version: 1,
+      session: { session_id: "", expires_at: "" },
+      user: null,
       submissions: [],
       evaluations: [],
-      baselines: BASELINE_SEEDS.map((baseline, index) => ({
-        id: `baseline-${index + 1}`,
-        ...baseline,
-      })),
+      leaderboardRows: [],
     };
-  }
-
-  function loginUser(userId) {
-    state.session.userId = userId;
-    saveState();
-    render();
   }
 
   function logoutUser() {
-    state.session.userId = null;
-    saveState();
+    clearSessionState();
+    remoteState.submissionsLoaded = false;
+    remoteState.submissionsError = "";
+    remoteState.leaderboardLoaded = false;
+    remoteState.leaderboardError = "";
     pushFlash("success", "Signed out.");
     navigate("home");
   }
 
-  function userSubmissions(userId) {
+  function userSubmissions() {
     return state.submissions
-      .filter((submission) => submission.owner_id === userId)
       .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
   }
 
-  function getLeaderboardRows() {
-    const rows = [];
-
-    state.baselines.forEach((baseline) => {
-      const baselineResult =
-        BASELINE_RESULT_BY_BASELINE_ID.get(baseline.id) ||
-        BASELINE_RESULT_BY_MODEL_TRACK.get(`${baseline.model_name}|${baseline.track}`);
-      const stageValue = baseline.evaluation_stage || stageFromTrack(baseline.track);
-      rows.push({
-        kind: "baseline",
-        id: baseline.id,
-        model_name: baseline.model_name,
-        username_display: baseline.username_display,
-        affiliation: baseline.affiliation,
-        stage_label: stageLabel(stageValue),
-        data_regime: baseline.data_regime,
-        success_rate: baseline.success_rate,
-        action_steps: baseline.action_steps,
-        real_time: baseline.real_time,
-        rank_badge: "Official baseline",
-        evaluation_id: baselineResult ? baselineResult.id : "",
-        notes: baseline.notes,
-      });
+  async function apiRequest(action, payload = {}) {
+    if (!backendConfigured()) {
+      throw new Error("The RoboSynChallenge backend API is not configured yet.");
+    }
+    const response = await fetch(API_BASE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ action, ...payload }),
     });
+    const text = await response.text();
+    let data = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      throw new Error("The backend returned a non-JSON response.");
+    }
+    if (!response.ok || data.ok === false) {
+      throw new Error(data.error || data.message || `Backend request failed: ${action}`);
+    }
+    return data;
+  }
 
-    state.evaluations
-      .filter((evaluation) => evaluation.published)
-      .forEach((evaluation) => {
-        const submission = getSubmissionById(evaluation.submission_id);
-        if (!submission || !submission.is_ranked) return;
-        const user = getUserById(submission.owner_id);
-        const stageValue = evaluation.evaluation_stage || submission.evaluation_stage;
-        rows.push({
-          kind: "submission",
-          id: submission.id,
-          model_name: submission.display_name,
-          username_display: user ? user.username : "Participant",
-          affiliation: user ? user.affiliation : "",
-          stage_label: stageLabel(stageValue),
-          data_regime: submission.data_source_text,
-          success_rate: evaluation.success_rate,
-          action_steps: evaluation.action_steps,
-          real_time: evaluation.real_time,
-          rank_badge: "Participant ranked",
-          evaluation_id: evaluation.id,
-          notes: evaluation.leaderboard_notes || evaluation.notes || submission.short_description,
-        });
-      });
+  async function loadMySubmissions(force = false) {
+    const user = currentUser();
+    if (!user || !state.session.session_id || !backendConfigured()) return;
+    if (remoteState.submissionsLoading || (remoteState.submissionsLoaded && !force)) return;
+    remoteState.submissionsLoading = true;
+    remoteState.submissionsError = "";
+    try {
+      const data = await apiRequest("my_submissions", { session_id: state.session.session_id });
+      state.submissions = (data.submissions || []).map(normalizeSubmission).filter(Boolean);
+      state.evaluations = (data.evaluations || []).map(normalizeEvaluation).filter(Boolean);
+      remoteState.submissionsLoaded = true;
+    } catch (error) {
+      const message = error.message || "Could not load submissions.";
+      remoteState.submissionsError = message;
+      remoteState.submissionsLoaded = true;
+      if (/session|expired|unauthorized/i.test(String(message))) clearSessionState();
+    } finally {
+      remoteState.submissionsLoading = false;
+      const route = parseRoute(currentRoute());
+      if (route.name === "dashboard" || route.name === "submission") render();
+    }
+  }
+
+  async function loadLeaderboard(force = false) {
+    if (!backendConfigured()) return;
+    if (remoteState.leaderboardLoading || (remoteState.leaderboardLoaded && !force)) return;
+    remoteState.leaderboardLoading = true;
+    remoteState.leaderboardError = "";
+    try {
+      const data = await apiRequest("leaderboard");
+      state.leaderboardRows = (data.rows || data.leaderboard || []).map(normalizeLeaderboardRow).filter(Boolean);
+      state.evaluations = [
+        ...state.evaluations.filter((evaluation) => !evaluation.published),
+        ...(data.evaluations || []).map(normalizeEvaluation).filter(Boolean),
+      ];
+      remoteState.leaderboardLoaded = true;
+    } catch (error) {
+      remoteState.leaderboardError = error.message || "Could not load leaderboard.";
+      remoteState.leaderboardLoaded = true;
+    } finally {
+      remoteState.leaderboardLoading = false;
+      const route = parseRoute(currentRoute());
+      if (route.name === "leaderboard" || route.name === "results") render();
+    }
+  }
+
+  function getLeaderboardRows() {
+    const rows = state.leaderboardRows.slice();
 
     rows.sort((left, right) => {
       const successDiff = Number(right.success_rate || 0) - Number(left.success_rate || 0);
@@ -623,7 +789,6 @@
 
     if (user) {
       links.push(["dashboard", "My Submissions"]);
-      if (isAdmin(user)) links.push(["admin", "Admin"]);
     }
 
     navEl.innerHTML = links
@@ -685,6 +850,33 @@
           </article>
         </div>
       </section>
+    `;
+  }
+
+  function renderBackendUnavailableCard(title = "Backend service unavailable") {
+    return `
+      <article class="card card-soft">
+        <span class="tag">Service status</span>
+        <h2>${escapeHtml(title)}</h2>
+        <p>
+          The access-token backend is not configured for this deployment yet. Please contact
+          ${escapeHtml(CONTACT_EMAIL)} for account or submission support.
+        </p>
+      </article>
+    `;
+  }
+
+  function renderBackendErrorCard(title, message, retryAction) {
+    return `
+      <article class="card card-soft">
+        <span class="tag">Backend error</span>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(message || "The backend request failed.")}</p>
+        <div class="cta-row">
+          <button type="button" class="button button-secondary" data-action="${escapeHtml(retryAction)}">Retry</button>
+          <span class="button button-ghost" aria-label="Organizer contact email">${escapeHtml(CONTACT_EMAIL)}</span>
+        </div>
+      </article>
     `;
   }
 
@@ -917,7 +1109,8 @@
         <article class="auth-card">
           <span class="eyebrow">Token access</span>
           <h1>Sign in</h1>
-          <p class="construction-note">Under construction</p>
+          <p class="lead">Use the email and access token issued by the RoboSynChallenge organizers.</p>
+          ${backendConfigured() ? "" : `<p class="construction-note">Backend API is not configured yet.</p>`}
           <form class="panel-stack compact" data-form="login">
             <label class="field">
               <span>Email</span>
@@ -927,7 +1120,7 @@
               <span>Access token</span>
               <input type="text" name="token" placeholder="Paste the token issued by the administrator" required>
             </label>
-            <button type="submit" class="button button-primary">Sign in</button>
+            <button type="submit" class="button button-primary" ${backendConfigured() ? "" : "disabled"}>Sign in</button>
           </form>
           <p class="auth-footnote">
             Need an account token?
@@ -939,29 +1132,58 @@
   }
 
   function renderRegisterPage() {
+    const requestId = accessRequestId();
     return `
       <section class="section shell auth-grid single">
         <article class="auth-card wide">
           <span class="eyebrow">Participant access</span>
           <h1>Request an account token</h1>
           <p class="lead">
-            RoboSynChallenge uses a token-based access model. Participants receive an email-and-token pair
-            from the organizers, then use that token to sign in and manage policy evaluation
-            submissions.
+            RoboSynChallenge access requests are reviewed by the organizers through Gmail. Submit the
+            required fields here, then the approval workflow can issue an access token after review.
           </p>
+          ${backendConfigured() ? "" : `<p class="construction-note">Backend API is not configured yet. Please contact the organizers.</p>`}
           <div class="task-list">
-            <span><strong>Recommended email subject:</strong> RoboSynChallenge participant access request</span>
-            <span><strong>Suggested details:</strong> full name, affiliation, email, team name, and intended use</span>
-            <span><strong>Organizer action:</strong> an admin creates the account and issues an access token</span>
+            <span><strong>Request id:</strong> <span data-register-request-id>${escapeHtml(requestId)}</span></span>
+            <span><strong>Required fields:</strong> email, full name, team name, affiliation, and intended use</span>
+            <span><strong>Organizer action:</strong> approved requests receive an access-token email after review</span>
+          </div>
+          <form class="panel-stack compact" data-form="register">
+            <input type="hidden" name="request_id" value="${escapeHtml(requestId)}">
+            <label class="field">
+              <span>Email</span>
+              <input type="email" name="email" placeholder="participant@example.org" required>
+            </label>
+            <label class="field">
+              <span>Full name</span>
+              <input type="text" name="full_name" placeholder="Full name" required>
+            </label>
+            <label class="field">
+              <span>Team name</span>
+              <input type="text" name="team_name" placeholder="Team name" required>
+            </label>
+            <label class="field">
+              <span>Affiliation</span>
+              <input type="text" name="affiliation" placeholder="University, lab, or company" required>
+            </label>
+            <label class="field">
+              <span>Intended use</span>
+              <textarea name="intended_use" rows="4" placeholder="Brief intended use" required></textarea>
+            </label>
+            <label class="field">
+              <span>Misc</span>
+              <textarea name="misc" rows="4" placeholder="Optional extra information"></textarea>
+            </label>
+            <button type="submit" class="button button-primary" ${backendConfigured() ? "" : "disabled"}>Send request</button>
+            <p class="form-status" data-register-status aria-live="polite"></p>
+          </form>
+          <div class="cta-row">
+            <a href="${routeHref("login")}" class="button button-secondary">I already have a token</a>
           </div>
           <p class="registration-email">
             <strong>Registration email</strong>
-            <a href="mailto:robosynchallenge@gmail.com">robosynchallenge@gmail.com</a>
+            <span>${escapeHtml(CONTACT_EMAIL)}</span>
           </p>
-          <div class="cta-row">
-            <a href="mailto:robosynchallenge@gmail.com?subject=RoboSynChallenge%20participant%20access%20request" class="button button-primary">Open email draft</a>
-            <a href="${routeHref("login")}" class="button button-secondary">I already have a token</a>
-          </div>
         </article>
       </section>
     `;
@@ -970,9 +1192,9 @@
   function renderEvaluationPage() {
     const user = currentUser();
     const submitAction = user
-      ? `<button type="button" class="button button-primary" data-action="focus-policy-submit">Submit Policy</button>`
+      ? `<button type="button" class="button button-primary" data-action="focus-policy-submit" ${backendConfigured() ? "" : "disabled"}>Submit Policy</button>`
       : `<a href="${routeHref("login")}" class="button button-primary">Submit Policy</a>`;
-    const submissionForm = user ? `
+    const submissionForm = user && backendConfigured() ? `
       <section class="section shell" data-policy-submit>
         <form class="panel-stack" data-form="evaluation">
           <article class="card">
@@ -1021,9 +1243,15 @@
           </div>
         </form>
       </section>
+    ` : user ? `
+      <section class="section shell" data-policy-submit>
+        ${renderBackendUnavailableCard("Policy submission backend unavailable")}
+      </section>
     ` : "";
 
     return `
+      ${submissionForm}
+
       <section class="page-hero shell data-hero">
         <span class="eyebrow">Evaluation</span>
         <h1>Sim first. Robot final.</h1>
@@ -1060,7 +1288,7 @@
               <strong class="data-count">02<small>stage</small></strong>
             </header>
             <p>Finalist policies are run by organizers on the standardized RoboSynChallenge real-robot setup.</p>
-            <img src="static/assets/realworld-env.png" alt="RoboSynChallenge real-robot evaluation platform">
+            ${renderEvaluationVideoWall(REAL_EVALUATION_VIDEO_ASSETS, "static/assets/real-evaluation-videos", "Real-robot evaluation task videos")}
             <div class="randomization-list">
               <div><strong>Robot only.</strong><span>The final round runs on the real RoboSynChallenge platform.</span></div>
               <div><strong>Same metrics.</strong><span>Success rate, action steps, and inference time are reported.</span></div>
@@ -1069,8 +1297,6 @@
           </article>
         </div>
       </section>
-
-      ${submissionForm}
     `;
   }
 
@@ -1084,8 +1310,40 @@
         { route: "register", label: "Request access" }
       );
     }
+    if (!backendConfigured()) {
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">My submissions</span>
+          <h1>Backend required.</h1>
+          <p class="lead narrow">Submission history is stored in the RoboSynChallenge backend.</p>
+        </section>
+        <section class="section shell">${renderBackendUnavailableCard()}</section>
+      `;
+    }
+    if (!remoteState.submissionsLoaded) {
+      loadMySubmissions();
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">My submissions</span>
+          <h1>Loading your submissions.</h1>
+          <p class="lead narrow">Fetching records from the RoboSynChallenge backend.</p>
+        </section>
+      `;
+    }
+    if (remoteState.submissionsError) {
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">My submissions</span>
+          <h1>Submission records are temporarily unavailable.</h1>
+          <p class="lead narrow">The private backend stores your submitted artifacts and evaluation status.</p>
+        </section>
+        <section class="section shell">
+          ${renderBackendErrorCard("Could not load submissions", remoteState.submissionsError, "retry-submissions")}
+        </section>
+      `;
+    }
 
-    const submissions = userSubmissions(user.id);
+    const submissions = userSubmissions();
     return `
       <section class="page-hero shell">
         <span class="eyebrow">My submissions</span>
@@ -1165,10 +1423,6 @@
 
   function renderSubmissionDetailPage(submissionId) {
     const user = currentUser();
-    const submission = getSubmissionById(submissionId);
-    if (!submission) {
-      return renderNotFoundPage("Submission not found", "The requested submission does not exist.");
-    }
     if (!user) {
       return renderAuthGate(
         "Sign in to inspect submission details",
@@ -1177,7 +1431,38 @@
         { route: "register", label: "Request access" }
       );
     }
-    if (!isAdmin(user) && submission.owner_id !== user.id) {
+    if (!backendConfigured()) {
+      return `
+        <section class="section shell">${renderBackendUnavailableCard("Submission backend unavailable")}</section>
+      `;
+    }
+    if (!remoteState.submissionsLoaded) {
+      loadMySubmissions();
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">Submission detail</span>
+          <h1>Loading submission.</h1>
+          <p class="lead narrow">Fetching the record from the RoboSynChallenge backend.</p>
+        </section>
+      `;
+    }
+    if (remoteState.submissionsError) {
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">Submission detail</span>
+          <h1>Submission record unavailable.</h1>
+          <p class="lead narrow">This detail page is served from the private competition backend.</p>
+        </section>
+        <section class="section shell">
+          ${renderBackendErrorCard("Could not load submission detail", remoteState.submissionsError, "retry-submissions")}
+        </section>
+      `;
+    }
+    const submission = getSubmissionById(submissionId);
+    if (!submission) {
+      return renderNotFoundPage("Submission not found", "The requested submission does not exist.");
+    }
+    if (!isAdmin(user) && submission.owner_id !== user.id && submission.owner_id !== user.email) {
       return renderNotFoundPage("Access restricted", "This submission belongs to another participant.");
     }
 
@@ -1278,6 +1563,38 @@
   }
 
   function renderLeaderboardPage() {
+    if (!backendConfigured()) {
+      return `
+        <section class="page-hero shell leaderboard-hero">
+          <span class="eyebrow">Leaderboard</span>
+          <h1>Official results.</h1>
+          <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
+        </section>
+        <section class="section shell">${renderBackendUnavailableCard("Leaderboard backend unavailable")}</section>
+      `;
+    }
+    if (!remoteState.leaderboardLoaded) {
+      loadLeaderboard();
+      return `
+        <section class="page-hero shell leaderboard-hero">
+          <span class="eyebrow">Leaderboard</span>
+          <h1>Loading official results.</h1>
+          <p class="lead narrow">Fetching published ranked evaluations from the RoboSynChallenge backend.</p>
+        </section>
+      `;
+    }
+    if (remoteState.leaderboardError) {
+      return `
+        <section class="page-hero shell leaderboard-hero">
+          <span class="eyebrow">Leaderboard</span>
+          <h1>Official results are temporarily unavailable.</h1>
+          <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
+        </section>
+        <section class="section shell">
+          ${renderBackendErrorCard("Could not load leaderboard", remoteState.leaderboardError, "retry-leaderboard")}
+        </section>
+      `;
+    }
     const rows = getLeaderboardRows();
     return `
       <section class="page-hero shell leaderboard-hero">
@@ -1333,6 +1650,28 @@
   }
 
   function renderResultsPage(evaluationId) {
+    if (backendConfigured() && !remoteState.leaderboardLoaded) {
+      loadLeaderboard();
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">Result viewer</span>
+          <h1>Loading published result.</h1>
+          <p class="lead narrow">Fetching evaluation details from the RoboSynChallenge backend.</p>
+        </section>
+      `;
+    }
+    if (remoteState.leaderboardError) {
+      return `
+        <section class="page-hero shell">
+          <span class="eyebrow">Result viewer</span>
+          <h1>Published result unavailable.</h1>
+          <p class="lead narrow">Result pages are served from the private competition backend.</p>
+        </section>
+        <section class="section shell">
+          ${renderBackendErrorCard("Could not load published result", remoteState.leaderboardError, "retry-leaderboard")}
+        </section>
+      `;
+    }
     const evaluation = getEvaluationById(evaluationId);
     if (!evaluation || !evaluation.published) {
       return renderNotFoundPage("Published result not found", "This evaluation either does not exist or has not been published.");
@@ -1404,392 +1743,32 @@
   }
 
   function renderAdminPage() {
-    const user = currentUser();
-    if (!isAdmin(user)) {
-      return renderNotFoundPage("Administrator access required", "This area is available only to administrator accounts.");
-    }
-
-    const participants = state.users.slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-    const submissions = state.submissions.slice().sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
-    const publishedResults = state.evaluations.filter((evaluation) => evaluation.published).length;
-    const leaderboardEntries = getLeaderboardRows().length;
-
     return `
       <section class="page-hero shell">
-        <span class="eyebrow">Administrator console</span>
-        <h1>Issue access tokens, schedule runs, publish results, and seed baselines.</h1>
+        <span class="eyebrow">Administrator workflow</span>
+        <h1>Use the internal Gmail and Google Sheet backend.</h1>
         <p class="lead narrow">
-          This console is the operational layer of the competition site. It stores artifact links,
-          assigns evaluation stages, and publishes public leaderboard metrics.
+          Access tokens, policy submissions, evaluation rows, and leaderboard publishing are managed
+          through the private Apps Script, Gmail labels, and Google Sheet. This public static site no
+          longer stores or edits administrator state.
         </p>
       </section>
 
       <section class="section shell">
-        <div class="four-up">
-          <article class="card metric-card"><span>Users</span><strong>${participants.length}</strong></article>
-          <article class="card metric-card"><span>Submissions</span><strong>${submissions.length}</strong></article>
-          <article class="card metric-card"><span>Published results</span><strong>${publishedResults}</strong></article>
-          <article class="card metric-card"><span>Leaderboard rows</span><strong>${leaderboardEntries}</strong></article>
-        </div>
-      </section>
-
-      ${state.latestToken ? `
-        <section class="section shell">
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Copy now</span>
-              <h2>Latest participant token</h2>
-            </div>
-            <div class="detail-list">
-              <span><strong>Action:</strong> ${escapeHtml(state.latestToken.action)}</span>
-              <span><strong>User:</strong> ${escapeHtml(state.latestToken.username)} | ${escapeHtml(state.latestToken.email)}</span>
-              <span><strong>Token:</strong> <code>${escapeHtml(state.latestToken.token)}</code></span>
-            </div>
-          </article>
-        </section>
-      ` : ""}
-
-      <section class="section shell">
-        <div class="split-grid">
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Participant access</span>
-              <h2>Create a token-based account</h2>
-            </div>
-            <form class="panel-stack compact" data-form="admin-create-participant">
-              <div class="form-grid">
-                <label class="field">
-                  <span>Username</span>
-                  <input type="text" name="username" placeholder="team_name" required>
-                </label>
-                <label class="field">
-                  <span>Email</span>
-                  <input type="email" name="email" placeholder="user@example.org" required>
-                </label>
-                <label class="field">
-                  <span>Affiliation</span>
-                  <input type="text" name="affiliation" placeholder="Lab or company">
-                </label>
-                <label class="field field-span-2">
-                  <span>Short bio</span>
-                  <textarea name="bio" rows="3" placeholder="Optional context for the participant account."></textarea>
-                </label>
-              </div>
-              <button type="submit" class="button button-primary">Create participant</button>
-            </form>
-          </article>
-
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Seed a baseline</span>
-              <h2>Create a public leaderboard entry</h2>
-            </div>
-            <form class="panel-stack compact" data-form="admin-create-baseline">
-              <div class="form-grid">
-                <label class="field">
-                  <span>Model name</span>
-                  <input type="text" name="model_name" placeholder="pi0.5" required>
-                </label>
-                <label class="field">
-                  <span>Display user</span>
-                  <input type="text" name="username_display" placeholder="Official Baseline" required>
-                </label>
-                <label class="field">
-                  <span>Affiliation</span>
-                  <input type="text" name="affiliation" placeholder="RoboSynChallenge">
-                </label>
-                <label class="field">
-                  <span>Evaluation stage</span>
-                  <select name="evaluation_stage" required>
-                    ${Object.entries(EVALUATION_STAGE_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}">${escapeHtml(label)}</option>`).join("")}
-                  </select>
-                </label>
-                <label class="field">
-                  <span>Data source label</span>
-                  <input type="text" name="data_regime" placeholder="Official simulation" required>
-                </label>
-                <label class="field">
-                  <span>Success rate</span>
-                  <input type="number" step="0.1" name="success_rate" placeholder="64.2" required>
-                </label>
-                <label class="field">
-                  <span>Action steps</span>
-                  <input type="number" step="0.1" name="action_steps" placeholder="402" required>
-                </label>
-                <label class="field">
-                  <span>Inference time</span>
-                  <input type="number" step="0.1" name="real_time" placeholder="72.5" required>
-                </label>
-                <label class="field field-span-2">
-                  <span>Notes</span>
-                  <textarea name="notes" rows="3" placeholder="What this baseline represents."></textarea>
-                </label>
-              </div>
-              <button type="submit" class="button button-primary">Add baseline</button>
-            </form>
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="table-shell">
-          <table class="leaderboard-table">
-            <thead>
-              <tr>
-                <th>User</th>
-                <th>Email</th>
-                <th>Affiliation</th>
-                <th>Role</th>
-                <th>Token hint</th>
-                <th>Issued</th>
-                <th>Token</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${participants.map((participant) => `
-                <tr>
-                  <td>${escapeHtml(participant.username)}</td>
-                  <td>${escapeHtml(participant.email)}</td>
-                  <td>${escapeHtml(participant.affiliation || "-")}</td>
-                  <td>${escapeHtml(participant.role)}</td>
-                  <td>${escapeHtml(participant.access_token_hint || "Not issued")}</td>
-                  <td>${escapeHtml(formatDateTime(participant.createdAt))}</td>
-                  <td>
-                    ${participant.role === "admin"
-                      ? `<span class="footer-muted">Pinned admin token</span>`
-                      : `<button type="button" class="button button-secondary" data-action="regenerate-token" data-user-id="${escapeHtml(participant.id)}">Regenerate</button>`}
-                  </td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="table-shell">
-          <table class="leaderboard-table">
-            <thead>
-              <tr>
-                <th>Artifact</th>
-                <th>Experiment</th>
-                <th>User</th>
-                <th>Stage</th>
-                <th>Status</th>
-                <th>Schedule</th>
-                <th>Published</th>
-                <th>Manage</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${submissions.length
-                ? submissions.map((submission) => `
-                  <tr>
-                    <td>${escapeHtml(submission.display_name || submission.title)}</td>
-                    <td>${escapeHtml(submission.title)}</td>
-                    <td>${escapeHtml(getUserById(submission.owner_id)?.username || "Unknown")}</td>
-                    <td>${escapeHtml(stageLabel(submission.evaluation_stage))}</td>
-                    <td>${escapeHtml(humanStatus(submission.status))}</td>
-                    <td>${escapeHtml(formatDateTime(submission.evaluation_schedule_at))}</td>
-                    <td>${submission.evaluation_published ? "Yes" : "No"}</td>
-                    <td><a href="${routeHref(`admin/submission/${submission.id}`)}">Open</a></td>
-                  </tr>
-                `).join("")
-                : `<tr><td colspan="8">No submissions yet.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
+        <article class="card card-soft">
+          <span class="tag">Internal operations</span>
+          <div class="task-list">
+            <span>Approve or reject access-request emails with the configured Gmail labels.</span>
+            <span>Use the private Google Sheet to revoke/regenerate tokens and publish evaluation rows.</span>
+            <span>Use the Apps Script menu to run processing and digest jobs when needed.</span>
+          </div>
+        </article>
       </section>
     `;
   }
 
-  function renderAdminSubmissionPage(submissionId) {
-    const user = currentUser();
-    if (!isAdmin(user)) {
-      return renderNotFoundPage("Administrator access required", "This area is available only to administrator accounts.");
-    }
-
-    const submission = getSubmissionById(submissionId);
-    if (!submission) {
-      return renderNotFoundPage("Submission not found", "The requested submission does not exist.");
-    }
-    const evaluation = getEvaluationById(submission.evaluation_id);
-    const owner = getUserById(submission.owner_id);
-    const episodes = evaluation ? evaluation.episodes || [] : [];
-    const stageValue = evaluation?.evaluation_stage || submission.evaluation_stage;
-
-    return `
-      <section class="page-hero shell">
-        <span class="eyebrow">Submission management</span>
-        <h1>${escapeHtml(submission.display_name)}</h1>
-        <p class="lead narrow">${escapeHtml(submission.short_description)}</p>
-      </section>
-
-      <section class="section shell">
-        <div class="split-grid">
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Participant</span>
-              <h2>${escapeHtml(owner?.username || "Unknown")}</h2>
-            </div>
-            <div class="detail-list">
-              <span><strong>Email:</strong> ${escapeHtml(owner?.email || "Unknown")}</span>
-              <span><strong>Affiliation:</strong> ${escapeHtml(owner?.affiliation || "Not provided")}</span>
-              <span><strong>Artifact:</strong> ${escapeHtml(submission.display_name)}</span>
-              <span><strong>Checkpoint:</strong> ${externalLink(submission.checkpoint_link)}</span>
-              <span><strong>Code:</strong> ${externalLink(submission.code_link)}</span>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Submitted artifact</span>
-              <h2>${escapeHtml(stageLabel(stageValue))}</h2>
-            </div>
-            <div class="detail-list">
-              <span><strong>Experiment:</strong> ${escapeHtml(submission.title)}</span>
-              <span><strong>Run type:</strong> ${escapeHtml(submission.ranking_label)}</span>
-              <span><strong>Data source:</strong> ${escapeHtml(submission.data_source_text || "Not provided")}</span>
-              <span><strong>Run notes:</strong> ${escapeHtml(submission.technical_notes || "Not provided")}</span>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="split-grid">
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Evaluation metadata</span>
-              <h2>Schedule and publish</h2>
-            </div>
-            <form class="panel-stack compact" data-form="admin-update-evaluation">
-              <input type="hidden" name="submission_id" value="${escapeHtml(submission.id)}">
-              <div class="form-grid">
-                <label class="field">
-                  <span>Evaluation stage</span>
-                  <select name="evaluation_stage" required>
-                    <option value="">Select stage</option>
-                    ${Object.entries(EVALUATION_STAGE_LABELS).map(([key, label]) => `<option value="${escapeHtml(key)}" ${stageValue === key ? "selected" : ""}>${escapeHtml(label)}</option>`).join("")}
-                  </select>
-                </label>
-                <label class="field">
-                  <span>Status</span>
-                  <select name="status">
-                    ${Object.keys(STATUS_LABELS).map((value) => `<option value="${escapeHtml(value)}" ${evaluation?.status === value ? "selected" : ""}>${escapeHtml(humanStatus(value))}</option>`).join("")}
-                  </select>
-                </label>
-                <label class="field">
-                  <span>Schedule</span>
-                  <input type="datetime-local" name="schedule_at" value="${escapeHtml(formatDateInput(evaluation?.schedule_at))}">
-                </label>
-                <label class="field">
-                  <span>Success rate</span>
-                  <input type="number" step="0.1" name="success_rate" value="${escapeHtml(evaluation?.success_rate ?? "")}">
-                </label>
-                <label class="field">
-                  <span>Action steps</span>
-                  <input type="number" step="0.1" name="action_steps" value="${escapeHtml(evaluation?.action_steps ?? "")}">
-                </label>
-                <label class="field">
-                  <span>Inference time</span>
-                  <input type="number" step="0.1" name="real_time" value="${escapeHtml(evaluation?.real_time ?? "")}">
-                </label>
-                <label class="field field-span-2">
-                  <span>Schedule note</span>
-                  <textarea name="admin_schedule_note" rows="3">${escapeHtml(submission.admin_schedule_note || "")}</textarea>
-                </label>
-                <label class="field field-span-2">
-                  <span>Evaluation notes</span>
-                  <textarea name="notes" rows="4">${escapeHtml(evaluation?.notes || "")}</textarea>
-                </label>
-              </div>
-              <label class="choice-inline">
-                <input type="checkbox" name="published" ${evaluation?.published ? "checked" : ""}>
-                <span>Publish to leaderboard and result viewer</span>
-              </label>
-              <button type="submit" class="button button-primary">Save evaluation</button>
-            </form>
-          </article>
-
-          <article class="card">
-            <div class="section-heading left">
-              <span class="eyebrow">Episode uploader</span>
-              <h2>Add result footage</h2>
-            </div>
-            <form class="panel-stack compact" data-form="admin-add-episode">
-              <input type="hidden" name="submission_id" value="${escapeHtml(submission.id)}">
-              <div class="form-grid">
-                <label class="field">
-                  <span>Episode index</span>
-                  <input type="number" min="1" step="1" name="episode_index" value="${episodes.length + 1}">
-                </label>
-                <label class="field">
-                  <span>Task name</span>
-                  <input type="text" name="task_name" placeholder="Drawer open-and-place" required>
-                </label>
-                <label class="field">
-                  <span>Duration seconds</span>
-                  <input type="number" step="0.1" name="duration_seconds" placeholder="12.5">
-                </label>
-                <label class="field">
-                  <span>Episode video</span>
-                  <input type="file" name="episode_video" accept=".mp4,.webm,.mov,.m4v">
-                </label>
-                <label class="field">
-                  <span>External video URL</span>
-                  <input type="url" name="video_url" placeholder="https://...">
-                </label>
-                <label class="field field-span-2">
-                  <span>Episode notes</span>
-                  <textarea name="episode_notes" rows="3" placeholder="What to notice in this rollout."></textarea>
-                </label>
-              </div>
-              <button type="submit" class="button button-secondary">Add episode</button>
-            </form>
-
-            ${evaluation?.published ? `
-              <div class="section-actions">
-                <a href="${routeHref(`results/${evaluation.id}`)}" class="button button-ghost">Open public viewer</a>
-              </div>
-            ` : ""}
-          </article>
-        </div>
-      </section>
-
-      <section class="section shell">
-        <div class="table-shell">
-          <table class="leaderboard-table">
-            <thead>
-              <tr>
-                <th>Episode</th>
-                <th>Task</th>
-                <th>Duration</th>
-                <th>Video</th>
-                <th>Notes</th>
-                <th>Delete</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${episodes.length
-                ? episodes.map((episode) => `
-                  <tr>
-                    <td>${episode.episode_index}</td>
-                    <td>${escapeHtml(episode.task_name)}</td>
-                    <td>${escapeHtml(formatSeconds(episode.duration_seconds))}</td>
-                    <td>${escapeHtml(episode.video_url || "Not uploaded")}</td>
-                    <td>${escapeHtml(episode.notes || "-")}</td>
-                    <td>
-                      <button type="button" class="button button-danger" data-action="delete-episode" data-submission-id="${escapeHtml(submission.id)}" data-episode-id="${escapeHtml(episode.id)}">Delete</button>
-                    </td>
-                  </tr>
-                `).join("")
-                : `<tr><td colspan="6">No episodes uploaded yet.</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    `;
+  function renderAdminSubmissionPage() {
+    return renderAdminPage();
   }
 
   function renderNotFoundPage(title, description) {
@@ -1954,7 +1933,7 @@
   }
 
 
-  function handleLogin(form) {
+  async function handleLogin(form) {
     const formData = new FormData(form);
     const email = String(formData.get("email") || "").trim().toLowerCase();
     const token = String(formData.get("token") || "").trim();
@@ -1962,87 +1941,106 @@
       pushFlash("error", "Email and token are required.");
       return;
     }
-
-    let user = state.users.find((item) => item.email.toLowerCase() === email);
-    if (!user) {
-      user = {
-        id: uid("user"),
-        username: email.split("@")[0],
-        email,
-        affiliation: "",
-        bio: "",
-        role: "participant",
-        token,
-        createdAt: nowIso(),
-        access_token_hint: `${token.slice(0, 6)}****`,
-      };
-      state.users.push(user);
-      state.latestToken = { action: "created", username: user.username, email: user.email, token };
-    } else if (user.role !== "admin" && user.token !== token) {
-      user.token = token;
-      user.access_token_hint = `${token.slice(0, 6)}****`;
-    }
-
-    state.session.userId = user.id;
-    saveState();
-    pushFlash("success", `Signed in as ${user.username}.`);
-    navigate(user.role === "admin" ? "admin" : "dashboard");
-  }
-
-  function handleRegister(form) {
-    const formData = new FormData(form);
-    const username = String(formData.get("username") || "").trim();
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const affiliation = String(formData.get("affiliation") || "").trim();
-    const bio = String(formData.get("bio") || "").trim();
-
-    if (!username || !email) {
-      pushFlash("error", "Username and email are required.");
+    if (!backendConfigured()) {
+      pushFlash("error", "The access-token backend is not configured yet.");
       return;
     }
 
-    let user = state.users.find((item) => item.email.toLowerCase() === email);
-    const token = `RSC-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    if (user) {
-      user.username = username;
-      user.affiliation = affiliation;
-      user.bio = bio;
-      user.token = token;
-      user.access_token_hint = `${token.slice(0, 6)}****`;
-    } else {
-      user = {
-        id: uid("user"),
-        username,
-        email,
-        affiliation,
-        bio,
-        role: "participant",
-        token,
-        createdAt: nowIso(),
-        access_token_hint: `${token.slice(0, 6)}****`,
+    try {
+      const data = await apiRequest("login", { email, token });
+      state.session = {
+        session_id: String(data.session_id || data.session?.session_id || ""),
+        expires_at: String(data.expires_at || data.session?.expires_at || ""),
       };
-      state.users.push(user);
+      state.user = normalizeUser(data.user || { email });
+      if (!state.session.session_id) throw new Error("Login response did not include a session_id.");
+      saveSessionState();
+      remoteState.submissionsLoaded = false;
+      remoteState.submissionsError = "";
+      pushFlash("success", `Signed in as ${state.user.username}.`);
+      navigate("dashboard");
+    } catch (error) {
+      pushFlash("error", error.message || "Sign in failed.");
     }
-
-    state.accessRequests.unshift({
-      id: uid("request"),
-      username,
-      email,
-      affiliation,
-      bio,
-      createdAt: nowIso(),
-    });
-    state.latestToken = { action: "register-auto-issue", username, email, token };
-    state.session.userId = user.id;
-    saveState();
-    pushFlash("success", `Account token issued for ${username}.`);
-    navigate("evaluation");
   }
 
-  function handleEvaluationSubmit(form) {
+  async function handleRegister(form) {
+    const setStatus = (category, message, busy = false) => {
+      const button = form.querySelector('button[type="submit"]');
+      const status = form.querySelector("[data-register-status]");
+      if (button) {
+        if (!button.dataset.defaultText) button.dataset.defaultText = button.textContent;
+        button.disabled = busy || !backendConfigured();
+        button.textContent = busy ? "Sending..." : button.dataset.defaultText;
+        button.setAttribute("aria-busy", busy ? "true" : "false");
+      }
+      if (status) {
+        status.textContent = message || "";
+        status.className = `form-status${category ? ` form-status-${category}` : ""}`;
+      }
+    };
+
+    if (!backendConfigured()) {
+      pushFlash("error", "The access-request backend is not configured yet.");
+      setStatus("error", "The access-request backend is not configured yet.");
+      return;
+    }
+
+    const formData = new FormData(form);
+    const requestId = String(formData.get("request_id") || accessRequestId()).trim();
+    const email = String(formData.get("email") || "").trim().toLowerCase();
+    const fullName = String(formData.get("full_name") || "").trim();
+    const teamName = String(formData.get("team_name") || "").trim();
+    const affiliation = String(formData.get("affiliation") || "").trim();
+    const intendedUse = String(formData.get("intended_use") || "").trim();
+    const misc = String(formData.get("misc") || "").trim();
+
+    if (!email || !fullName || !teamName || !affiliation || !intendedUse) {
+      pushFlash("error", "Email, full name, team name, affiliation, and intended use are required.");
+      setStatus("error", "Email, full name, team name, affiliation, and intended use are required.");
+      return;
+    }
+
+    try {
+      setStatus("pending", "Sending request to the RoboSynChallenge organizers...", true);
+      const data = await apiRequest("request_access", {
+        request_id: requestId,
+        email,
+        full_name: fullName,
+        team_name: teamName,
+        affiliation,
+        intended_use: intendedUse,
+        misc,
+      });
+      window.sessionStorage.removeItem(ACCESS_REQUEST_STORAGE_KEY);
+      form.reset();
+      const message = data.existing_token_sent
+        ? "This email already has an active access token. A token reminder has been sent to that email."
+        : data.already_submitted
+          ? "This access request is already queued for review."
+          : "Access request sent. The organizers will review it in Gmail.";
+      pushFlash("success", message);
+      setStatus("success", message);
+      const nextRequestId = accessRequestId();
+      const requestInput = form.querySelector('input[name="request_id"]');
+      const requestLabel = document.querySelector("[data-register-request-id]");
+      if (requestInput) requestInput.value = nextRequestId;
+      if (requestLabel) requestLabel.textContent = nextRequestId;
+    } catch (error) {
+      const message = error.message || "Access request failed.";
+      pushFlash("error", message);
+      setStatus("error", message);
+    }
+  }
+
+  async function handleEvaluationSubmit(form) {
     const user = currentUser();
     if (!user) {
       pushFlash("error", "Sign in before submitting.");
+      return;
+    }
+    if (!backendConfigured() || !state.session.session_id) {
+      pushFlash("error", "The submission backend is not available. Please sign in again or contact the organizers.");
       return;
     }
 
@@ -2076,257 +2074,55 @@
       pushFlash("error", "Run and dependency notes are required.");
       return;
     }
-
-    const submissionId = uid("submission");
-    const evaluationId = uid("evaluation");
-    const submission = {
-      id: submissionId,
-      owner_id: user.id,
-      display_name: artifactName,
-      artifact_name: artifactName,
-      checkpoint_link: checkpointLink,
-      code_link: codeLink,
-      title,
-      short_description: shortDescription,
-      technical_notes: technicalNotes,
-      data_source_text: dataSourceText,
-      is_ranked: isRanked,
-      ranking_label: rankingLabel(isRanked),
-      evaluation_stage: "",
-      stage_label: stageLabel(""),
-      status: "submitted",
-      admin_schedule_note: "",
-      evaluation_id: evaluationId,
-      evaluation_schedule_at: "",
-      evaluation_published: false,
-      evaluation_notes: "",
-      created_at: nowIso(),
-    };
-
-    const evaluation = {
-      id: evaluationId,
-      submission_id: submissionId,
-      display_name: `${artifactName} | ${title}`,
-      short_description: shortDescription,
-      status: "submitted",
-      source_kind: "submission",
-      evaluation_stage: "",
-      stage_label: stageLabel(""),
-      schedule_at: "",
-      published: false,
-      published_at: "",
-      success_rate: null,
-      action_steps: null,
-      real_time: null,
-      notes: "",
-      leaderboard_notes: "",
-      episodes: [],
-    };
-
-    state.submissions.unshift(submission);
-    state.evaluations.unshift(evaluation);
-    saveState();
-    pushFlash("success", "Artifact submission recorded. An administrator can now schedule and publish it.");
-    navigate(`submission/${submissionId}`);
-  }
-
-  function handleAdminCreateParticipant(form) {
-    const user = currentUser();
-    if (!isAdmin(user)) return;
-    const formData = new FormData(form);
-    const username = String(formData.get("username") || "").trim();
-    const email = String(formData.get("email") || "").trim().toLowerCase();
-    const affiliation = String(formData.get("affiliation") || "").trim();
-    const bio = String(formData.get("bio") || "").trim();
-    if (!username || !email) {
-      pushFlash("error", "Username and email are required.");
-      return;
-    }
-    const existing = state.users.find((item) => item.email.toLowerCase() === email);
-    const token = `RSC-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    if (existing) {
-      existing.username = username;
-      existing.affiliation = affiliation;
-      existing.bio = bio;
-      existing.role = existing.role === "admin" ? "admin" : "participant";
-      existing.token = token;
-      existing.access_token_hint = `${token.slice(0, 6)}****`;
-    } else {
-      state.users.push({
-        id: uid("user"),
-        username,
-        email,
-        affiliation,
-        bio,
-        role: "participant",
-        token,
-        createdAt: nowIso(),
-        access_token_hint: `${token.slice(0, 6)}****`,
+    try {
+      const data = await apiRequest("submit_policy", {
+        session_id: state.session.session_id,
+        submission: {
+          artifact_name: artifactName,
+          title,
+          short_description: shortDescription,
+          code_link: codeLink,
+          checkpoint_link: checkpointLink,
+          data_source_text: dataSourceText,
+          technical_notes: technicalNotes,
+          is_ranked: isRanked,
+        },
       });
+      const submission = normalizeSubmission(data.submission || data);
+      const evaluation = normalizeEvaluation(data.evaluation);
+      if (submission) state.submissions.unshift(submission);
+      if (evaluation) state.evaluations.unshift(evaluation);
+      remoteState.submissionsLoaded = true;
+      remoteState.submissionsError = "";
+      pushFlash("success", "Artifact submission recorded. The organizers can now schedule and publish it.");
+      navigate(submission ? `submission/${submission.id}` : "dashboard");
+    } catch (error) {
+      pushFlash("error", error.message || "Policy submission failed.");
     }
-    state.latestToken = { action: "create-participant", username, email, token };
-    saveState();
-    pushFlash("success", "Participant account created. Copy the token now.");
-    render();
   }
 
-  function handleRegenerateToken(userId) {
-    const user = currentUser();
-    if (!isAdmin(user)) return;
-    const participant = getUserById(userId);
-    if (!participant || participant.role === "admin") return;
-    const token = `RSC-${Math.random().toString(36).slice(2, 8).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-    participant.token = token;
-    participant.access_token_hint = `${token.slice(0, 6)}****`;
-    state.latestToken = { action: "regenerate-token", username: participant.username, email: participant.email, token };
-    saveState();
-    pushFlash("success", `Regenerated token for ${participant.username}.`);
-    render();
+  function handleAdminCreateParticipant() {
+    pushFlash("warning", "Participant access is managed in the private Google Sheet and Gmail workflow.");
   }
 
-  function handleAdminCreateBaseline(form) {
-    const user = currentUser();
-    if (!isAdmin(user)) return;
-    const formData = new FormData(form);
-    const modelName = String(formData.get("model_name") || "").trim();
-    const usernameDisplay = String(formData.get("username_display") || "").trim();
-    const affiliation = String(formData.get("affiliation") || "").trim();
-    const evaluationStage = String(formData.get("evaluation_stage") || "").trim();
-    const dataRegime = String(formData.get("data_regime") || "").trim();
-    const successRate = Number(formData.get("success_rate") || 0);
-    const actionSteps = Number(formData.get("action_steps") || 0);
-    const realTime = Number(formData.get("real_time") || 0);
-    const notes = String(formData.get("notes") || "").trim();
-    if (!modelName || !usernameDisplay || !evaluationStage || !dataRegime) {
-      pushFlash("error", "Model name, display user, evaluation stage, and data source label are required.");
-      return;
-    }
-    state.baselines.unshift({
-      id: uid("baseline"),
-      model_name: modelName,
-      username_display: usernameDisplay,
-      affiliation,
-      evaluation_stage: evaluationStage,
-      data_regime: dataRegime,
-      success_rate: successRate,
-      action_steps: actionSteps,
-      real_time: realTime,
-      notes,
-    });
-    saveState();
-    pushFlash("success", "Baseline entry added to the leaderboard.");
-    render();
+  function handleRegenerateToken() {
+    pushFlash("warning", "Token regeneration is managed in the private Google Sheet.");
   }
 
-  function handleAdminUpdateEvaluation(form) {
-    const admin = currentUser();
-    if (!isAdmin(admin)) return;
-    const formData = new FormData(form);
-    const submissionId = String(formData.get("submission_id") || "");
-    const submission = getSubmissionById(submissionId);
-    if (!submission) {
-      pushFlash("error", "Submission not found.");
-      return;
-    }
-    const evaluation = getEvaluationById(submission.evaluation_id);
-    if (!evaluation) {
-      pushFlash("error", "Evaluation not found.");
-      return;
-    }
-
-    const evaluationStage = String(formData.get("evaluation_stage") || "").trim();
-    const status = String(formData.get("status") || "submitted");
-    const scheduleAt = String(formData.get("schedule_at") || "").trim();
-    const successRateRaw = String(formData.get("success_rate") || "").trim();
-    const actionStepsRaw = String(formData.get("action_steps") || "").trim();
-    const realTimeRaw = String(formData.get("real_time") || "").trim();
-    const published = formData.has("published");
-    const notes = String(formData.get("notes") || "").trim();
-    const adminScheduleNote = String(formData.get("admin_schedule_note") || "").trim();
-
-    evaluation.evaluation_stage = evaluationStage;
-    evaluation.stage_label = stageLabel(evaluationStage);
-    evaluation.status = status;
-    evaluation.schedule_at = scheduleAt ? new Date(scheduleAt).toISOString() : "";
-    evaluation.success_rate = successRateRaw ? Number(successRateRaw) : null;
-    evaluation.action_steps = actionStepsRaw ? Number(actionStepsRaw) : null;
-    evaluation.real_time = realTimeRaw ? Number(realTimeRaw) : null;
-    evaluation.notes = notes;
-    evaluation.published = published;
-    if (published && !evaluation.published_at) evaluation.published_at = nowIso();
-    if (!published) evaluation.published_at = "";
-
-    submission.evaluation_stage = evaluationStage;
-    submission.stage_label = stageLabel(evaluationStage);
-    submission.status = status;
-    submission.admin_schedule_note = adminScheduleNote;
-    submission.evaluation_schedule_at = evaluation.schedule_at;
-    submission.evaluation_published = published;
-    submission.evaluation_notes = notes;
-
-    saveState();
-    pushFlash("success", `Evaluation state saved for ${submission.display_name}.`);
-    render();
+  function handleAdminCreateBaseline() {
+    pushFlash("warning", "Leaderboard rows are managed in the private Google Sheet backend.");
   }
 
-  function handleAdminAddEpisode(form) {
-    const admin = currentUser();
-    if (!isAdmin(admin)) return;
-    const formData = new FormData(form);
-    const submissionId = String(formData.get("submission_id") || "");
-    const submission = getSubmissionById(submissionId);
-    if (!submission) {
-      pushFlash("error", "Submission not found.");
-      return;
-    }
-    const evaluation = getEvaluationById(submission.evaluation_id);
-    if (!evaluation) {
-      pushFlash("error", "Evaluation not found.");
-      return;
-    }
-    const episodeIndex = Number(formData.get("episode_index") || evaluation.episodes.length + 1);
-    const taskName = String(formData.get("task_name") || "").trim();
-    const durationSeconds = Number(formData.get("duration_seconds") || 0) || 18;
-    const videoUrl = String(formData.get("video_url") || "").trim();
-    const notes = String(formData.get("episode_notes") || "").trim();
-    const file = formData.get("episode_video");
-    if (!taskName) {
-      pushFlash("error", "Task name is required.");
-      return;
-    }
-
-    const finalVideoUrl = videoUrl || DEFAULT_VIDEO_URL;
-    evaluation.episodes.push({
-      id: uid("episode"),
-      episode_index: episodeIndex,
-      task_name: taskName,
-      duration_seconds: durationSeconds,
-      video_url: finalVideoUrl,
-      notes: notes || "No notes uploaded.",
-    });
-    evaluation.episodes.sort((left, right) => left.episode_index - right.episode_index);
-    if (file && typeof file === "object" && file.size) {
-      pushFlash("warning", "Uploaded files are not persisted in this deployment, so the default preview video was kept unless an external URL was supplied.");
-    } else {
-      pushFlash("success", `Episode ${episodeIndex} added.`);
-    }
-    saveState();
-    render();
+  function handleAdminUpdateEvaluation() {
+    pushFlash("warning", "Evaluation publishing is managed in the private Google Sheet backend.");
   }
 
-  function handleDeleteEpisode(submissionId, episodeId) {
-    const admin = currentUser();
-    if (!isAdmin(admin)) return;
-    const submission = getSubmissionById(submissionId);
-    const evaluation = submission ? getEvaluationById(submission.evaluation_id) : null;
-    if (!evaluation) {
-      pushFlash("error", "Evaluation not found.");
-      return;
-    }
-    evaluation.episodes = evaluation.episodes.filter((episode) => episode.id !== episodeId);
-    saveState();
-    pushFlash("success", "Episode deleted.");
-    render();
+  function handleAdminAddEpisode() {
+    pushFlash("warning", "Evaluation episode metadata is managed in the private Google Sheet backend.");
+  }
+
+  function handleDeleteEpisode() {
+    pushFlash("warning", "Evaluation episode metadata is managed in the private Google Sheet backend.");
   }
 
   function attachGlobalEvents() {
@@ -2354,6 +2150,16 @@
       } else if (action === "logout") {
         event.preventDefault();
         logoutUser();
+      } else if (action === "retry-submissions") {
+        event.preventDefault();
+        remoteState.submissionsLoaded = false;
+        loadMySubmissions(true);
+        render();
+      } else if (action === "retry-leaderboard") {
+        event.preventDefault();
+        remoteState.leaderboardLoaded = false;
+        loadLeaderboard(true);
+        render();
       } else if (action === "regenerate-token") {
         event.preventDefault();
         handleRegenerateToken(target.getAttribute("data-user-id") || "");

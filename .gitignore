@@ -1,0 +1,23 @@
+# Python/runtime artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Local app state
+instance/
+*.db
+*.sqlite
+*.sqlite3
+
+# Dependency/build output
+node_modules/
+dist/
+build/
+.cache/
+.parcel-cache/
+.vite/
+
+# Logs and local OS/editor noise
+*.log
+.DS_Store
+Thumbs.db
