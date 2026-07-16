@@ -223,6 +223,34 @@ function sendAdminDigestNow() {
   sendAdminDigest_("manual digest", {});
 }
 
+function setProductionProperties(settings) {
+  const allowedKeys = [
+    "SPREADSHEET_ID",
+    "ADMIN_EMAILS",
+    "APPROVED_LABEL",
+    "REJECTED_LABEL",
+    "REQUESTED_LABEL",
+    "PROCESSED_LABEL",
+    "EVAL_DONE_LABEL",
+    "EVAL_NOT_DONE_LABEL",
+    "CONTACT_EMAIL",
+    "WEB_APP_URL",
+    "WECHAT_QR_FILE_ID",
+    "SITE_LOGIN_URL",
+  ];
+  if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+    throw new Error("settings must be an object.");
+  }
+  const values = {};
+  Object.keys(settings).forEach((key) => {
+    if (!allowedKeys.includes(key)) throw new Error(`Unsupported property: ${key}`);
+    const value = String(settings[key] ?? "").trim();
+    if (value) values[key] = value;
+  });
+  PropertiesService.getScriptProperties().setProperties(values, false);
+  return { ok: true, updated: Object.keys(values) };
+}
+
 function onSheetEdit(e) {
   try {
     const range = e?.range;
@@ -1182,7 +1210,7 @@ function defaultAccessNotificationMessage_(request, decision) {
       "",
       `Login here to test your access token: ${siteLoginUrl_()}`,
       "",
-      "The internal WeChat QR code is shown in this email if configured. It is for your approved team only. Please do not forward it or share it with others.",
+      "This is the internal WeChat QR code for your approved team. Please do not forward it or share it with others.",
       request.reviewer_notes ? `\nOrganizer note:\n${request.reviewer_notes}` : "",
     ].join("\n");
   }
@@ -1381,7 +1409,7 @@ function approvedAccessEmailText_(message) {
     lines.push("", `Login here to test your access token: ${loginUrl}`);
   }
   if (!/WeChat QR code/i.test(lines[0])) {
-    lines.push("", "The internal WeChat QR code is shown in this email if configured. It is for approved participants only. Please do not forward it or share it with others.");
+    lines.push("", "This is the internal WeChat QR code for approved participants. Please do not forward it or share it with others.");
   }
   return lines.join("\n");
 }
@@ -1389,7 +1417,7 @@ function approvedAccessEmailText_(message) {
 function approvedAccessEmailExtraHtml_(hasQrImage) {
   return `
     <p class="muted"><a class="login-link" href="${escapeHtml_(siteLoginUrl_())}" target="_blank" rel="noreferrer">Sign in to test your access token</a></p>
-    <p class="warning"><strong>The internal WeChat QR code is shown directly in this email if configured.</strong> It is for approved participants only. Do not forward or share it.</p>
+    <p class="warning"><strong>This is the internal WeChat QR code.</strong> It is for approved participants only. Do not forward or share it.</p>
     ${hasQrImage ? '<p><img src="cid:wechatQr" alt="RoboSynChallenge internal WeChat QR code" style="display:block;max-width:320px;width:100%;height:auto;border:1px solid #e3ddd2;border-radius:10px"></p>' : ""}
   `;
 }
