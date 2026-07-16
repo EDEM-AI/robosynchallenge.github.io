@@ -5,9 +5,9 @@
 本文以如下账号配置为例：
 
 - 组织者主邮箱：`robosynchallenge@gmail.com`
-- 管理者通知邮箱：`runyizhao@link.cuhk.edu.cn`
+- 管理者通知邮箱：`781785786@qq.com`
 
-关键原则：Apps Script Web App 会以部署者身份执行，所以请尽量用 `robosynchallenge@gmail.com` 创建 Sheet、Apps Script、Gmail label 和 Web App 部署。`runyizhao@link.cuhk.edu.cn` 在这个例子里是管理员 digest 收件人，不等于 Gmail label 审核发生在这个邮箱里。
+关键原则：Apps Script Web App 会以部署者身份执行，所以请尽量用 `robosynchallenge@gmail.com` 创建 Sheet、Apps Script、Gmail label 和 Web App 部署。`781785786@qq.com` 在这个例子里是管理员 digest 收件人，不等于 Gmail label 审核发生在这个邮箱里。
 
 ## 需要准备的信息
 
@@ -15,7 +15,7 @@
 
 ```text
 SPREADSHEET_ID=1fXT5BuNgMYKyYuWNQ1FvIVG0Hfl3NFQ3p8a1BS5v_Ec
-ADMIN_EMAILS=runyizhao@link.cuhk.edu.cn
+ADMIN_EMAILS=781785786@qq.com
 APPROVED_LABEL=RSC Approved
 REJECTED_LABEL=RSC Rejected
 REQUESTED_LABEL=RSC Requested
@@ -32,7 +32,7 @@ API_BASE_URL=https://script.google.com/macros/s/AKfycbwg9Ee-ZK9eNiMeJGsjzjxF8D6T
 如果管理员有多个收件人，`ADMIN_EMAILS` 用英文逗号分隔，例如：
 
 ```text
-ADMIN_EMAILS=runyizhao@link.cuhk.edu.cn,another-admin@example.com
+ADMIN_EMAILS=781785786@qq.com,another-admin@example.com
 ```
 
 ## 创建私有 Google Sheet
@@ -91,7 +91,7 @@ Property: SPREADSHEET_ID
 Value: <你的 Google Sheet ID>
 
 Property: ADMIN_EMAILS
-Value: runyizhao@link.cuhk.edu.cn
+Value: 781785786@qq.com
 
 Property: APPROVED_LABEL
 Value: RSC Approved
@@ -349,7 +349,7 @@ draft 正文会作为审核者额外文字进入默认模板。draft 附件总�
 - `Users` tab 在通知发出后创建或更新用户。
 - 生成强随机 access token；发送前只在 `AccessRequests` 中标记为 `pending`，发送后才变为 `active`。
 - 参赛者收到 approval 邮件、token、登录测试链接，以及可选的邮件正文内嵌微信群二维码。
-- `runyizhao@link.cuhk.edu.cn` 收到中文管理汇总邮件和精简 XLSX 附件。
+- `781785786@qq.com` 收到中文管理汇总邮件和精简 XLSX 附件。
 - 原 Gmail thread 从 `RSC Requested` 移出，并打上 `RSC Approved` 和 `RSC Processed`。
 
 ### 拒绝申请
