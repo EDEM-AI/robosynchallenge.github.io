@@ -13,6 +13,7 @@
  * - CONTACT_EMAIL: public contact email, default "robosynchallenge@gmail.com".
  * - WEB_APP_URL: optional deployed Web App URL for action buttons.
  * - WECHAT_QR_FILE_ID: optional Google Drive file id for the internal WeChat QR code image.
+ * - WECHAT_QR_FILE_NAME: optional Google Drive filename for the internal WeChat QR code image.
  */
 
 const SHEETS = {
@@ -97,6 +98,21 @@ const SHEETS = {
     "result_status",
     "result_sent_at",
   ],
+  FullNameUpdates: [
+    "update_id",
+    "email",
+    "token",
+    "token_status",
+    "current_full_name",
+    "new_full_name",
+    "invite_status",
+    "invite_sent_at",
+    "expires_at",
+    "completed_at",
+    "updated_at",
+    "source",
+    "misc",
+  ],
   DigestLog: ["id", "reason", "sent_to", "created_at"],
   Errors: ["id", "where", "message", "stack", "created_at"],
 };
@@ -104,10 +120,17 @@ const SHEETS = {
 const SESSION_HOURS = 24;
 const REVIEW_ATTACHMENT_LIMIT_BYTES = 10 * 1024 * 1024;
 const NOTIFICATION_GRACE_MINUTES = 30;
+const REQUESTED_LABEL_SYNC_LIMIT = 20;
+const ERROR_EMAIL_THROTTLE_SECONDS = 60 * 60;
+const GMAIL_QUOTA_ERROR_EMAIL_THROTTLE_SECONDS = 6 * 60 * 60;
+const DEFAULT_WECHAT_QR_FILE_NAME = "RCS_wechat_QRcode_test.jpg";
+const FULL_NAME_UPDATE_DAYS = 14;
+const FULL_NAME_UPDATE_TEST_EMAIL = "224040356@link.cuhk.edu.cn";
 
 function doGet(e) {
   try {
     const action = String(e?.parameter?.rsc_action || e?.parameter?.action || "");
+    if (action === "full_name_update") return handleFullNameUpdatePage_(e.parameter);
     if (action === "access_decision") return handleAccessDecisionPage_(e.parameter);
     return json_({ ok: true, service: "RoboSynChallenge backend", time: new Date().toISOString() });
   } catch (error) {
@@ -123,6 +146,7 @@ function doPost(e) {
     if (action === "health") return json_({ ok: true, time: new Date().toISOString() });
     if (action === "request_access") return json_(handleRequestAccess_(payload));
     if (action === "send_access_notification") return handleSendAccessNotification_(payload);
+    if (action === "update_full_name") return handleFullNameUpdateSubmit_(payload);
     if (action === "login") return json_(handleLogin_(payload));
     if (action === "my_submissions") return json_(handleMySubmissions_(payload));
     if (action === "submit_policy") return json_(handleSubmitPolicy_(payload));
@@ -142,6 +166,8 @@ function onOpen() {
     .addItem("Manual issue access token", "manualIssueAccessToken")
     .addItem("Reset test data", "resetTestData")
     .addItem("Process token actions", "processTokenActions")
+    .addItem("Send full name update test", "sendFullNameUpdateTestInvite")
+    .addItem("Send full name update invites", "sendFullNameUpdateInvitesNow")
     .addItem("Send admin digest", "sendAdminDigestNow")
     .addItem("Install backend triggers", "installBackendTriggers")
     .addToUi();
@@ -156,7 +182,7 @@ function installTenMinuteTrigger() {
   ScriptApp.getProjectTriggers()
     .filter((trigger) => trigger.getHandlerFunction() === "processLabeledRequests")
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
-  ScriptApp.newTrigger("processLabeledRequests").timeBased().everyMinutes(10).create();
+  ScriptApp.newTrigger("processLabeledRequests").timeBased().everyHours(3).create();
 }
 
 function installBackendTriggers() {
@@ -164,13 +190,13 @@ function installBackendTriggers() {
   ScriptApp.getProjectTriggers()
     .filter((trigger) => handlers.has(trigger.getHandlerFunction()))
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
-  ScriptApp.newTrigger("processLabeledRequests").timeBased().everyMinutes(10).create();
+  ScriptApp.newTrigger("processLabeledRequests").timeBased().everyHours(3).create();
   ScriptApp.newTrigger("onSheetEdit").forSpreadsheet(spreadsheet_()).onEdit().create();
 }
 
 function processLabeledRequests() {
   initializeSheets();
-  syncRequestedLabels_();
+  syncRequestedLabels_({ onlyPending: true, limit: REQUESTED_LABEL_SYNC_LIMIT });
   processReviewLabel_(config_("APPROVED_LABEL", "RSC Approved"), "approved");
   processReviewLabel_(config_("REJECTED_LABEL", "RSC Rejected"), "rejected");
   processEvalLabel_(config_("EVAL_DONE_LABEL", "RSC Eval Done"), "done");
@@ -236,6 +262,7 @@ function setProductionProperties(settings) {
     "CONTACT_EMAIL",
     "WEB_APP_URL",
     "WECHAT_QR_FILE_ID",
+    "WECHAT_QR_FILE_NAME",
     "SITE_LOGIN_URL",
   ];
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
@@ -256,7 +283,7 @@ function onSheetEdit(e) {
     const range = e?.range;
     const sheet = range?.getSheet();
     const sheetName = sheet?.getName();
-    if (!["AccessRequests", "Users", "Submissions", "Evaluations"].includes(sheetName)) return;
+    if (!["AccessRequests", "Users", "Submissions", "Evaluations", "FullNameUpdates"].includes(sheetName)) return;
     if (range.getRow() === 1) return;
 
     const headers = SHEETS[sheetName] || [];
@@ -280,7 +307,7 @@ function handleRequestAccess_(payload) {
   const request = {
     request_id: requiredRequestId_(payload.request_id),
     email: requiredEmail_(payload.email),
-    full_name: requiredString_(payload.full_name, "Full name"),
+    full_name: requiredFullNameList_(payload.full_name),
     team_name: requiredString_(payload.team_name, "Team name"),
     affiliation: requiredString_(payload.affiliation, "Affiliation"),
     intended_use: requiredString_(payload.intended_use, "Intended use"),
@@ -290,6 +317,7 @@ function handleRequestAccess_(payload) {
 
   const activeUser = findActiveUser_(request.email);
   if (activeUser) {
+    request.full_name = activeUser.full_name || request.full_name;
     request.review_token = generateActionToken_();
     upsertAccessRequest_(request, "existing_token_sent", { body: "", attachments: [], attachment_names: "" });
     sendExistingTokenReminder_(activeUser, request);
@@ -681,7 +709,7 @@ function parseAccessRequest_(message) {
   return {
     request_id: requestId,
     email,
-    full_name: fields.full_name || "",
+    full_name: requiredFullNameList_(fields.full_name),
     team_name: fields.team_name || "",
     affiliation: fields.affiliation || "",
     intended_use: fields.intended_use || "",
@@ -948,6 +976,14 @@ function sendAdminDigest_(reason, context) {
     sent_to: admins.join(","),
     created_at: now_(),
   });
+}
+
+function sendAdminDigestBestEffort_(reason, context, where) {
+  try {
+    sendAdminDigest_(reason, context);
+  } catch (error) {
+    recordError_(where || "sendAdminDigestBestEffort", error);
+  }
 }
 
 function exportDigestWorkbook_() {
@@ -1422,8 +1458,314 @@ function approvedAccessEmailExtraHtml_(hasQrImage) {
   `;
 }
 
-function syncRequestedLabels_() {
-  rows_("AccessRequests").forEach((request) => {
+function sendFullNameUpdateTestInvite() {
+  initializeSheets();
+  const result = sendFullNameUpdateInvitesForEmails_([FULL_NAME_UPDATE_TEST_EMAIL], "test");
+  sendAdminDigestBestEffort_("full name update test invite", summarizeInviteResult_(result), "sendFullNameUpdateTestInvite.digest");
+  return result;
+}
+
+function sendFullNameUpdateInvitesNow() {
+  initializeSheets();
+  const emails = rows_("Users")
+    .filter((user) => String(user.token_status || "").toLowerCase() === "active")
+    .map((user) => normalizeEmail_(user.email))
+    .filter(Boolean);
+  const result = sendFullNameUpdateInvitesForEmails_(emails, "bulk");
+  sendAdminDigestBestEffort_("full name update invites", summarizeInviteResult_(result), "sendFullNameUpdateInvitesNow.digest");
+  return result;
+}
+
+function sendFullNameUpdateInvitesForEmails_(emails, source) {
+  const result = { ok: true, source, sent: [], skipped: [], failed: [] };
+  const seen = new Set();
+  (emails || []).forEach((rawEmail) => {
+    const email = normalizeEmail_(rawEmail);
+    if (!email || seen.has(email)) return;
+    seen.add(email);
+    try {
+      const user = findRow_("Users", "email", email);
+      if (!user) {
+        result.skipped.push({ email, reason: "user_not_found" });
+        return;
+      }
+      if (String(user.token_status || "").toLowerCase() !== "active") {
+        result.skipped.push({ email, reason: "token_not_active" });
+        return;
+      }
+      const record = upsertFullNameUpdate_(user, source);
+      if (String(record.token_status || "").toLowerCase() === "completed") {
+        result.skipped.push({ email, reason: "already_completed" });
+        return;
+      }
+      sendFullNameUpdateInvite_(record, user, source);
+      updateRow_("FullNameUpdates", record._rowNumber, {
+        invite_status: source === "test" ? "test_sent" : "sent",
+        invite_sent_at: now_(),
+        updated_at: now_(),
+      });
+      result.sent.push({ email, update_id: record.update_id, expires_at: record.expires_at });
+    } catch (error) {
+      result.failed.push({ email, error: String(error.message || error) });
+      recordError_("sendFullNameUpdateInvitesForEmails", error);
+    }
+  });
+  return result;
+}
+
+function summarizeInviteResult_(result) {
+  return {
+    source: result.source,
+    sent: result.sent.length,
+    skipped: result.skipped.length,
+    failed: result.failed.length,
+  };
+}
+
+function upsertFullNameUpdate_(user, source) {
+  const email = normalizeEmail_(user.email);
+  const existing = findRow_("FullNameUpdates", "email", email);
+  if (existing && String(existing.token_status || "").toLowerCase() === "completed") return existing;
+
+  const shouldReuse = existing && !isFullNameUpdateExpired_(existing);
+  const values = {
+    update_id: existing?.update_id || id_("fn"),
+    email,
+    token: shouldReuse ? existing.token : generateActionToken_(),
+    token_status: "pending",
+    current_full_name: user.full_name || existing?.current_full_name || "",
+    new_full_name: "",
+    invite_status: "pending",
+    invite_sent_at: shouldReuse ? (existing.invite_sent_at || "") : "",
+    expires_at: shouldReuse ? (existing.expires_at || fullNameUpdateExpiresAt_()) : fullNameUpdateExpiresAt_(),
+    completed_at: "",
+    updated_at: now_(),
+    source: source || existing?.source || "",
+    misc: "",
+  };
+  if (existing) updateRow_("FullNameUpdates", existing._rowNumber, values);
+  else appendRow_("FullNameUpdates", values);
+  return findRow_("FullNameUpdates", "email", email);
+}
+
+function sendFullNameUpdateInvite_(record, user, source) {
+  const url = fullNameUpdateUrl_(record);
+  const deadline = formatDateOnly_(record.expires_at);
+  const currentFullName = record.current_full_name || user.full_name || "";
+  const body = [
+    "Please confirm your RoboSynChallenge team full name record.",
+    "",
+    `Current full name: ${currentFullName}`,
+    "",
+    'Rules: use English commas "," to list every team member, include no more than 5 names, and submit only once.',
+    `Deadline: ${deadline}`,
+    "",
+    `Update link: ${url}`,
+    "",
+    "If you do not update this field before the deadline, the current full name will remain the official record.",
+  ].join("\n");
+  const htmlBody = htmlEmailShell_(
+    "Team full name confirmation",
+    `
+      <p>Please confirm your RoboSynChallenge team full name record.</p>
+      <table>${[
+        ["Email", user.email],
+        ["Current full name", currentFullName],
+        ["Deadline", deadline],
+      ].map(([key, value]) => `<tr><th>${escapeHtml_(key)}</th><td>${escapeHtml_(value)}</td></tr>`).join("")}</table>
+      <p><strong>Rules:</strong> use English commas <code>,</code> to list every team member, include no more than 5 names, and submit only once.</p>
+      <p>If you do not update this field before the deadline, the current full name will remain the official record.</p>
+      <div class="actions"><a class="primary" href="${escapeHtml_(url)}" target="_blank" rel="noreferrer">Update full name</a></div>
+    `
+  );
+  MailApp.sendEmail({
+    to: user.email,
+    subject: source === "test"
+      ? "RoboSynChallenge full name confirmation test"
+      : "RoboSynChallenge full name confirmation",
+    body,
+    htmlBody,
+  });
+}
+
+function handleFullNameUpdatePage_(params) {
+  const token = String(params?.token || "").trim();
+  const record = findFullNameUpdateByToken_(token);
+  if (!record) {
+    return fullNameUpdateClosedPage_("Full name update unavailable", "This update link is invalid.", null);
+  }
+  if (String(record.token_status || "").toLowerCase() === "completed") {
+    return fullNameUpdateClosedPage_("Full name already updated", "This full name update link has already been used.", record);
+  }
+  if (isFullNameUpdateExpired_(record)) {
+    markFullNameUpdateExpired_(record);
+    return fullNameUpdateClosedPage_("Full name update expired", "This full name update link has expired.", record);
+  }
+  return fullNameUpdateFormPage_(record, record.current_full_name || "", "");
+}
+
+function handleFullNameUpdateSubmit_(payload) {
+  const token = String(payload.token || "").trim();
+  const record = findFullNameUpdateByToken_(token);
+  if (!record) {
+    return fullNameUpdateClosedPage_("Full name update unavailable", "This update link is invalid.", null);
+  }
+  if (String(record.token_status || "").toLowerCase() === "completed") {
+    return fullNameUpdateClosedPage_("Full name already updated", "This full name update link has already been used.", record);
+  }
+  if (isFullNameUpdateExpired_(record)) {
+    markFullNameUpdateExpired_(record);
+    return fullNameUpdateClosedPage_("Full name update expired", "This full name update link has expired.", record);
+  }
+
+  const submittedFullName = String(payload.full_name || "");
+  let fullName;
+  try {
+    fullName = requiredFullNameList_(submittedFullName);
+  } catch (error) {
+    return fullNameUpdateFormPage_(record, submittedFullName, String(error.message || error));
+  }
+
+  const email = normalizeEmail_(record.email);
+  const user = findRow_("Users", "email", email);
+  if (!user || String(user.token_status || "").toLowerCase() !== "active") {
+    return fullNameUpdateClosedPage_("Full name update unavailable", "This update link no longer points to an active participant account.", record);
+  }
+
+  const updatedAt = now_();
+  updateRow_("Users", user._rowNumber, {
+    full_name: fullName,
+    updated_at: updatedAt,
+  });
+  updateAccessRequestsFullName_(email, fullName, updatedAt);
+  updateRow_("FullNameUpdates", record._rowNumber, {
+    token_status: "completed",
+    new_full_name: fullName,
+    completed_at: updatedAt,
+    updated_at: updatedAt,
+    misc: "participant submitted full_name only",
+  });
+  sendAdminDigestBestEffort_("full name updated", {
+    email,
+    update_id: record.update_id,
+  }, "handleFullNameUpdateSubmit.digest");
+
+  return html_(
+    "Full name updated",
+    `
+      <div class="notice">
+        <strong>Your team full name has been updated.</strong>
+      </div>
+      <table class="detail-table">${[
+        ["Email", email],
+        ["Previous full name", record.current_full_name || user.full_name || ""],
+        ["Updated full name", fullName],
+        ["Submitted at", updatedAt],
+      ].map(([key, value]) => `<tr><th>${escapeHtml_(key)}</th><td>${escapeHtml_(value)}</td></tr>`).join("")}</table>
+    `
+  );
+}
+
+function fullNameUpdateFormPage_(record, value, errorMessage) {
+  const email = normalizeEmail_(record.email);
+  const user = findRow_("Users", "email", email);
+  const currentFullName = record.current_full_name || user?.full_name || "";
+  const inputValue = value || currentFullName;
+  return html_(
+    "Update team full name",
+    `
+      <div class="notice">
+        <strong>Use English commas to list every team member, with no more than 5 names. This update can be submitted once only.</strong>
+        <br>If you do not submit before ${escapeHtml_(formatDateOnly_(record.expires_at))}, the current full name will remain the official record.
+      </div>
+      ${errorMessage ? `<div class="notice" style="border-color:#f4b4a0;background:#fff3ef;color:#a33a1f"><strong>${escapeHtml_(errorMessage)}</strong></div>` : ""}
+      <table class="detail-table">${[
+        ["Email", email],
+        ["Current full name", currentFullName],
+        ["Deadline", formatDateOnly_(record.expires_at)],
+      ].map(([key, rowValue]) => `<tr><th>${escapeHtml_(key)}</th><td>${escapeHtml_(rowValue)}</td></tr>`).join("")}</table>
+      <form method="post" action="${escapeHtml_(getWebAppUrl_())}">
+        <input type="hidden" name="action" value="update_full_name">
+        <input type="hidden" name="token" value="${escapeHtml_(record.token)}">
+        <label>Full name</label>
+        <input name="full_name" value="${escapeHtml_(inputValue)}" placeholder="Name A, Name B" required>
+        <div class="action-row">
+          <button type="submit">Submit update</button>
+        </div>
+      </form>
+    `
+  );
+}
+
+function fullNameUpdateClosedPage_(title, message, record) {
+  return html_(
+    title,
+    `
+      <div class="notice"><strong>${escapeHtml_(message)}</strong></div>
+      ${record ? `<table class="detail-table">${[
+        ["Email", normalizeEmail_(record.email)],
+        ["Current full name", record.current_full_name || "-"],
+        ["New full name", record.new_full_name || "-"],
+        ["Status", record.token_status || "-"],
+        ["Deadline", record.expires_at ? formatDateOnly_(record.expires_at) : "-"],
+      ].map(([key, value]) => `<tr><th>${escapeHtml_(key)}</th><td>${escapeHtml_(value)}</td></tr>`).join("")}</table>` : ""}
+    `
+  );
+}
+
+function findFullNameUpdateByToken_(token) {
+  const normalized = String(token || "").trim();
+  if (!normalized) return null;
+  return findRow_("FullNameUpdates", "token", normalized);
+}
+
+function fullNameUpdateUrl_(record) {
+  return `${getWebAppUrl_()}?rsc_action=full_name_update&token=${encodeURIComponent(record.token)}`;
+}
+
+function fullNameUpdateExpiresAt_() {
+  return new Date(Date.now() + FULL_NAME_UPDATE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function isFullNameUpdateExpired_(record) {
+  const expiresAt = new Date(record.expires_at).getTime();
+  return !Number.isFinite(expiresAt) || expiresAt <= Date.now();
+}
+
+function markFullNameUpdateExpired_(record) {
+  if (String(record.token_status || "").toLowerCase() !== "pending") return;
+  updateRow_("FullNameUpdates", record._rowNumber, {
+    token_status: "expired",
+    updated_at: now_(),
+  });
+}
+
+function updateAccessRequestsFullName_(email, fullName, updatedAt) {
+  rows_("AccessRequests")
+    .filter((request) => normalizeEmail_(request.email) === normalizeEmail_(email))
+    .forEach((request) => {
+      updateRow_("AccessRequests", request._rowNumber, {
+        full_name: fullName,
+        updated_at: updatedAt,
+      });
+    });
+}
+
+function formatDateOnly_(value) {
+  try {
+    return Utilities.formatDate(new Date(value), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  } catch (error) {
+    return String(value || "");
+  }
+}
+
+function syncRequestedLabels_(options = {}) {
+  const onlyPending = options.onlyPending !== false;
+  const limit = Math.max(0, Number(options.limit || 0));
+  let requests = rows_("AccessRequests");
+  if (onlyPending) requests = requests.filter(isAccessRequestPending_);
+  if (limit > 0) requests = requests.slice(0, limit);
+  requests.forEach((request) => {
     try {
       syncRequestedLabelForRequest_(request);
     } catch (error) {
@@ -1520,8 +1862,9 @@ function manualIssueAccessToken() {
     ui.alert(`This email already has an active token:\n\n${existing.token}`);
     return;
   }
-  const fullName = promptRequired_(ui, "Full name");
-  if (fullName === null) return;
+  const fullNameInput = promptRequired_(ui, "Full name");
+  if (fullNameInput === null) return;
+  const fullName = requiredFullNameList_(fullNameInput);
   const teamName = promptRequired_(ui, "Team name");
   if (teamName === null) return;
   const affiliation = promptRequired_(ui, "Affiliation");
@@ -1565,7 +1908,7 @@ function resetTestData() {
   const ui = SpreadsheetApp.getUi();
   const response = ui.prompt(
     "Reset test data",
-    "This will clear AccessRequests, Users, Sessions, Submissions, and Evaluations after sending a full workbook backup to ADMIN_EMAILS. Type RESET to continue.",
+    "This will clear AccessRequests, Users, Sessions, Submissions, Evaluations, and FullNameUpdates after sending a full workbook backup to ADMIN_EMAILS. Type RESET to continue.",
     ui.ButtonSet.OK_CANCEL
   );
   if (response.getSelectedButton() !== ui.Button.OK) return;
@@ -1596,9 +1939,9 @@ function resetTestData() {
   });
 
   deleteResetDrafts_(accessRows, evaluationRows);
-  ["AccessRequests", "Users", "Sessions", "Submissions", "Evaluations"].forEach(clearSheetData_);
+  ["AccessRequests", "Users", "Sessions", "Submissions", "Evaluations", "FullNameUpdates"].forEach(clearSheetData_);
   SpreadsheetApp.flush();
-  ui.alert("Test data reset complete. Business data and sessions were cleared; Errors and DigestLog were kept.");
+  ui.alert("Test data reset complete. Business data, sessions, and full name update records were cleared; Errors and DigestLog were kept.");
 }
 
 function deleteResetDrafts_(accessRows, evaluationRows) {
@@ -1719,14 +2062,30 @@ function siteLoginUrl_() {
 }
 
 function wechatQrBlob_() {
+  const fileName = config_("WECHAT_QR_FILE_NAME", DEFAULT_WECHAT_QR_FILE_NAME);
   const fileId = config_("WECHAT_QR_FILE_ID", "");
-  if (!fileId) return null;
   try {
-    return DriveApp.getFileById(fileId).getBlob().setName("RoboSynChallenge-WeChat-QR.png");
+    if (fileName) {
+      const fileByName = latestDriveFileByName_(fileName);
+      if (fileByName) return fileByName.getBlob().setName("RoboSynChallenge-WeChat-QR.png");
+      throw new Error(`Drive file not found by name: ${fileName}`);
+    }
+    if (fileId) return DriveApp.getFileById(fileId).getBlob().setName("RoboSynChallenge-WeChat-QR.png");
+    return null;
   } catch (error) {
     recordError_("wechatQrBlob", error);
     return null;
   }
+}
+
+function latestDriveFileByName_(fileName) {
+  const files = DriveApp.getFilesByName(String(fileName || "").trim());
+  let latest = null;
+  while (files.hasNext()) {
+    const file = files.next();
+    if (!latest || file.getLastUpdated().getTime() > latest.getLastUpdated().getTime()) latest = file;
+  }
+  return latest;
 }
 
 function wechatQrInlineImages_() {
@@ -1826,6 +2185,24 @@ function requiredEmail_(value) {
   return email;
 }
 
+function requiredFullNameList_(value) {
+  const text = requiredString_(value, "Full name");
+  if (/[，；;]/.test(text)) {
+    throw new Error('Full name must use English commas "," to separate team member names.');
+  }
+  const names = text.split(",").map((item) => item.trim().replace(/\s+/g, " "));
+  if (names.some((name) => !name)) {
+    throw new Error("Full name cannot contain empty comma-separated entries.");
+  }
+  if (names.length > 5) {
+    throw new Error("Full name can list at most 5 team members.");
+  }
+  if (names.some((name) => name.length > 120)) {
+    throw new Error("Each team member name must be 120 characters or fewer.");
+  }
+  return names.join(", ");
+}
+
 function requiredString_(value, label) {
   const text = String(value || "").trim();
   if (!text) throw new Error(`${label} is required.`);
@@ -1878,23 +2255,52 @@ function escapeHtml_(value) {
 
 function recordError_(where, error) {
   try {
+    const message = String(error.message || error);
     appendRow_("Errors", {
       id: id_("err"),
       where,
-      message: String(error.message || error),
+      message,
       stack: String(error.stack || ""),
       created_at: now_(),
     });
     const admins = config_("ADMIN_EMAILS", "").split(",").map((item) => item.trim()).filter(Boolean);
-    if (admins.length) {
+    if (admins.length && shouldSendErrorEmail_(where, message)) {
       MailApp.sendEmail({
         to: admins.join(","),
         subject: `RoboSynChallenge backend error - ${where}`,
-        body: `后端处理失败。\n\n位置：${where}\n错误：${String(error.message || error)}`,
-        htmlBody: `<p>后端处理失败。</p><p><strong>位置：</strong>${escapeHtml_(where)}</p><p><strong>错误：</strong>${escapeHtml_(error.message || error)}</p>`,
+        body: `后端处理失败。\n\n位置：${where}\n错误：${message}\n\n同类错误邮件已限流；完整记录请查看 Errors 表。`,
+        htmlBody: `<p>后端处理失败。</p><p><strong>位置：</strong>${escapeHtml_(where)}</p><p><strong>错误：</strong>${escapeHtml_(message)}</p><p>同类错误邮件已限流；完整记录请查看 Errors 表。</p>`,
       });
     }
   } catch (nested) {
     console.error(nested);
   }
+}
+
+function shouldSendErrorEmail_(where, message) {
+  try {
+    const isGmailQuota = isGmailQuotaError_(message);
+    const throttleSeconds = isGmailQuota
+      ? GMAIL_QUOTA_ERROR_EMAIL_THROTTLE_SECONDS
+      : ERROR_EMAIL_THROTTLE_SECONDS;
+    const cacheKey = isGmailQuota
+      ? "error_email:gmail_quota"
+      : `error_email:${hashText_(`${where}:${message}`)}`;
+    const cache = CacheService.getScriptCache();
+    if (cache.get(cacheKey)) return false;
+    cache.put(cacheKey, "1", throttleSeconds);
+    return true;
+  } catch (nested) {
+    return true;
+  }
+}
+
+function isGmailQuotaError_(message) {
+  return /Service invoked too many times for one day:\s*gmail/i.test(String(message || ""));
+}
+
+function hashText_(value) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(value || ""))
+    .map((byte) => ((byte + 256) % 256).toString(16).padStart(2, "0"))
+    .join("");
 }

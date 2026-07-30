@@ -281,6 +281,25 @@
       .replaceAll("'", "&#39;");
   }
 
+  function normalizeFullNameList(value) {
+    const text = String(value || "").trim();
+    if (!text) throw new Error("Full name is required.");
+    if (/[，；;]/.test(text)) {
+      throw new Error('Use English commas "," to separate team member names.');
+    }
+    const names = text.split(",").map((item) => item.trim().replace(/\s+/g, " "));
+    if (names.some((name) => !name)) {
+      throw new Error("Full name cannot contain empty comma-separated entries.");
+    }
+    if (names.length > 5) {
+      throw new Error("Full name can list at most 5 team members.");
+    }
+    if (names.some((name) => name.length > 120)) {
+      throw new Error("Each team member name must be 120 characters or fewer.");
+    }
+    return names.join(", ");
+  }
+
   function nowIso() {
     return new Date().toISOString();
   }
@@ -1145,7 +1164,8 @@
           ${backendConfigured() ? "" : `<p class="construction-note">Backend API is not configured yet. Please contact the organizers.</p>`}
           <div class="task-list">
             <span><strong>Request id:</strong> <span data-register-request-id>${escapeHtml(requestId)}</span></span>
-            <span><strong>Required fields:</strong> email, full name, team name, affiliation, and intended use</span>
+            <span><strong>Required fields:</strong> email, full name list, team name, affiliation, and intended use</span>
+            <span><strong>Full name rule:</strong> use English commas to list every team member, max 5 names, final after registration</span>
             <span><strong>Organizer action:</strong> approved requests receive an access-token email after review</span>
           </div>
           <form class="panel-stack compact" data-form="register">
@@ -1155,8 +1175,9 @@
               <input type="email" name="email" placeholder="participant@example.org" required>
             </label>
             <label class="field">
-              <span>Full name</span>
-              <input type="text" name="full_name" placeholder="Full name" required>
+              <span><strong>Full name</strong></span>
+              <input type="text" name="full_name" placeholder="Name A, Name B" required>
+              <p class="field-note"><strong>Use English commas to list every team member, max 5 names. This field is final after registration.</strong></p>
             </label>
             <label class="field">
               <span>Team name</span>
@@ -1989,15 +2010,25 @@
     const formData = new FormData(form);
     const requestId = String(formData.get("request_id") || accessRequestId()).trim();
     const email = String(formData.get("email") || "").trim().toLowerCase();
-    const fullName = String(formData.get("full_name") || "").trim();
+    const fullNameInput = String(formData.get("full_name") || "").trim();
     const teamName = String(formData.get("team_name") || "").trim();
     const affiliation = String(formData.get("affiliation") || "").trim();
     const intendedUse = String(formData.get("intended_use") || "").trim();
     const misc = String(formData.get("misc") || "").trim();
 
-    if (!email || !fullName || !teamName || !affiliation || !intendedUse) {
+    if (!email || !fullNameInput || !teamName || !affiliation || !intendedUse) {
       pushFlash("error", "Email, full name, team name, affiliation, and intended use are required.");
       setStatus("error", "Email, full name, team name, affiliation, and intended use are required.");
+      return;
+    }
+
+    let fullName;
+    try {
+      fullName = normalizeFullNameList(fullNameInput);
+    } catch (error) {
+      const message = error.message || "Full name is invalid.";
+      pushFlash("error", message);
+      setStatus("error", message);
       return;
     }
 

@@ -153,6 +153,7 @@ Users
 Sessions
 Submissions
 Evaluations
+FullNameUpdates
 DigestLog
 Errors
 ```
@@ -201,7 +202,7 @@ WECHAT_QR_FILE_ID=1AbCdEfGhIjKlMnOpQrStUvWxYz
 2. 点击 **Run** / **运行**。
 3. 它会安装两个触发器：
 
-- 每 10 分钟运行一次 `processLabeledRequests`，处理 Gmail 审核 label。
+- 每 3 小时运行一次 `processLabeledRequests`，处理 Gmail 审核 label。
 - Sheet 被编辑时运行 `onSheetEdit`，发送中文 digest，并在 `Users.token_action` 被编辑时立即处理 revoke/regenerate。
 
 如果只想手动处理，也可以不安装触发器，每次在 Apps Script 里手动运行 `processLabeledRequests`。
@@ -264,6 +265,7 @@ login
 my_submissions
 submit_policy
 leaderboard
+update_full_name
 ```
 
 其中 `request_access` 的 payload 是：
@@ -277,6 +279,8 @@ affiliation
 intended_use
 misc
 ```
+
+`full_name` 是参赛队伍成员名单，必须使用英文逗号 `,` 分隔，最多 5 个名字，不能有空项。审批通过后这项视为最终记录；已获批用户只能通过后端生成的一次性 full name update 链接在有效期内修改一次。
 
 ## 参赛者申请流程
 
@@ -292,6 +296,13 @@ intended_use
 misc（可选）
 ```
 
+`full_name` 填写规则：
+
+- 用英文逗号 `,` 分隔所有参赛成员姓名，例如 `Alice Zhang, Bob Li`。
+- 最多 5 个成员。
+- 不允许空项，例如 `Alice, , Bob` 会被拒绝。
+- 该字段在注册后不可随意更改；获批旧用户只有一次两周有效的更新链接。
+
 3. 点击 **Send request**。
 4. 网站会把表单提交到 Apps Script Web App。
 5. Apps Script 会写入 `AccessRequests` tab，并给 `robosynchallenge@gmail.com` 发送一封审核邮件。
@@ -306,14 +317,23 @@ RSC-REQ-2026-ABC123
 ```text
 request_id: RSC-REQ-2026-ABC123
 email: participant@example.com
-full_name: Participant Name
+full_name: Alice Zhang, Bob Li
 team_name: Team Name
 affiliation: University or Company
 intended_use: Brief intended use
 misc: Optional extra information
 ```
 
-后端会严格检查字段。缺少 `email`、`full_name`、`team_name`、`affiliation` 或 `intended_use` 时不会进入审核流程，会在网页上返回错误，并在 `Errors` tab 里记录异常。
+后端会严格检查字段。缺少 `email`、`full_name`、`team_name`、`affiliation` 或 `intended_use`，或者 `full_name` 不符合英文逗号分隔、最多 5 人、无空项规则时，不会进入审核流程，会在网页上返回错误，并在 `Errors` tab 里记录异常。
+
+### Full name 更新流程
+
+旧的 approved 用户需要确认 `full_name` 时，管理员可在后端 Sheet 菜单运行：
+
+- `Send full name update test`：只发给 `224040356@link.cuhk.edu.cn` 做测试。
+- `Send full name update invites`：发给所有 `Users.token_status=active` 的用户。
+
+脚本会在 `FullNameUpdates` tab 中记录每个邮箱的一次性 token、邀请发送状态、两周截止日期、是否完成、提交的新 `full_name`。参赛者点击邮件中的链接后，只能提交 `full_name` 一个字段；成功后脚本只更新同邮箱的 `Users.full_name` 和 `AccessRequests.full_name`，其他后端字段不受影响。链接过期或已提交后不能再次使用。
 
 ## 审核者审批流程
 
@@ -375,7 +395,7 @@ draft 正文会作为审核者额外文字进入默认模板。draft 附件总�
 
 新注册申请提交后，脚本会尽量把对应 Gmail thread 打上 `RSC Requested`。这个 label 表示“还没有给参赛者发送 approval/rejection 通知”。通知真正发出后，脚本会自动移除 `RSC Requested`，并加上 `RSC Approved` 或 `RSC Rejected`。
 
-如果刚收到邮件时 label 没立刻出现，手动运行一次 `processLabeledRequests`，或等待 10 分钟触发器同步即可。
+如果刚收到邮件时 label 没立刻出现，手动运行一次 `processLabeledRequests`，或等待 3 小时触发器同步即可。
 
 ### 重复申请同一邮箱
 
@@ -487,6 +507,7 @@ Users
 Sessions
 Submissions
 Evaluations
+FullNameUpdates
 ```
 
 8. `Errors` 和 `DigestLog` 会保留。
