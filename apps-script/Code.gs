@@ -14,6 +14,7 @@
  * - WEB_APP_URL: optional deployed Web App URL for action buttons.
  * - WECHAT_QR_FILE_ID: optional Google Drive file id for the internal WeChat QR code image.
  * - WECHAT_QR_FILE_NAME: optional Google Drive filename for the internal WeChat QR code image.
+ * - DISCORD_INVITE_URL: optional Discord invite URL included in access-token emails.
  */
 
 const SHEETS = {
@@ -124,6 +125,7 @@ const REQUESTED_LABEL_SYNC_LIMIT = 20;
 const ERROR_EMAIL_THROTTLE_SECONDS = 60 * 60;
 const GMAIL_QUOTA_ERROR_EMAIL_THROTTLE_SECONDS = 6 * 60 * 60;
 const DEFAULT_WECHAT_QR_FILE_NAME = "RCS_wechat_QRcode_test.jpg";
+const DEFAULT_DISCORD_INVITE_URL = "https://discord.gg/3DfJu5HTS";
 const FULL_NAME_UPDATE_DAYS = 14;
 const FULL_NAME_UPDATE_TEST_EMAIL = "224040356@link.cuhk.edu.cn";
 
@@ -231,11 +233,25 @@ function processTokenActions() {
           updated_at: now_(),
         });
         revokeSessions_(user.email);
+        const inlineImages = wechatQrInlineImages_();
+        const body = approvedAccessEmailText_([
+          "Your RoboSynChallenge access token was regenerated.",
+          "",
+          `Access token: ${token}`,
+        ].join("\n"));
         MailApp.sendEmail({
           to: user.email,
           subject: "RoboSynChallenge access token regenerated",
-          body: `Your RoboSynChallenge access token was regenerated.\n\n${token}`,
-          htmlBody: `<p>Your RoboSynChallenge access token was regenerated.</p><p><code>${escapeHtml_(token)}</code></p>`,
+          body,
+          htmlBody: htmlEmailShell_(
+            "Access token regenerated",
+            `
+              <p>Your RoboSynChallenge access token was regenerated.</p>
+              <p><code>${escapeHtml_(token)}</code></p>
+              ${approvedAccessEmailExtraHtml_(Boolean(inlineImages.wechatQr))}
+            `
+          ),
+          inlineImages,
         });
         sendAdminDigest_("token regenerated", { email: user.email });
       }
@@ -264,6 +280,7 @@ function setProductionProperties(settings) {
     "WECHAT_QR_FILE_ID",
     "WECHAT_QR_FILE_NAME",
     "SITE_LOGIN_URL",
+    "DISCORD_INVITE_URL",
   ];
   if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
     throw new Error("settings must be an object.");
@@ -1246,6 +1263,8 @@ function defaultAccessNotificationMessage_(request, decision) {
       "",
       `Login here to test your access token: ${siteLoginUrl_()}`,
       "",
+      `Join the RoboSynChallenge Discord: ${discordInviteUrl_()}`,
+      "",
       "This is the internal WeChat QR code for your approved team. Please do not forward it or share it with others.",
       request.reviewer_notes ? `\nOrganizer note:\n${request.reviewer_notes}` : "",
     ].join("\n");
@@ -1439,20 +1458,27 @@ function sendExistingTokenReminder_(user, request) {
 }
 
 function approvedAccessEmailText_(message) {
+  const baseText = String(message || "").trim();
   const loginUrl = siteLoginUrl_();
-  const lines = [String(message || "").trim()];
-  if (!lines[0].includes(loginUrl)) {
+  const discordUrl = discordInviteUrl_();
+  const lines = [baseText];
+  if (!baseText.includes(loginUrl)) {
     lines.push("", `Login here to test your access token: ${loginUrl}`);
   }
-  if (!/WeChat QR code/i.test(lines[0])) {
+  if (discordUrl && !baseText.includes(discordUrl)) {
+    lines.push("", `Join the RoboSynChallenge Discord: ${discordUrl}`);
+  }
+  if (!/WeChat QR code/i.test(baseText)) {
     lines.push("", "This is the internal WeChat QR code for approved participants. Please do not forward it or share it with others.");
   }
   return lines.join("\n");
 }
 
 function approvedAccessEmailExtraHtml_(hasQrImage) {
+  const discordUrl = discordInviteUrl_();
   return `
     <p class="muted"><a class="login-link" href="${escapeHtml_(siteLoginUrl_())}" target="_blank" rel="noreferrer">Sign in to test your access token</a></p>
+    ${discordUrl ? `<p class="muted"><a class="login-link" href="${escapeHtml_(discordUrl)}" target="_blank" rel="noreferrer">Join the RoboSynChallenge Discord</a></p>` : ""}
     <p class="warning"><strong>This is the internal WeChat QR code.</strong> It is for approved participants only. Do not forward or share it.</p>
     ${hasQrImage ? '<p><img src="cid:wechatQr" alt="RoboSynChallenge internal WeChat QR code" style="display:block;max-width:320px;width:100%;height:auto;border:1px solid #e3ddd2;border-radius:10px"></p>' : ""}
   `;
@@ -2059,6 +2085,10 @@ function getWebAppUrl_() {
 
 function siteLoginUrl_() {
   return config_("SITE_LOGIN_URL", "https://robosyn-bench.net/#/login");
+}
+
+function discordInviteUrl_() {
+  return config_("DISCORD_INVITE_URL", DEFAULT_DISCORD_INVITE_URL);
 }
 
 function wechatQrBlob_() {

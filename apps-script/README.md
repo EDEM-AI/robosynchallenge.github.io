@@ -26,6 +26,7 @@ CONTACT_EMAIL=robosynchallenge@gmail.com
 WEB_APP_URL=https://script.google.com/macros/s/AKfycbwg9Ee-ZK9eNiMeJGsjzjxF8D6TFMlcuqclrHrVi8-AKHHhP_rYk-FVLZ-3lRSWs-HIXQ/exec
 WECHAT_QR_FILE_ID=<可选，内部微信群二维码图片的 Google Drive file id>
 SITE_LOGIN_URL=https://robosyn-bench.net/#/login
+DISCORD_INVITE_URL=https://discord.gg/3DfJu5HTS
 API_BASE_URL=https://script.google.com/macros/s/AKfycbwg9Ee-ZK9eNiMeJGsjzjxF8D6TFMlcuqclrHrVi8-AKHHhP_rYk-FVLZ-3lRSWs-HIXQ/exec
 ```
 
@@ -122,6 +123,9 @@ Value: <微信群二维码图片的 Google Drive file id>
 
 Property: SITE_LOGIN_URL
 Value: https://robosyn-bench.net/#/login
+
+Property: DISCORD_INVITE_URL
+Value: https://discord.gg/3DfJu5HTS
 ```
 
 说明：
@@ -138,6 +142,7 @@ Value: https://robosyn-bench.net/#/login
 - `WEB_APP_URL`：当前 Apps Script Web App URL。注册审核邮件里的 Approve / Deny 按钮需要它。
 - `WECHAT_QR_FILE_ID`：可选。审批通过邮件会把这个 Google Drive 图片文件作为内部微信群二维码直接显示在邮件正文中。
 - `SITE_LOGIN_URL`：可选。approval / token reminder 邮件里的登录测试链接；默认是 `https://robosyn-bench.net/#/login`。
+- `DISCORD_INVITE_URL`：可选。approval / token reminder / token regenerated 邮件里的 Discord 邀请链接；默认是 `https://discord.gg/3DfJu5HTS`。
 
 ## 初始化 Sheet 和 Gmail Labels
 
@@ -349,7 +354,7 @@ misc: Optional extra information
 6. 页面底部有 **Open Gmail Drafts** 和 **Send now** 两个按钮：前者打开 Gmail 草稿箱查看已准备的 draft，后者发送当前页面中编辑好的邮件正文。
 7. 如果 30 分钟内没有通过页面发送，后台触发器会自动发送默认 approval 模板。
 8. 通知真正发送成功后，脚本才会把 token 写入 `Users` 并激活登录，同时发送中文 digest + 精简 XLSX。
-9. 默认 approval 邮件包含 access token、登录测试链接；如果配置了 `WECHAT_QR_FILE_ID`，还会在邮件正文中直接显示内部微信群二维码，并提醒不要转发。
+9. 默认 approval 邮件包含 access token、登录测试链接和 Discord 邀请链接；如果配置了 `WECHAT_QR_FILE_ID`，还会在邮件正文中直接显示内部微信群二维码，并提醒不要转发。
 
 也可以继续用 Gmail label 作为 fallback：给原始申请邮件 thread 打 label `RSC Approved`。这种情况下也会进入 30 分钟 pending；若无人手动发送，后台会发送默认 approval 模板。
 
@@ -368,7 +373,7 @@ draft 正文会作为审核者额外文字进入默认模板。draft 附件总�
 - `AccessRequests` tab 写入申请记录。
 - `Users` tab 在通知发出后创建或更新用户。
 - 生成强随机 access token；发送前只在 `AccessRequests` 中标记为 `pending`，发送后才变为 `active`。
-- 参赛者收到 approval 邮件、token、登录测试链接，以及可选的邮件正文内嵌微信群二维码。
+- 参赛者收到 approval 邮件、token、登录测试链接、Discord 邀请链接，以及可选的邮件正文内嵌微信群二维码。
 - `781785786@qq.com` 收到中文管理汇总邮件和精简 XLSX 附件。
 - 原 Gmail thread 从 `RSC Requested` 移出，并打上 `RSC Approved` 和 `RSC Processed`。
 
