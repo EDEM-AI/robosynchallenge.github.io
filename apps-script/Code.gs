@@ -1413,7 +1413,10 @@ function finalizeAccessNotification_(request, decision) {
 
 function injectAccessToken_(message, token) {
   const text = String(message || "");
-  if (text.includes("{{ACCESS_TOKEN}}")) return text.replace(/\{\{ACCESS_TOKEN\}\}/g, token);
+  const tokenized = text
+    .replace(/\{\{ACCESS_TOKEN\}\}/g, token)
+    .replace(/\bRSC-[A-F0-9]{32}\b/g, token);
+  if (tokenized !== text) return tokenized;
   if (/^Access token\s*:/im.test(text)) return text.replace(/^Access token\s*:\s*.*$/gim, `Access token: ${token}`);
   return `${text}\n\nAccess token: ${token}`;
 }
