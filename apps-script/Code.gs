@@ -1414,7 +1414,7 @@ function finalizeAccessNotification_(request, decision) {
 function injectAccessToken_(message, token) {
   const text = String(message || "");
   if (text.includes("{{ACCESS_TOKEN}}")) return text.replace(/\{\{ACCESS_TOKEN\}\}/g, token);
-  if (/access token\s*:/i.test(text)) return text;
+  if (/^Access token\s*:/im.test(text)) return text.replace(/^Access token\s*:\s*.*$/gim, `Access token: ${token}`);
   return `${text}\n\nAccess token: ${token}`;
 }
 
