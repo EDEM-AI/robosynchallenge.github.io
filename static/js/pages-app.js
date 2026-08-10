@@ -223,6 +223,53 @@
     "Unseen positions on a predefined 3 x 3 grid",
   ];
 
+  const FAQ_ITEMS = [
+    {
+      question: "How is the leaderboard ranked?",
+      answer: `
+        <p>The overall score is:</p>
+        <div class="faq-formula" role="note">
+          Overall Score = 75% Success Rate + 20% Action Efficiency + 5% Inference Efficiency
+        </div>
+        <p>Success Rate is the percentage of successful official episodes. Action Efficiency is calculated for every episode as:</p>
+        <div class="faq-formula" role="note">Episode Action Efficiency = (1 − Used Action Steps / H) × 100</div>
+        <p><em>H</em> is the maximum number of steps for that task. Inference Efficiency is measured on a single NVIDIA RTX 5090 and calculated as:</p>
+        <div class="faq-formula" role="note">Episode Inference Efficiency = max(0, 1 − Measured Inference Time / T) × 100</div>
+        <p><em>T</em> is the inference-time limit for that task. Task limits and the final timing protocol will be announced before evaluation.</p>
+      `,
+    },
+    {
+      question: "Is ranking based mainly on Success Rate, and is the official evaluation identical to the public code?",
+      answer: `
+        <p>Success Rate has the largest weight at 75%. The official evaluation uses private hold-out test parameters that are not published. They differ from the public parameters but follow a similar in-distribution setting. Please do not overfit the public test parameters.</p>
+      `,
+    },
+    {
+      question: "Are action steps and inference time calculated only from successful episodes?",
+      answer: `
+        <p>No. Both are averaged over all episodes. A failed episode is assigned the maximum number of steps for that task. Its Action Efficiency is therefore zero. Inference time includes all policy calls in all episodes.</p>
+      `,
+    },
+    {
+      question: "Can participants use depth data, camera intrinsics, or point clouds as model inputs?",
+      answer: `
+        <p>No. Official evaluation provides RGB images only, without depth data, camera intrinsics, or point clouds. Participants may estimate depth or 3D information from a single RGB image using their own models.</p>
+      `,
+    },
+    {
+      question: "Do the organizers provide tools for generating depth data?",
+      answer: `
+        <p>Yes. We provide data-collection examples and scripts for generating simulated training data with depth information. This data may be used for training, but official evaluation remains RGB-only.</p>
+      `,
+    },
+    {
+      question: "How many times may a team submit, and what is the deadline?",
+      answer: `
+        <p>Teams may submit multiple times before <strong>October 11, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
+      `,
+    },
+  ];
+
   const BASELINE_SEEDS = BENCHMARK_SUMMARY.map((item) => ({
     model_name: item.model_name,
     username_display: "Official Baseline",
@@ -803,6 +850,7 @@
       ["home", "Home"],
       ["data", "Data"],
       ["evaluation", "Evaluation"],
+      ["faq", "FAQ"],
       ["leaderboard", "Leaderboard"],
     ];
 
@@ -1321,6 +1369,32 @@
     `;
   }
 
+  function renderFaqPage() {
+    return `
+      <section class="page-hero shell faq-hero">
+        <span class="eyebrow">FAQ</span>
+        <h1>Competition questions, answered.</h1>
+        <p class="lead narrow">
+          Official guidance on ranking, evaluation, observation inputs, and model submission.
+        </p>
+      </section>
+
+      <section class="section shell faq-section" aria-label="Frequently asked questions">
+        <div class="faq-list">
+          ${FAQ_ITEMS.map((item, index) => `
+            <article class="faq-item">
+              <div class="faq-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</div>
+              <div class="faq-content">
+                <h2><span>Q:</span> ${escapeHtml(item.question)}</h2>
+                <div class="faq-answer"><strong>A:</strong><div>${item.answer}</div></div>
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderDashboardPage() {
     const user = currentUser();
     if (!user) {
@@ -1815,6 +1889,7 @@
     if (route === "login") return { name: "login" };
     if (route === "register") return { name: "register" };
     if (route === "evaluation") return { name: "evaluation" };
+    if (route === "faq") return { name: "faq" };
     if (route === "dashboard") return { name: "dashboard" };
     if (route === "leaderboard") return { name: "leaderboard" };
     if (route === "admin") return { name: "admin" };
@@ -1841,6 +1916,9 @@
         break;
       case "evaluation":
         renderSection(renderEvaluationPage(), "Evaluation");
+        break;
+      case "faq":
+        renderSection(renderFaqPage(), "FAQ");
         break;
       case "dashboard":
         renderSection(renderDashboardPage(), "Dashboard");
