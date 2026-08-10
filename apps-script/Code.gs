@@ -544,7 +544,7 @@ function stageAccessDecision_(request, decision, draftPayload) {
   const normalizedDecision = normalizeDecision_(decision);
   if (String(existing?.notification_status || "") === "sent") return existing;
   const token = normalizedDecision === "approved"
-    ? (existing?.token || request.token || generateToken_())
+    ? accessTokenForRequest_(request, existing)
     : "";
   const defaultSubject = defaultAccessNotificationSubject_(request, normalizedDecision);
   updateAccessRequest_(request.request_id, {
@@ -560,7 +560,7 @@ function stageAccessDecision_(request, decision, draftPayload) {
     notification_draft_subject: defaultSubject,
   });
   const updated = findRow_("AccessRequests", "request_id", request.request_id);
-  if (updated && !draftIsAvailable_(updated.notification_draft_id)) {
+  if (updated && !accessNotificationDraftIsAvailable_(updated)) {
     const defaultMessage = defaultAccessNotificationMessage_(updated, normalizedDecision);
     const draft = createAccessNotificationDraft_(updated, normalizedDecision, defaultSubject, defaultMessage);
     updateAccessRequest_(request.request_id, {
@@ -844,6 +844,9 @@ function handleSendAccessNotification_(payload) {
   if (String(request.notification_status || "") === "sent") {
     return accessNotificationResultPage_("Notification already sent", `The notification for ${request.email} has already been sent.`, request);
   }
+  if (String(request.notification_status || "") === "sending") {
+    return accessNotificationResultPage_("Notification in progress", `The notification for ${request.email} is already being sent.`, request);
+  }
   const decision = normalizeDecision_(payload.decision || request.notification_decision);
   const draftPayload = isTruthy_(payload.use_draft) ? accessNotificationDraftPayload_(request) : null;
   const subject = draftPayload
@@ -886,7 +889,7 @@ function processPendingNotifications() {
     .forEach((request) => {
       try {
         const decision = normalizeDecision_(request.notification_decision);
-        const subject = request.notification_draft_subject || defaultAccessNotificationSubject_(request, decision);
+        const subject = accessNotificationSubject_(request, decision);
         sendAccessParticipantNotification_(request, decision, subject, defaultAccessNotificationMessage_(request, decision));
       } catch (error) {
         recordError_("processPendingNotifications", error);
@@ -936,7 +939,16 @@ function updateAccessRequest_(requestId, values) {
   if (existing) updateRow_("AccessRequests", existing._rowNumber, values);
 }
 
+function updateAccessRequestOrThrow_(requestId, values) {
+  const existing = findRow_("AccessRequests", "request_id", requestId);
+  if (!existing) throw new Error(`Access request not found while updating: ${requestId}`);
+  updateRow_("AccessRequests", existing._rowNumber, values);
+  SpreadsheetApp.flush();
+  return findRow_("AccessRequests", "request_id", requestId) || { ...existing, ...values };
+}
+
 function upsertUser_(request, token) {
+  assertTokenNotActiveForOtherEmail_(token, request.email);
   const existing = findRow_("Users", "email", request.email);
   const values = {
     email: request.email,
@@ -1251,11 +1263,20 @@ function defaultAccessNotificationSubject_(request, decision) {
     : `RoboSynChallenge access request update ${request.request_id}`;
 }
 
+function accessNotificationSubject_(request, decision) {
+  const subject = String(request.notification_draft_subject || "").trim();
+  return subject.includes(String(request.request_id || ""))
+    ? subject
+    : defaultAccessNotificationSubject_(request, decision);
+}
+
 function defaultAccessNotificationMessage_(request, decision) {
   if (decision === "approved") {
     const token = request.token || "{{ACCESS_TOKEN}}";
     return [
       "Your RoboSynChallenge access request has been approved.",
+      "",
+      `Request ID: ${request.request_id}`,
       "",
       `Access token: ${token}`,
       "",
@@ -1271,6 +1292,8 @@ function defaultAccessNotificationMessage_(request, decision) {
   }
   return [
     "Your RoboSynChallenge access request was not approved at this time.",
+    "",
+    `Request ID: ${request.request_id}`,
     "",
     "You may reply to the organizers if additional context is needed.",
     request.reviewer_notes ? `\nOrganizer note:\n${request.reviewer_notes}` : "",
@@ -1303,9 +1326,35 @@ function draftIsAvailable_(draftId) {
   }
 }
 
+function accessNotificationDraftIsAvailable_(request) {
+  if (!request.notification_draft_id) return false;
+  try {
+    const draft = GmailApp.getDraft(String(request.notification_draft_id));
+    return isAccessNotificationDraftForRequest_(draft, request);
+  } catch (error) {
+    return false;
+  }
+}
+
+function isAccessNotificationDraftForRequest_(draft, request) {
+  const message = draft.getMessage();
+  const subject = String(message.getSubject() || "");
+  const body = String(message.getPlainBody() || "");
+  const recipients = String(message.getTo() || "").toLowerCase();
+  const requestId = String(request.request_id || "");
+  const email = normalizeEmail_(request.email);
+  return Boolean(requestId)
+    && Boolean(email)
+    && (subject.includes(requestId) || body.includes(requestId))
+    && recipients.includes(email);
+}
+
 function accessNotificationDraftPayload_(request) {
   if (!request.notification_draft_id) throw new Error("No prepared notification draft is available.");
   const draft = GmailApp.getDraft(String(request.notification_draft_id));
+  if (!isAccessNotificationDraftForRequest_(draft, request)) {
+    throw new Error(`Prepared notification draft does not match ${request.request_id}.`);
+  }
   const message = draft.getMessage();
   return {
     subject: requiredString_(message.getSubject(), "Draft subject"),
@@ -1318,44 +1367,61 @@ function deleteAccessDraft_(draftId) {
   try {
     GmailApp.getDraft(String(draftId)).deleteDraft();
   } catch (error) {
+    if (String(error.message || error).includes("Not found")) return;
     recordError_("deleteAccessDraft", error);
   }
 }
 
 function sendAccessParticipantNotification_(request, decision, subject, message) {
-  const prepared = prepareAccessNotification_(request, decision, message);
-  const finalRequest = prepared.request;
-  const finalMessage = decision === "approved"
-    ? approvedAccessEmailText_(prepared.message)
-    : prepared.message;
-  const inlineImages = decision === "approved" ? wechatQrInlineImages_() : {};
-  const htmlBody = htmlEmailShell_(
-    decision === "approved" ? "Access approved" : "Access request update",
-    `
-      <p>${escapeHtml_(finalMessage).replace(/\n/g, "<br>")}</p>
-      ${decision === "approved" ? approvedAccessEmailExtraHtml_(Boolean(inlineImages.wechatQr)) : ""}
-    `
-  );
-  MailApp.sendEmail({
-    to: finalRequest.email,
-    subject,
-    body: finalMessage,
-    htmlBody,
-    inlineImages,
-  });
-  finalizeAccessNotification_(finalRequest, decision);
-  deleteAccessDraft_(finalRequest.notification_draft_id);
-  sendAdminDigest_(`access ${decision} notification sent`, {
-    email: finalRequest.email,
-    request_id: finalRequest.request_id,
-  });
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30 * 1000);
+  try {
+    const latest = findRow_("AccessRequests", "request_id", request.request_id) || request;
+    if (String(latest.notification_status || "") === "sent") return latest;
+    const prepared = prepareAccessNotification_(latest, decision, message);
+    const finalRequest = prepared.request;
+    const normalizedDecision = normalizeDecision_(decision);
+    const finalSubject = accessNotificationSubject_({ ...finalRequest, notification_draft_subject: subject }, normalizedDecision);
+    const finalMessage = normalizedDecision === "approved"
+      ? approvedAccessEmailText_(prepared.message)
+      : prepared.message;
+    const inlineImages = normalizedDecision === "approved" ? wechatQrInlineImages_() : {};
+    const htmlBody = htmlEmailShell_(
+      normalizedDecision === "approved" ? "Access approved" : "Access request update",
+      `
+        <p>${escapeHtml_(finalMessage).replace(/\n/g, "<br>")}</p>
+        ${normalizedDecision === "approved" ? approvedAccessEmailExtraHtml_(Boolean(inlineImages.wechatQr)) : ""}
+      `
+    );
+    SpreadsheetApp.flush();
+    MailApp.sendEmail({
+      to: finalRequest.email,
+      subject: finalSubject,
+      body: finalMessage,
+      htmlBody,
+      inlineImages,
+    });
+    const updated = finalizeAccessNotification_(finalRequest, normalizedDecision);
+    SpreadsheetApp.flush();
+    deleteAccessDraft_(updated.notification_draft_id || finalRequest.notification_draft_id);
+    try {
+      sendAdminDigest_(`access ${normalizedDecision} notification sent`, {
+        email: updated.email || finalRequest.email,
+        request_id: updated.request_id || finalRequest.request_id,
+      });
+    } catch (error) {
+      recordError_("sendAccessParticipantNotification:adminDigest", error);
+    }
+    return updated;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function prepareAccessNotification_(request, decision, message) {
   const normalizedDecision = normalizeDecision_(decision);
   if (normalizedDecision === "approved") {
-    const existingUser = findRow_("Users", "email", request.email);
-    const token = existingUser?.token || request.token || generateToken_();
+    const token = accessTokenForRequest_(request, request);
     const finalRequest = { ...request, token };
     updateAccessRequest_(request.request_id, {
       status: "approved_sending",
@@ -1385,10 +1451,11 @@ function prepareAccessNotification_(request, decision, message) {
 
 function finalizeAccessNotification_(request, decision) {
   const normalizedDecision = normalizeDecision_(decision);
+  let updated;
   if (normalizedDecision === "approved") {
-    const token = request.token || generateToken_();
+    const token = accessTokenForRequest_(request, request);
     upsertUser_({ ...request, token }, token);
-    updateAccessRequest_(request.request_id, {
+    updated = updateAccessRequestOrThrow_(request.request_id, {
       status: "approved",
       token,
       token_status: "active",
@@ -1398,7 +1465,7 @@ function finalizeAccessNotification_(request, decision) {
       updated_at: now_(),
     });
   } else {
-    updateAccessRequest_(request.request_id, {
+    updated = updateAccessRequestOrThrow_(request.request_id, {
       status: "rejected",
       token_status: "rejected",
       processed_at: now_(),
@@ -1407,8 +1474,8 @@ function finalizeAccessNotification_(request, decision) {
       updated_at: now_(),
     });
   }
-  const updated = findRow_("AccessRequests", "request_id", request.request_id) || request;
   finalizeAccessThreadLabels_(updated, normalizedDecision);
+  return updated;
 }
 
 function injectAccessToken_(message, token) {
@@ -2183,6 +2250,34 @@ function checkRateLimit_(scope, key, maxEvents, windowMs) {
 
 function generateToken_() {
   return `RSC-${(Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, "").slice(0, 32).toUpperCase()}`;
+}
+
+function accessTokenForRequest_(request, existing) {
+  const email = normalizeEmail_(request.email || existing?.email);
+  const existingUser = findActiveUser_(email);
+  if (existingUser) return String(existingUser.token || "").trim();
+
+  const candidate = String(existing?.token || request.token || "").trim();
+  if (candidate && !findActiveUserByTokenForOtherEmail_(candidate, email)) return candidate;
+  return generateToken_();
+}
+
+function findActiveUserByTokenForOtherEmail_(token, email) {
+  const normalizedToken = String(token || "").trim();
+  const normalizedEmail = normalizeEmail_(email);
+  if (!normalizedToken) return null;
+  return rows_("Users").find((user) => (
+    String(user.token || "").trim() === normalizedToken
+      && String(user.token_status || "").toLowerCase() === "active"
+      && normalizeEmail_(user.email) !== normalizedEmail
+  )) || null;
+}
+
+function assertTokenNotActiveForOtherEmail_(token, email) {
+  const owner = findActiveUserByTokenForOtherEmail_(token, email);
+  if (owner) {
+    throw new Error(`Access token is already active for another email: ${normalizeEmail_(owner.email)}`);
+  }
 }
 
 function generateSessionId_() {
