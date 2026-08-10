@@ -1142,8 +1142,8 @@
             <img src="static/assets/realworld-env.png" alt="RoboSynChallenge real-world dual-arm collection platform">
             <div class="data-facts">
               <span><strong>5</strong> collection conditions</span>
-              <span><strong>4</strong> position variations</span>
-              <span><strong>3</strong> orientation settings</span>
+              <span><strong>4</strong> object positions</span>
+              <span><strong>3</strong> object orientation settings</span>
             </div>
             <div class="condition-list">
               ${REAL_COLLECTION_CONDITIONS.map((condition) => `
