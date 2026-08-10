@@ -235,7 +235,7 @@
         <div class="faq-formula" role="note">Episode Action Efficiency = (1 − Used Action Steps / H) × 100</div>
         <p><em>H</em> is the maximum number of steps for that task. Inference Efficiency is measured on a single NVIDIA RTX 5090 and calculated as:</p>
         <div class="faq-formula" role="note">Episode Inference Efficiency = max(0, 1 − Measured Inference Time / T) × 100</div>
-        <p><em>T</em> is the inference-time limit for that task. Task limits and the final timing protocol will be announced before evaluation.</p>
+        <p><em>T</em> is the time required by the published ACT baseline to infer the corresponding number of action steps for that task, using the official standard code on the standardized NVIDIA RTX 5090 platform.</p>
       `,
     },
     {
