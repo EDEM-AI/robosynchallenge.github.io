@@ -1264,11 +1264,7 @@ function protectAccessRequests_() {
   protection.setDescription(ACCESS_REQUESTS_PROTECTION_DESCRIPTION);
   protection.setWarningOnly(false);
 
-  const effectiveEmail = Session.getEffectiveUser().getEmail();
-  if (effectiveEmail) protection.addEditor(effectiveEmail);
-  const removableEditors = protection.getEditors().filter(
-    (editor) => editor.getEmail() && editor.getEmail() !== effectiveEmail
-  );
+  const removableEditors = protection.getEditors();
   if (removableEditors.length) protection.removeEditors(removableEditors);
   if (protection.canDomainEdit()) protection.setDomainEdit(false);
 }
