@@ -122,6 +122,8 @@ const SESSION_HOURS = 24;
 const REVIEW_ATTACHMENT_LIMIT_BYTES = 10 * 1024 * 1024;
 const NOTIFICATION_GRACE_MINUTES = 30;
 const ACCESS_REQUESTS_PROTECTION_DESCRIPTION = "RoboSynChallenge managed backend data";
+const USERS_PROTECTION_DESCRIPTION = "RoboSynChallenge managed user data";
+const PARTICIPANT_PROFILE_FIELDS = ["full_name", "team_name", "affiliation", "intended_use"];
 const REQUESTED_LABEL_SYNC_LIMIT = 20;
 const ERROR_EMAIL_THROTTLE_SECONDS = 60 * 60;
 const GMAIL_QUOTA_ERROR_EMAIL_THROTTLE_SECONDS = 6 * 60 * 60;
@@ -182,6 +184,7 @@ function initializeSheets() {
   Object.keys(SHEETS).forEach((name) => getSheet_(name));
   ensureLabels_();
   protectAccessRequests_();
+  protectUsers_();
 }
 
 function installTenMinuteTrigger() {
@@ -311,6 +314,16 @@ function onSheetEdit(e) {
 
     const headers = SHEETS[sheetName] || [];
     const column = headers[range.getColumn() - 1] || `column_${range.getColumn()}`;
+    const editedFields = Array.from({ length: range.getNumColumns() }, (_, index) => (
+      headers[range.getColumn() - 1 + index] || `column_${range.getColumn() + index}`
+    ));
+    if (
+      ["AccessRequests", "Users"].includes(sheetName)
+      && editedFields.some((field) => PARTICIPANT_PROFILE_FIELDS.includes(field))
+    ) {
+      handleParticipantProfileSheetEdit_(e, sheetName, editedFields);
+      return;
+    }
     if (sheetName === "Users" && column === "token_action") {
       processTokenActions();
       return;
@@ -336,6 +349,175 @@ function onSheetChange(e) {
     }
   } catch (error) {
     recordError_("onSheetChange", error);
+  }
+}
+
+function handleParticipantProfileSheetEdit_(e, sheetName, editedFields) {
+  const range = e.range;
+  if (editedFields.some((field) => !PARTICIPANT_PROFILE_FIELDS.includes(field))) {
+    recordProfileEditIssue_(sheetName, range.getRow(), "Profile fields must be edited separately from protected business fields.");
+    showSpreadsheetToast_("Edit only profile fields in one operation.", "Profile edit rejected");
+    return;
+  }
+
+  const sheet = range.getSheet();
+  const headers = SHEETS[sheetName];
+  const values = range.getValues();
+  let syncedRows = 0;
+  const failures = [];
+
+  values.forEach((editedRow, rowOffset) => {
+    const rowNumber = range.getRow() + rowOffset;
+    const row = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+    const email = normalizeEmail_(row[headers.indexOf("email")]);
+    const requestId = sheetName === "AccessRequests"
+      ? String(row[headers.indexOf("request_id")] || "").trim().toUpperCase()
+      : "";
+    try {
+      if (!email) throw new Error("The edited row is missing email.");
+      if (sheetName === "AccessRequests") requiredRequestId_(requestId);
+
+      const changes = {};
+      editedFields.forEach((field, columnOffset) => {
+        changes[field] = validateParticipantProfileField_(field, editedRow[columnOffset]);
+      });
+      const result = syncParticipantProfileFields_(email, changes, `sheet edit: ${sheetName} row ${rowNumber}`);
+      syncedRows += result.access_request_count;
+    } catch (error) {
+      restoreParticipantProfileEdit_(e, sheetName, rowNumber, email, editedFields, rowOffset);
+      recordProfileEditIssue_(sheetName, rowNumber, String(error.message || error));
+      failures.push(`row ${rowNumber}: ${String(error.message || error)}`);
+    }
+  });
+
+  SpreadsheetApp.flush();
+  if (failures.length) {
+    showSpreadsheetToast_(
+      `Rejected ${failures.length} row(s). Check the Errors tab; valid values were restored where available.`,
+      "Profile edit rejected"
+    );
+    return;
+  }
+  showSpreadsheetToast_(
+    `Profile data synchronized to Users and ${syncedRows} AccessRequests row(s).`,
+    "Profile updated"
+  );
+}
+
+function validateParticipantProfileField_(field, value) {
+  if (field === "full_name") return requiredFullNameList_(value);
+  const labels = {
+    team_name: "Team name",
+    affiliation: "Affiliation",
+    intended_use: "Intended use",
+  };
+  if (!labels[field]) throw new Error(`Unsupported profile field: ${field}`);
+  return requiredString_(value, labels[field]);
+}
+
+function syncParticipantProfileFields_(email, changes, source) {
+  const normalizedEmail = requiredEmail_(email);
+  const normalizedChanges = {};
+  Object.keys(changes || {}).forEach((field) => {
+    if (!PARTICIPANT_PROFILE_FIELDS.includes(field)) {
+      throw new Error(`Unsupported profile field: ${field}`);
+    }
+    normalizedChanges[field] = validateParticipantProfileField_(field, changes[field]);
+  });
+  if (!Object.keys(normalizedChanges).length) throw new Error("No profile fields were provided.");
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  let accessRequests = [];
+  try {
+    assertAccessRequestsIntegrity_();
+    const user = findRow_("Users", "email", normalizedEmail);
+    accessRequests = rows_("AccessRequests")
+      .filter((request) => normalizeEmail_(request.email) === normalizedEmail);
+    if (!user && !accessRequests.length) throw new Error(`Participant not found: ${normalizedEmail}`);
+    accessRequests.forEach((request) => {
+      const current = findRow_("AccessRequests", "request_id", request.request_id);
+      if (!current || current._rowNumber !== request._rowNumber) {
+        throw new Error(`Access request moved while updating: ${request.request_id}`);
+      }
+    });
+
+    const updatedAt = now_();
+    if (user) {
+      updateRow_("Users", user._rowNumber, {
+        ...normalizedChanges,
+        updated_at: updatedAt,
+      });
+    }
+    accessRequests.forEach((request) => {
+      updateRow_("AccessRequests", request._rowNumber, {
+        request_id: request.request_id,
+        ...normalizedChanges,
+        updated_at: updatedAt,
+      });
+    });
+    SpreadsheetApp.flush();
+    assertAccessRequestsIntegrity_();
+  } finally {
+    lock.releaseLock();
+  }
+
+  appendRow_("DigestLog", {
+    id: id_("digest"),
+    reason: `participant profile synchronized: ${normalizedEmail} [${Object.keys(normalizedChanges).join(", ")}]`,
+    sent_to: String(source || "sheet edit"),
+    created_at: now_(),
+  });
+  return {
+    ok: true,
+    email: normalizedEmail,
+    fields: Object.keys(normalizedChanges),
+    access_request_count: accessRequests.length,
+  };
+}
+
+function restoreParticipantProfileEdit_(e, sheetName, rowNumber, email, editedFields, rowOffset) {
+  const fallback = participantProfileFallback_(sheetName, email, rowNumber);
+  const range = e.range;
+  const restored = editedFields.map((field, columnOffset) => {
+    if (fallback && String(fallback[field] ?? "").trim()) return fallback[field];
+    if (range.getNumRows() === 1 && range.getNumColumns() === 1 && e.oldValue !== undefined) {
+      return e.oldValue;
+    }
+    return range.getValues()[rowOffset][columnOffset];
+  });
+  range.getSheet().getRange(rowNumber, range.getColumn(), 1, range.getNumColumns()).setValues([restored]);
+}
+
+function participantProfileFallback_(sheetName, email, rowNumber) {
+  if (!email) return null;
+  if (sheetName === "AccessRequests") {
+    const user = findRow_("Users", "email", email);
+    if (user) return user;
+    return rows_("AccessRequests").find(
+      (request) => request._rowNumber !== rowNumber && normalizeEmail_(request.email) === email
+    ) || null;
+  }
+  return rows_("AccessRequests").find(
+    (request) => normalizeEmail_(request.email) === email
+  ) || null;
+}
+
+function recordProfileEditIssue_(sheetName, rowNumber, message) {
+  appendRow_("Errors", {
+    id: id_("err"),
+    where: "participantProfileSheetEdit",
+    message: `${sheetName} row ${rowNumber}: ${message}`,
+    stack: "",
+    created_at: now_(),
+  });
+}
+
+function showSpreadsheetToast_(message, title) {
+  try {
+    spreadsheet_().toast(message, title, 10);
+  } catch (error) {
+    console.warn(error);
   }
 }
 
@@ -1256,13 +1438,31 @@ function verifyAccessRequestsIntegrity() {
 
 function protectAccessRequests_() {
   const sheet = getSheet_("AccessRequests");
+  const profileStartColumn = SHEETS.AccessRequests.indexOf("full_name") + 1;
+  protectManagedSheet_(sheet, ACCESS_REQUESTS_PROTECTION_DESCRIPTION, [
+    sheet.getRange(2, profileStartColumn, Math.max(1, sheet.getMaxRows() - 1), PARTICIPANT_PROFILE_FIELDS.length),
+  ]);
+}
+
+function protectUsers_() {
+  const sheet = getSheet_("Users");
+  const profileStartColumn = SHEETS.Users.indexOf("full_name") + 1;
+  const tokenActionColumn = SHEETS.Users.indexOf("token_action") + 1;
+  protectManagedSheet_(sheet, USERS_PROTECTION_DESCRIPTION, [
+    sheet.getRange(2, profileStartColumn, Math.max(1, sheet.getMaxRows() - 1), PARTICIPANT_PROFILE_FIELDS.length),
+    sheet.getRange(2, tokenActionColumn, Math.max(1, sheet.getMaxRows() - 1), 1),
+  ]);
+}
+
+function protectManagedSheet_(sheet, description, unprotectedRanges) {
   const protections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
   let protection = protections.find(
-    (item) => item.getDescription() === ACCESS_REQUESTS_PROTECTION_DESCRIPTION
+    (item) => item.getDescription() === description
   );
   if (!protection) protection = sheet.protect();
-  protection.setDescription(ACCESS_REQUESTS_PROTECTION_DESCRIPTION);
+  protection.setDescription(description);
   protection.setWarningOnly(false);
+  protection.setUnprotectedRanges(unprotectedRanges);
 
   const removableEditors = protection.getEditors();
   if (removableEditors.length) protection.removeEditors(removableEditors);
