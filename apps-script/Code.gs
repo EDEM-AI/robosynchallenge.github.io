@@ -121,6 +121,7 @@ const SHEETS = {
 const SESSION_HOURS = 24;
 const REVIEW_ATTACHMENT_LIMIT_BYTES = 10 * 1024 * 1024;
 const NOTIFICATION_GRACE_MINUTES = 30;
+const ACCESS_REQUESTS_PROTECTION_DESCRIPTION = "RoboSynChallenge managed backend data";
 const REQUESTED_LABEL_SYNC_LIMIT = 20;
 const ERROR_EMAIL_THROTTLE_SECONDS = 60 * 60;
 const GMAIL_QUOTA_ERROR_EMAIL_THROTTLE_SECONDS = 6 * 60 * 60;
@@ -166,6 +167,8 @@ function onOpen() {
     .addItem("Initialize sheets", "initializeSheets")
     .addItem("Run Gmail processing now", "processLabeledRequests")
     .addItem("Manual issue access token", "manualIssueAccessToken")
+    .addItem("Manual update participant profile", "manualUpdateParticipantProfile")
+    .addItem("Check access request integrity", "runAccessRequestsIntegrityCheck")
     .addItem("Reset test data", "resetTestData")
     .addItem("Process token actions", "processTokenActions")
     .addItem("Send full name update test", "sendFullNameUpdateTestInvite")
@@ -178,6 +181,7 @@ function onOpen() {
 function initializeSheets() {
   Object.keys(SHEETS).forEach((name) => getSheet_(name));
   ensureLabels_();
+  protectAccessRequests_();
 }
 
 function installTenMinuteTrigger() {
@@ -188,16 +192,18 @@ function installTenMinuteTrigger() {
 }
 
 function installBackendTriggers() {
-  const handlers = new Set(["processLabeledRequests", "onSheetEdit"]);
+  const handlers = new Set(["processLabeledRequests", "onSheetEdit", "onSheetChange"]);
   ScriptApp.getProjectTriggers()
     .filter((trigger) => handlers.has(trigger.getHandlerFunction()))
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
   ScriptApp.newTrigger("processLabeledRequests").timeBased().everyHours(3).create();
   ScriptApp.newTrigger("onSheetEdit").forSpreadsheet(spreadsheet_()).onEdit().create();
+  ScriptApp.newTrigger("onSheetChange").forSpreadsheet(spreadsheet_()).onChange().create();
 }
 
 function processLabeledRequests() {
   initializeSheets();
+  assertAccessRequestsIntegrity_();
   syncRequestedLabels_({ onlyPending: true, limit: REQUESTED_LABEL_SYNC_LIMIT });
   processReviewLabel_(config_("APPROVED_LABEL", "RSC Approved"), "approved");
   processReviewLabel_(config_("REJECTED_LABEL", "RSC Rejected"), "rejected");
@@ -320,6 +326,19 @@ function onSheetEdit(e) {
   }
 }
 
+function onSheetChange(e) {
+  try {
+    const changeType = String(e?.changeType || "");
+    if (!["INSERT_ROW", "REMOVE_ROW", "INSERT_COLUMN", "REMOVE_COLUMN"].includes(changeType)) return;
+    const report = accessRequestsIntegrityReport_();
+    if (!report.ok) {
+      throw new Error(`${accessRequestsIntegrityMessage_(report)} Change type: ${changeType}.`);
+    }
+  } catch (error) {
+    recordError_("onSheetChange", error);
+  }
+}
+
 function handleRequestAccess_(payload) {
   const request = {
     request_id: requiredRequestId_(payload.request_id),
@@ -331,6 +350,7 @@ function handleRequestAccess_(payload) {
     misc: optionalString_(payload.misc, "Misc"),
   };
   checkRateLimit_("request_access", request.email, 5, 60 * 60 * 1000);
+  assertAccessRequestsIntegrity_();
 
   const activeUser = findActiveUser_(request.email);
   if (activeUser) {
@@ -936,13 +956,21 @@ function upsertAccessRequest_(request, status, draftPayload) {
 
 function updateAccessRequest_(requestId, values) {
   const existing = findRow_("AccessRequests", "request_id", requestId);
-  if (existing) updateRow_("AccessRequests", existing._rowNumber, values);
+  if (existing) {
+    updateRow_("AccessRequests", existing._rowNumber, {
+      ...values,
+      request_id: existing.request_id,
+    });
+  }
 }
 
 function updateAccessRequestOrThrow_(requestId, values) {
   const existing = findRow_("AccessRequests", "request_id", requestId);
   if (!existing) throw new Error(`Access request not found while updating: ${requestId}`);
-  updateRow_("AccessRequests", existing._rowNumber, values);
+  updateRow_("AccessRequests", existing._rowNumber, {
+    ...values,
+    request_id: existing.request_id,
+  });
   SpreadsheetApp.flush();
   return findRow_("AccessRequests", "request_id", requestId) || { ...existing, ...values };
 }
@@ -1137,7 +1165,116 @@ function rows_(name) {
     });
 }
 
+function accessRequestsIntegrityReport_() {
+  const sheet = getSheet_("AccessRequests");
+  const headers = SHEETS.AccessRequests;
+  const values = sheet.getDataRange().getValues();
+  const dataRows = values.slice(1);
+  const issues = [];
+  const requestIdColumn = headers.indexOf("request_id");
+  let lastContentIndex = -1;
+
+  dataRows.forEach((row, index) => {
+    if (row.some((cell) => cell !== "")) lastContentIndex = index;
+  });
+
+  const requestIds = new Map();
+  dataRows.slice(0, lastContentIndex + 1).forEach((row, index) => {
+    const rowNumber = index + 2;
+    const nonEmptyCells = row.filter((cell) => cell !== "");
+    if (!nonEmptyCells.length) {
+      issues.push({ type: "blank_row", row: rowNumber });
+      return;
+    }
+
+    const whitespaceColumns = row
+      .map((cell, column) => (
+        typeof cell === "string" && cell !== "" && !cell.trim()
+          ? headers[column] || `column_${column + 1}`
+          : ""
+      ))
+      .filter(Boolean);
+    if (whitespaceColumns.length) {
+      issues.push({ type: "whitespace_only", row: rowNumber, columns: whitespaceColumns });
+    }
+
+    const requestId = String(row[requestIdColumn] || "").trim().toUpperCase();
+    if (!requestId) {
+      issues.push({ type: "missing_request_id", row: rowNumber });
+      return;
+    }
+    if (!/^RSC-REQ-2026-[A-Z0-9]+$/.test(requestId)) {
+      issues.push({ type: "invalid_request_id", row: rowNumber, request_id: requestId });
+    }
+    if (requestIds.has(requestId)) {
+      issues.push({
+        type: "duplicate_request_id",
+        row: rowNumber,
+        request_id: requestId,
+        first_row: requestIds.get(requestId),
+      });
+    } else {
+      requestIds.set(requestId, rowNumber);
+    }
+  });
+
+  return {
+    ok: issues.length === 0,
+    checked_at: now_(),
+    last_content_row: lastContentIndex >= 0 ? lastContentIndex + 2 : 1,
+    issues,
+  };
+}
+
+function accessRequestsIntegrityMessage_(report) {
+  if (report.ok) {
+    return `AccessRequests integrity check passed through row ${report.last_content_row}.`;
+  }
+  const details = report.issues
+    .slice(0, 12)
+    .map((issue) => `${issue.type} at row ${issue.row}`)
+    .join(", ");
+  const remainder = report.issues.length > 12 ? `, plus ${report.issues.length - 12} more` : "";
+  return `AccessRequests integrity check failed: ${details}${remainder}.`;
+}
+
+function assertAccessRequestsIntegrity_() {
+  const report = accessRequestsIntegrityReport_();
+  if (!report.ok) throw new Error(accessRequestsIntegrityMessage_(report));
+  return report;
+}
+
+function runAccessRequestsIntegrityCheck() {
+  const report = accessRequestsIntegrityReport_();
+  SpreadsheetApp.getUi().alert(accessRequestsIntegrityMessage_(report));
+  return report;
+}
+
+function verifyAccessRequestsIntegrity() {
+  return accessRequestsIntegrityReport_();
+}
+
+function protectAccessRequests_() {
+  const sheet = getSheet_("AccessRequests");
+  const protections = sheet.getProtections(SpreadsheetApp.ProtectionType.SHEET);
+  let protection = protections.find(
+    (item) => item.getDescription() === ACCESS_REQUESTS_PROTECTION_DESCRIPTION
+  );
+  if (!protection) protection = sheet.protect();
+  protection.setDescription(ACCESS_REQUESTS_PROTECTION_DESCRIPTION);
+  protection.setWarningOnly(false);
+
+  const effectiveEmail = Session.getEffectiveUser().getEmail();
+  if (effectiveEmail) protection.addEditor(effectiveEmail);
+  const removableEditors = protection.getEditors().filter(
+    (editor) => editor.getEmail() && editor.getEmail() !== effectiveEmail
+  );
+  if (removableEditors.length) protection.removeEditors(removableEditors);
+  if (protection.canDomainEdit()) protection.setDomainEdit(false);
+}
+
 function appendRow_(name, values) {
+  if (name === "AccessRequests") assertAccessRequestsIntegrity_();
   const sheet = getSheet_(name);
   const headers = SHEETS[name];
   sheet.appendRow(headers.map((header) => values[header] ?? ""));
@@ -1147,6 +1284,19 @@ function updateRow_(name, rowNumber, values) {
   const sheet = getSheet_(name);
   const headers = SHEETS[name];
   const row = sheet.getRange(rowNumber, 1, 1, headers.length).getValues()[0];
+  if (name === "AccessRequests") {
+    const requestIdColumn = headers.indexOf("request_id");
+    const actualRequestId = String(row[requestIdColumn] || "").trim().toUpperCase();
+    const expectedRequestId = String(values.request_id || "").trim().toUpperCase();
+    if (!expectedRequestId) {
+      throw new Error("AccessRequests updates must include request_id for row verification.");
+    }
+    if (actualRequestId !== expectedRequestId) {
+      throw new Error(
+        `AccessRequests row identity mismatch at row ${rowNumber}: expected ${expectedRequestId}, found ${actualRequestId || "blank"}.`
+      );
+    }
+  }
   headers.forEach((header, index) => {
     if (Object.prototype.hasOwnProperty.call(values, header)) row[index] = values[header];
   });
@@ -1839,10 +1989,12 @@ function markFullNameUpdateExpired_(record) {
 }
 
 function updateAccessRequestsFullName_(email, fullName, updatedAt) {
+  assertAccessRequestsIntegrity_();
   rows_("AccessRequests")
     .filter((request) => normalizeEmail_(request.email) === normalizeEmail_(email))
     .forEach((request) => {
       updateRow_("AccessRequests", request._rowNumber, {
+        request_id: request.request_id,
         full_name: fullName,
         updated_at: updatedAt,
       });
@@ -1999,6 +2151,114 @@ function promptRequired_(ui, label) {
   const response = ui.prompt("Manual access token", `${label}:`, ui.ButtonSet.OK_CANCEL);
   if (response.getSelectedButton() !== ui.Button.OK) return null;
   return requiredString_(response.getResponseText(), label);
+}
+
+function manualUpdateParticipantProfile() {
+  const ui = SpreadsheetApp.getUi();
+  const emailResponse = ui.prompt(
+    "Update participant profile",
+    "Participant email:",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (emailResponse.getSelectedButton() !== ui.Button.OK) return;
+  const email = requiredEmail_(emailResponse.getResponseText());
+  const existing = findRow_("Users", "email", email);
+  if (!existing) {
+    ui.alert(`No participant was found for ${email}.`);
+    return;
+  }
+
+  const fullName = promptProfileValue_(ui, "Full name", existing.full_name, requiredFullNameList_);
+  if (fullName === null) return;
+  const teamName = promptProfileValue_(
+    ui,
+    "Team name",
+    existing.team_name,
+    (value) => requiredString_(value, "Team name")
+  );
+  if (teamName === null) return;
+  const affiliation = promptProfileValue_(
+    ui,
+    "Affiliation",
+    existing.affiliation,
+    (value) => requiredString_(value, "Affiliation")
+  );
+  if (affiliation === null) return;
+  const intendedUse = promptProfileValue_(
+    ui,
+    "Intended use",
+    existing.intended_use,
+    (value) => requiredString_(value, "Intended use")
+  );
+  if (intendedUse === null) return;
+
+  const changedFields = [
+    ["full_name", fullName, existing.full_name],
+    ["team_name", teamName, existing.team_name],
+    ["affiliation", affiliation, existing.affiliation],
+    ["intended_use", intendedUse, existing.intended_use],
+  ].filter(([, nextValue, oldValue]) => String(nextValue) !== String(oldValue));
+  if (!changedFields.length) {
+    ui.alert("No participant profile fields were changed.");
+    return;
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    assertAccessRequestsIntegrity_();
+    const currentUser = findRow_("Users", "email", email);
+    if (!currentUser) throw new Error(`Participant disappeared while updating: ${email}`);
+    const accessRequests = rows_("AccessRequests")
+      .filter((request) => normalizeEmail_(request.email) === email);
+    if (!accessRequests.length) throw new Error(`No access request was found for ${email}.`);
+    accessRequests.forEach((request) => {
+      const currentRequest = findRow_("AccessRequests", "request_id", request.request_id);
+      if (!currentRequest || currentRequest._rowNumber !== request._rowNumber) {
+        throw new Error(`Access request moved while updating: ${request.request_id}`);
+      }
+    });
+
+    const updatedAt = now_();
+    updateRow_("Users", currentUser._rowNumber, {
+      full_name: fullName,
+      team_name: teamName,
+      affiliation,
+      intended_use: intendedUse,
+      updated_at: updatedAt,
+    });
+
+    accessRequests.forEach((request) => {
+      updateRow_("AccessRequests", request._rowNumber, {
+        request_id: request.request_id,
+        full_name: fullName,
+        team_name: teamName,
+        affiliation,
+        intended_use: intendedUse,
+        updated_at: updatedAt,
+      });
+    });
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+
+  sendAdminDigest_("participant profile manually updated", {
+    email,
+    changed_fields: changedFields.map(([field]) => field),
+  });
+  ui.alert(`Participant profile updated for ${email}.`);
+}
+
+function promptProfileValue_(ui, label, currentValue, validator) {
+  const response = ui.prompt(
+    "Update participant profile",
+    `${label}\nCurrent value: ${String(currentValue || "-")}\n\nEnter a new value, or leave blank to keep the current value:`,
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (response.getSelectedButton() !== ui.Button.OK) return null;
+  const input = String(response.getResponseText() || "").trim();
+  return input ? validator(input) : String(currentValue || "").trim();
 }
 
 function resetTestData() {
