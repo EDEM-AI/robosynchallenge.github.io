@@ -849,8 +849,8 @@
     const links = [
       ["home", "Home"],
       ["data", "Data"],
-      ["evaluation", "Evaluation"],
       ["faq", "FAQ"],
+      ["evaluation", "Evaluation"],
       ["leaderboard", "Leaderboard"],
     ];
 
