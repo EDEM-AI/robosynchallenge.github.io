@@ -1126,13 +1126,15 @@ function rows_(name) {
   const sheet = getSheet_(name);
   const values = sheet.getDataRange().getValues();
   const headers = SHEETS[name];
-  return values.slice(1).filter((row) => row.some((cell) => cell !== "")).map((row, index) => {
-    const object = { _rowNumber: index + 2 };
-    headers.forEach((header, col) => {
-      object[header] = row[col];
+  return values.slice(1).map((row, index) => ({ row, rowNumber: index + 2 }))
+    .filter(({ row }) => row.some((cell) => cell !== ""))
+    .map(({ row, rowNumber }) => {
+      const object = { _rowNumber: rowNumber };
+      headers.forEach((header, col) => {
+        object[header] = row[col];
+      });
+      return object;
     });
-    return object;
-  });
 }
 
 function appendRow_(name, values) {
