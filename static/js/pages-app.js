@@ -425,7 +425,8 @@
   }
 
   function formatSeconds(value) {
-    const seconds = Number(value || 0);
+    if (value === "" || value == null || !Number.isFinite(Number(value))) return "--";
+    const seconds = Number(value);
     return `${seconds.toFixed(1)}s`;
   }
 
@@ -434,7 +435,8 @@
   }
 
   function formatSteps(value) {
-    return `${Math.round(Number(value || 0))}`;
+    if (value === "" || value == null || !Number.isFinite(Number(value))) return "--";
+    return `${Math.round(Number(value))}`;
   }
 
   function srValue(value) {
@@ -677,6 +679,9 @@
   function normalizeLeaderboardRow(row) {
     if (!row) return null;
     const evaluationStage = String(row.evaluation_stage || "");
+    const actionSteps = row.action_steps === "" || row.action_steps == null ? null : Number(row.action_steps);
+    const realTime = row.real_time === "" || row.real_time == null ? null : Number(row.real_time);
+    const hasEvaluationId = Object.prototype.hasOwnProperty.call(row, "evaluation_id");
     return {
       kind: String(row.kind || "submission"),
       id: String(row.id || row.submission_id || row.evaluation_id || ""),
@@ -687,10 +692,12 @@
       evaluation_stage: evaluationStage,
       data_regime: String(row.data_regime || row.data_source_text || ""),
       success_rate: Number(row.success_rate || 0),
-      action_steps: Number(row.action_steps || 0),
-      real_time: Number(row.real_time || 0),
+      action_steps: Number.isFinite(actionSteps) ? actionSteps : null,
+      real_time: Number.isFinite(realTime) ? realTime : null,
       rank_badge: String(row.rank_badge || "Participant ranked"),
-      evaluation_id: String(row.evaluation_id || row.id || ""),
+      evaluation_id: hasEvaluationId ? String(row.evaluation_id || "") : String(row.id || ""),
+      result_url: String(row.result_url || ""),
+      protocol_url: String(row.protocol_url || ""),
       notes: String(row.notes || row.leaderboard_notes || ""),
       episodes: Array.isArray(row.episodes) ? row.episodes : [],
     };
@@ -827,19 +834,31 @@
   }
 
   function getLeaderboardRows() {
-    const rows = state.leaderboardRows.slice();
+    const releasedRows = (window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS?.() || [])
+      .map(normalizeLeaderboardRow)
+      .filter(Boolean);
+    const rows = [
+      ...releasedRows,
+      ...state.leaderboardRows,
+    ];
 
     rows.sort((left, right) => {
       const successDiff = Number(right.success_rate || 0) - Number(left.success_rate || 0);
       if (successDiff !== 0) return successDiff;
-      const actionDiff = Number(left.action_steps || 0) - Number(right.action_steps || 0);
+      const actionDiff = metricSortValue(left.action_steps) - metricSortValue(right.action_steps);
       if (actionDiff !== 0) return actionDiff;
-      const timeDiff = Number(left.real_time || 0) - Number(right.real_time || 0);
+      const timeDiff = metricSortValue(left.real_time) - metricSortValue(right.real_time);
       if (timeDiff !== 0) return timeDiff;
       return left.model_name.localeCompare(right.model_name);
     });
 
     return rows;
+  }
+
+  function metricSortValue(value) {
+    if (value === "" || value == null) return Number.POSITIVE_INFINITY;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : Number.POSITIVE_INFINITY;
   }
 
   function renderHeader() {
@@ -1068,7 +1087,7 @@
         <span class="eyebrow">Benchmark snapshot</span>
         <h1>Official baseline results across the 10 held-out RoboSynChallenge tasks.</h1>
         <p class="lead narrow">
-          The released ACT and Diffusion Policy checkpoints are evaluated over 100 randomized simulation
+          The released ACT and Diffusion Policy checkpoints are evaluated over 100 random simulation
           episodes on five tasks. The following 10-task pi0, pi0.5, and Motus snapshot uses 20 episodes
           per task under sim-only and real-only training regimes, and is reported separately.
         </p>
@@ -1659,21 +1678,15 @@
   }
 
   function renderLeaderboardPage() {
-    const releasedCheckpointResults = `
-      <section class="section shell">
-        <div class="panel-stack">${window.ROBO_SYN_RENDER_RELEASED_CHECKPOINT_RESULTS?.() || ""}</div>
-      </section>
-    `;
-
     if (!backendConfigured()) {
+      const rows = getLeaderboardRows();
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
-          <h1>Official results.</h1>
+          <h1>Leaderboard.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
-        ${releasedCheckpointResults}
-        <section class="section shell">${renderBackendUnavailableCard("Leaderboard backend unavailable")}</section>
+        ${renderLeaderboardTable(rows, "Leaderboard backend unavailable")}
       `;
     }
     if (!remoteState.leaderboardLoaded) {
@@ -1681,20 +1694,21 @@
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
-          <h1>Loading official results.</h1>
+          <h1>Loading leaderboard.</h1>
           <p class="lead narrow">Fetching published ranked evaluations from the RoboSynChallenge backend.</p>
         </section>
-        ${releasedCheckpointResults}
+        ${renderLeaderboardTable(getLeaderboardRows())}
       `;
     }
     if (remoteState.leaderboardError) {
+      const rows = getLeaderboardRows();
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
-          <h1>Official results are temporarily unavailable.</h1>
+          <h1>Leaderboard.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
-        ${releasedCheckpointResults}
+        ${renderLeaderboardTable(rows)}
         <section class="section shell">
           ${renderBackendErrorCard("Could not load leaderboard", remoteState.leaderboardError, "retry-leaderboard")}
         </section>
@@ -1704,11 +1718,15 @@
     return `
       <section class="page-hero shell leaderboard-hero">
         <span class="eyebrow">Leaderboard</span>
-        <h1>Official results.</h1>
+        <h1>Leaderboard.</h1>
         <p class="lead narrow">Ranked by success rate, with fewer action steps and lower inference time used as tie-breakers.</p>
       </section>
-      ${releasedCheckpointResults}
+      ${renderLeaderboardTable(rows)}
+    `;
+  }
 
+  function renderLeaderboardTable(rows, fallbackTitle = "") {
+    return `
       <section class="section shell leaderboard-section">
         <div class="leaderboard-summary">
           <span><strong>1</strong> Success rate</span>
@@ -1736,8 +1754,12 @@
                     <td><strong class="rank-number">${index + 1}</strong></td>
                     <td>
                       <div class="leaderboard-model">
-                        <strong>${escapeHtml(row.model_name)}</strong>
-                        <div><span>${escapeHtml(row.rank_badge)}</span>${row.evaluation_id ? `<a href="${routeHref(`results/${row.evaluation_id}`)}">View result →</a>` : ""}</div>
+                        <strong>${row.result_url ? `<a href="${escapeHtml(row.result_url)}" target="_blank" rel="noreferrer">${escapeHtml(row.model_name)}</a>` : escapeHtml(row.model_name)}</strong>
+                        <div>
+                          <span>${escapeHtml(row.rank_badge)}</span>
+                          ${row.evaluation_id ? `<a href="${routeHref(`results/${row.evaluation_id}`)}">View result -&gt;</a>` : ""}
+                          ${row.protocol_url ? `<a href="${escapeHtml(row.protocol_url)}" target="_blank" rel="noreferrer">Protocol -&gt;</a>` : ""}
+                        </div>
                       </div>
                     </td>
                     <td>${escapeHtml(row.username_display)}</td>
@@ -1747,7 +1769,7 @@
                     <td>${formatSeconds(row.real_time)}</td>
                   </tr>
                 `).join("")
-                : `<tr><td colspan="7" class="empty-table">No published results yet.</td></tr>`}
+                : `<tr><td colspan="7" class="empty-table">${escapeHtml(fallbackTitle || "No published results yet.")}</td></tr>`}
             </tbody>
           </table>
         </div>

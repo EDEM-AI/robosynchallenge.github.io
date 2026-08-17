@@ -4,7 +4,7 @@
   const release = Object.freeze({
     published_at: "2026-08-17",
     environment: "simulation",
-    setting: "random_eval_once",
+    setting: "random",
     metric: "success_rate",
     episodes_per_checkpoint: 100,
     protocol_revision: "bd6bf77a63300f4b9a9d32337b519194dc7311a4",
@@ -14,7 +14,7 @@
       {
         task_id: "click_bell",
         task_name: "Click bell",
-        protocol_path: "configs/click_bell/random_eval_once/gym_config.json",
+        protocol_path: "configs/click_bell/random/gym_config.json",
         policies: {
           ACT: { success_count: 37, success_rate: 37.0, repo_id: "RoboSynChallenge/ACT_sim_click_bell", revision: "677e65fbb15974024ff840893496197ef7db26d4" },
           DP: { success_count: 44, success_rate: 44.0, repo_id: "RoboSynChallenge/DP_sim_click_bell", revision: "fb8c9551e0fade7c4888a926ab577b85f0684da1" },
@@ -23,7 +23,7 @@
       {
         task_id: "drawer_open_place",
         task_name: "Drawer open and place",
-        protocol_path: "configs/drawer_open_place/random_eval_once/gym_config.json",
+        protocol_path: "configs/drawer_open_place/random/gym_config.json",
         policies: {
           ACT: { success_count: 30, success_rate: 30.0, repo_id: "RoboSynChallenge/ACT_sim_drawer_open_place", revision: "592e30434aad83cf7bd8f1ee105d7c401488743d" },
           DP: { success_count: 0, success_rate: 0.0, repo_id: "RoboSynChallenge/DP_sim_drawer_open_place", revision: "c5600daa96623adb4f8cd0c156b70836c30b1288" },
@@ -32,7 +32,7 @@
       {
         task_id: "mixer_operating",
         task_name: "Mixer operating",
-        protocol_path: "configs/mixer_operating/random_eval_once/gym_config.json",
+        protocol_path: "configs/mixer_operating/random/gym_config.json",
         policies: {
           ACT: { success_count: 77, success_rate: 77.0, repo_id: "RoboSynChallenge/ACT_sim_mixer_operating", revision: "0f12c53a2a6e093ae5e1e28f20480296b45fdf2b" },
           DP: { success_count: 69, success_rate: 69.0, repo_id: "RoboSynChallenge/DP_sim_mixer_operating", revision: "c05afece66ead46b47f6532c86d95cb3dd0f628e" },
@@ -41,7 +41,7 @@
       {
         task_id: "table_rearrangement",
         task_name: "Table rearrangement",
-        protocol_path: "configs/table_rearrangement/random_eval_once/gym_config.json",
+        protocol_path: "configs/table_rearrangement/random/gym_config.json",
         policies: {
           ACT: { success_count: 70, success_rate: 70.0, repo_id: "RoboSynChallenge/ACT_sim_table_rearrangement", revision: "3a46b36fade1772176b791dd87349f479d0a98c8" },
           DP: { success_count: 16, success_rate: 16.0, repo_id: "RoboSynChallenge/DP_sim_table_rearrangement", revision: "99c73475a13ec2583b5105dc3773f88bbdeba9f5" },
@@ -50,7 +50,7 @@
       {
         task_id: "water_pouring",
         task_name: "Water pouring",
-        protocol_path: "configs/water_pouring/random_eval_once/gym_config.json",
+        protocol_path: "configs/water_pouring/random/gym_config.json",
         policies: {
           ACT: { success_count: 72, success_rate: 72.0, repo_id: "RoboSynChallenge/ACT_sim_water_pouring", revision: "0bf0fcfc931a69c52871385f28068fcf873cf07a" },
           DP: { success_count: 33, success_rate: 33.0, repo_id: "RoboSynChallenge/DP_sim_water_pouring", revision: "b67e1ce7444dfa2940970088ebbe04a8b01013cc" },
@@ -83,6 +83,30 @@
   }
 
   window.ROBO_SYN_RELEASED_CHECKPOINT_EVALS = release;
+  window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS = function getReleasedCheckpointLeaderboardRows() {
+    return release.results.flatMap((result) => Object.entries(result.policies).map(([policyName, policy]) => {
+      const modelName = policy.repo_id.replace(/^RoboSynChallenge\//, "official ");
+      const protocolUrl = `https://github.com/EDEM-AI/RoboSynChallenge/blob/${release.protocol_revision}/${result.protocol_path}`;
+      return {
+        kind: "released_checkpoint",
+        id: `${policyName.toLowerCase()}-${result.task_id}`,
+        model_name: modelName,
+        username_display: "RoboSynChallenge",
+        affiliation: "RoboSynChallenge",
+        stage_label: `Simulation ${release.setting}`,
+        evaluation_stage: "preliminary_simulation",
+        data_regime: `${result.task_name} / ${release.setting}`,
+        success_rate: policy.success_rate,
+        action_steps: null,
+        real_time: null,
+        rank_badge: `${policy.success_count} / ${release.episodes_per_checkpoint} successful episodes`,
+        evaluation_id: "",
+        result_url: checkpointRevisionUrl(policy),
+        protocol_url: protocolUrl,
+        notes: `${modelName} evaluated on ${result.task_name} with ${release.setting}.`,
+      };
+    }));
+  };
   window.ROBO_SYN_RENDER_RELEASED_CHECKPOINT_RESULTS = function renderReleasedCheckpointResults() {
     const policies = ["ACT", "DP"];
     const episodes = release.episodes_per_checkpoint;
@@ -91,10 +115,10 @@
       <article class="card checkpoint-results-card">
         <div class="section-heading left">
           <span class="eyebrow">Released checkpoints</span>
-          <h2>ACT and Diffusion Policy on randomized simulation.</h2>
+          <h2>Released checkpoint evaluations.</h2>
         </div>
         <p class="field-note">
-          Each task uses the official <code>random_eval_once</code> configuration for ${episodes} episodes.
+          Each task uses the <code>random</code> configuration for ${episodes} episodes.
           Every score links to the exact evaluated Hugging Face checkpoint revision; task names link to
           the pinned evaluation configuration.
         </p>
