@@ -1068,14 +1068,15 @@
         <span class="eyebrow">Benchmark snapshot</span>
         <h1>Official baseline results across the 10 held-out RoboSynChallenge tasks.</h1>
         <p class="lead narrow">
-          The tables below reproduce the released baseline benchmark sheet for pi0, pi0.5, and Motus
-          under sim-only and real-only training regimes. SR is reported as successes out of 20 episodes,
-          and Task Average is the macro-average summary over the full task set.
+          The released ACT and Diffusion Policy checkpoints are evaluated over 100 randomized simulation
+          episodes on five tasks. The following 10-task pi0, pi0.5, and Motus snapshot uses 20 episodes
+          per task under sim-only and real-only training regimes, and is reported separately.
         </p>
       </section>
 
       <section class="section shell">
         <div class="panel-stack">
+          ${window.ROBO_SYN_RENDER_RELEASED_CHECKPOINT_RESULTS?.() || ""}
           ${BENCHMARK_TABLES.map((block, blockIndex) => `
             <article class="card">
               <div class="section-heading left">
@@ -1658,6 +1659,12 @@
   }
 
   function renderLeaderboardPage() {
+    const releasedCheckpointResults = `
+      <section class="section shell">
+        <div class="panel-stack">${window.ROBO_SYN_RENDER_RELEASED_CHECKPOINT_RESULTS?.() || ""}</div>
+      </section>
+    `;
+
     if (!backendConfigured()) {
       return `
         <section class="page-hero shell leaderboard-hero">
@@ -1665,6 +1672,7 @@
           <h1>Official results.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
+        ${releasedCheckpointResults}
         <section class="section shell">${renderBackendUnavailableCard("Leaderboard backend unavailable")}</section>
       `;
     }
@@ -1676,6 +1684,7 @@
           <h1>Loading official results.</h1>
           <p class="lead narrow">Fetching published ranked evaluations from the RoboSynChallenge backend.</p>
         </section>
+        ${releasedCheckpointResults}
       `;
     }
     if (remoteState.leaderboardError) {
@@ -1685,6 +1694,7 @@
           <h1>Official results are temporarily unavailable.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
+        ${releasedCheckpointResults}
         <section class="section shell">
           ${renderBackendErrorCard("Could not load leaderboard", remoteState.leaderboardError, "retry-leaderboard")}
         </section>
@@ -1697,6 +1707,7 @@
         <h1>Official results.</h1>
         <p class="lead narrow">Ranked by success rate, with fewer action steps and lower inference time used as tie-breakers.</p>
       </section>
+      ${releasedCheckpointResults}
 
       <section class="section shell leaderboard-section">
         <div class="leaderboard-summary">
