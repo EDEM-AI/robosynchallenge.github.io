@@ -200,6 +200,17 @@ code {
   margin: 0;
 }
 
+.faq-answer a {
+  color: #0969da;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.faq-answer a:hover {
+  color: #0550ae;
+}
+
 .faq-answer p + p,
 .faq-answer p + .faq-formula,
 .faq-answer .faq-formula + p {
