@@ -263,6 +263,12 @@
       `,
     },
     {
+      question: "Does the code repository need to be public for policy evaluation?",
+      answer: `
+        <p>No. The GitHub repository can remain private. Please invite our official GitHub account, <a href="https://github.com/EDEM-AI" target="_blank" rel="noreferrer">EDEM-AI</a>, as a collaborator and make sure the organizers have access to the repository for evaluation.</p>
+      `,
+    },
+    {
       question: "How many times may a team submit, and what is the deadline?",
       answer: `
         <p>Teams may submit multiple times before <strong>October 11, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
