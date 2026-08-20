@@ -50,6 +50,20 @@
     { id: "overall", label: "Average" },
     ...LEADERBOARD_TASKS,
   ];
+  // Public report Table 5 defines leaderboard Action Steps as max 1000; simulator episode horizons use different units.
+  const LEADERBOARD_MAX_ACTION_STEPS = 1000;
+  const LEADERBOARD_SCORE_WEIGHTS = Object.freeze({
+    success: 0.75,
+    action: 0.2,
+    inference: 0.05,
+  });
+  const ACT_INFERENCE_BASELINE_SECONDS = Object.freeze({
+    click_bell: 0.155,
+    drawer_open_place: 0.190,
+    mixer_operating: 0.101,
+    table_rearrangement: 0.109,
+    water_pouring: 0.098,
+  });
 
   const REAL_EVALUATION_VIDEO_ASSETS = [
     { file: "cobotmagic_Real_table_rearrangement.mp4", label: "Table rearrangement" },
@@ -469,6 +483,13 @@
     return `${Math.round(Number(value))}`;
   }
 
+  function formatScore(value) {
+    if (value === "" || value == null) return "--";
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "--";
+    return number.toFixed(1);
+  }
+
   function srValue(value) {
     const text = String(value || "");
     if (text.endsWith("%")) return Number(text.slice(0, -1));
@@ -745,6 +766,7 @@
     const evaluationStage = String(row.evaluation_stage || "");
     const actionSteps = row.action_steps === "" || row.action_steps == null ? null : Number(row.action_steps);
     const realTime = row.real_time === "" || row.real_time == null ? null : Number(row.real_time);
+    const weightedScore = row.weighted_score === "" || row.weighted_score == null ? null : Number(row.weighted_score);
     const hasEvaluationId = Object.prototype.hasOwnProperty.call(row, "evaluation_id");
     const taskId = normalizeTaskKey(row.task_id || row.task_key || row.task_name || row.data_regime || row.notes);
     return {
@@ -766,8 +788,24 @@
       result_url: String(row.result_url || ""),
       protocol_url: String(row.protocol_url || ""),
       inference_time_ms: row.inference_time_ms === "" || row.inference_time_ms == null ? null : Number(row.inference_time_ms),
+      weighted_score: Number.isFinite(weightedScore) ? weightedScore : null,
+      task_scores: Array.isArray(row.task_scores) ? row.task_scores.map(normalizeTaskScore).filter(Boolean) : [],
       notes: String(row.notes || row.leaderboard_notes || ""),
       episodes: Array.isArray(row.episodes) ? row.episodes : [],
+    };
+  }
+
+  function normalizeTaskScore(score) {
+    if (!score) return null;
+    const taskId = normalizeTaskKey(score.task_id || score.task_key || score.task_name || score.task || "");
+    if (!taskId) return null;
+    const actionSteps = score.action_steps === "" || score.action_steps == null ? null : Number(score.action_steps);
+    const realTime = score.real_time === "" || score.real_time == null ? null : Number(score.real_time);
+    return {
+      task_id: taskId,
+      success_rate: Number(score.success_rate || 0),
+      action_steps: Number.isFinite(actionSteps) ? actionSteps : null,
+      real_time: Number.isFinite(realTime) ? realTime : null,
     };
   }
 
@@ -906,16 +944,20 @@
     const isTaskView = view.id !== "overall";
     const releasedRows = isTaskView ? (window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS?.() || [])
       .map(normalizeLeaderboardRow)
-      .filter((row) => row && row.task_id === view.id) : [];
+      .filter((row) => row && row.task_id === view.id) : (window.ROBO_SYN_GET_RELEASED_CHECKPOINT_AVERAGE_ROWS?.() || [])
+      .map(normalizeLeaderboardRow)
+      .filter(Boolean);
     const backendRows = isTaskView
       ? state.leaderboardRows.map((row) => taskLeaderboardRow(row, view)).filter(Boolean)
       : state.leaderboardRows;
     const rows = [
       ...releasedRows,
       ...backendRows,
-    ];
+    ].map((row) => withLeaderboardScore(row, view));
 
     rows.sort((left, right) => {
+      const scoreDiff = scoreSortValue(right.weighted_score) - scoreSortValue(left.weighted_score);
+      if (scoreDiff !== 0) return scoreDiff;
       const successDiff = Number(right.success_rate || 0) - Number(left.success_rate || 0);
       if (successDiff !== 0) return successDiff;
       const actionDiff = metricSortValue(left.action_steps) - metricSortValue(right.action_steps);
@@ -926,6 +968,56 @@
     });
 
     return rows;
+  }
+
+  function withLeaderboardScore(row, view) {
+    const hasExistingScore = row.weighted_score !== "" && row.weighted_score != null && Number.isFinite(Number(row.weighted_score));
+    const weightedScore = hasExistingScore
+      ? Number(row.weighted_score)
+      : rowWeightedScore(row, view);
+    return {
+      ...row,
+      weighted_score: Number.isFinite(weightedScore) ? weightedScore : null,
+    };
+  }
+
+  function rowWeightedScore(row, view) {
+    if (view.id === "overall" && Array.isArray(row.task_scores) && row.task_scores.length) {
+      return averageFinite(row.task_scores.map((score) => taskWeightedScore(score, score.task_id)));
+    }
+    const taskId = row.task_id || (view.id !== "overall" ? view.id : "");
+    return taskWeightedScore(row, taskId);
+  }
+
+  function taskWeightedScore(metric, taskId) {
+    const successRate = Math.max(0, Math.min(100, Number(metric.success_rate || 0)));
+    const actionEfficiency = actionEfficiencyScore(metric.action_steps);
+    const inferenceEfficiency = inferenceEfficiencyScore(metric.real_time, taskId);
+    return (LEADERBOARD_SCORE_WEIGHTS.success * successRate)
+      + (LEADERBOARD_SCORE_WEIGHTS.action * actionEfficiency)
+      + (LEADERBOARD_SCORE_WEIGHTS.inference * inferenceEfficiency);
+  }
+
+  function actionEfficiencyScore(actionSteps) {
+    const steps = Number(actionSteps);
+    if (!Number.isFinite(steps)) return 0;
+    return Math.max(0, Math.min(100, (1 - (steps / LEADERBOARD_MAX_ACTION_STEPS)) * 100));
+  }
+
+  function inferenceEfficiencyScore(realTime, taskId) {
+    const measuredSeconds = Number(realTime);
+    const baselineSeconds = actInferenceBaselineSeconds(taskId);
+    if (!Number.isFinite(measuredSeconds) || !Number.isFinite(baselineSeconds) || baselineSeconds <= 0) return 0;
+    return Math.max(0, Math.min(100, (1 - (measuredSeconds / baselineSeconds)) * 100));
+  }
+
+  function actInferenceBaselineSeconds(taskId) {
+    const normalizedTaskId = normalizeTaskKey(taskId);
+    const releaseResult = window.ROBO_SYN_RELEASED_CHECKPOINT_EVALS?.results?.find((result) => result.task_id === normalizedTaskId);
+    const releaseMilliseconds = Number(releaseResult?.policies?.ACT?.inference_time_ms);
+    if (Number.isFinite(releaseMilliseconds) && releaseMilliseconds > 0) return releaseMilliseconds / 1000;
+    const fallback = ACT_INFERENCE_BASELINE_SECONDS[normalizedTaskId];
+    return Number.isFinite(fallback) ? fallback : null;
   }
 
   function taskLeaderboardRow(row, task) {
@@ -1004,6 +1096,12 @@
     if (value === "" || value == null) return Number.POSITIVE_INFINITY;
     const number = Number(value);
     return Number.isFinite(number) ? number : Number.POSITIVE_INFINITY;
+  }
+
+  function scoreSortValue(value) {
+    if (value === "" || value == null) return Number.NEGATIVE_INFINITY;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : Number.NEGATIVE_INFINITY;
   }
 
   function renderHeader() {
@@ -1865,7 +1963,7 @@
       <section class="page-hero shell leaderboard-hero">
         <span class="eyebrow">Leaderboard</span>
         <h1>Leaderboard.</h1>
-        <p class="lead narrow">Ranked by success rate, with fewer action steps and lower inference time used as tie-breakers.</p>
+        <p class="lead narrow">Ranked by the FAQ weighted score across success rate, action efficiency, and inference efficiency.</p>
       </section>
       ${renderLeaderboardTable(rows, activeView)}
     `;
@@ -1875,12 +1973,16 @@
     const emptyMessage = activeView.id === "overall"
       ? "No published overall results yet."
       : `No published ${activeView.label} results yet.`;
+    const stageTitle = leaderboardStageTitle(rows);
     return `
       <section class="section shell leaderboard-section">
+        <div class="leaderboard-table-heading">
+          <h2>${escapeHtml(stageTitle)} leaderboard</h2>
+        </div>
         <div class="leaderboard-summary">
-          <span><strong>1</strong> Success rate</span>
-          <span><strong>2</strong> Action steps</span>
-          <span><strong>3</strong> Inference time</span>
+          <span><strong>1</strong> Weighted score</span>
+          <span><strong>2</strong> Success rate</span>
+          <span><strong>3</strong> Efficiency</span>
           <small class="leaderboard-view-meta">
             <b>View</b>
             <strong>${escapeHtml(activeView.label)}</strong>
@@ -1895,7 +1997,7 @@
                 <th class="leaderboard-rank-header">${renderLeaderboardViewSelect(activeView.id)}</th>
                 <th>Model</th>
                 <th>Team</th>
-                <th>Stage</th>
+                <th>Score</th>
                 <th>Success</th>
                 <th>Steps</th>
                 <th>Inference (ms)</th>
@@ -1917,7 +2019,7 @@
                       </div>
                     </td>
                     <td>${escapeHtml(row.username_display)}</td>
-                    <td>${escapeHtml(row.stage_label)}</td>
+                    <td><strong class="score-weighted">${formatScore(row.weighted_score)}</strong></td>
                     <td><strong class="score-primary">${formatPercent(row.success_rate)}</strong></td>
                     <td>${formatSteps(row.action_steps)}</td>
                     <td>${formatInferenceMilliseconds(row.real_time)}</td>
@@ -1929,6 +2031,14 @@
         </div>
       </section>
     `;
+  }
+
+  function leaderboardStageTitle(rows) {
+    const stages = Array.from(new Set(rows.map((row) => row.evaluation_stage).filter(Boolean)));
+    if (stages.length === 1) return stageLabel(stages[0]);
+    const labels = Array.from(new Set(rows.map((row) => row.stage_label).filter(Boolean)));
+    if (labels.length === 1) return labels[0];
+    return "Preliminary simulation";
   }
 
   function renderLeaderboardViewSelect(activeViewId) {

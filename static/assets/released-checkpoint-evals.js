@@ -82,7 +82,54 @@
     return `https://huggingface.co/${policy.repo_id}/tree/${policy.revision}`;
   }
 
+  function average(numbers) {
+    const finite = numbers.map(Number).filter(Number.isFinite);
+    if (!finite.length) return null;
+    return finite.reduce((total, value) => total + value, 0) / finite.length;
+  }
+
+  function releasedPolicyTaskScore(result, policyName) {
+    const policy = result.policies[policyName];
+    return {
+      task_id: result.task_id,
+      success_rate: policy.success_rate,
+      action_steps: policy.action_steps,
+      real_time: policy.inference_time_ms / 1000,
+    };
+  }
+
+  function releasedPolicyAggregateRow(policyName) {
+    const aggregate = release.aggregate[policyName];
+    const taskScores = release.results.map((result) => releasedPolicyTaskScore(result, policyName));
+    const modelName = `official ${policyName}_sim_average`;
+    return {
+      kind: "released_checkpoint_average",
+      id: `${policyName.toLowerCase()}-sim-average`,
+      model_name: modelName,
+      username_display: "RoboSynChallenge",
+      affiliation: "RoboSynChallenge",
+      task_id: "",
+      task_name: "Average",
+      stage_label: `Simulation ${release.setting}`,
+      evaluation_stage: "preliminary_simulation",
+      data_regime: `Five-task macro average / ${release.setting}`,
+      success_rate: aggregate.macro_success_rate,
+      action_steps: average(taskScores.map((score) => score.action_steps)),
+      real_time: average(taskScores.map((score) => score.real_time)),
+      rank_badge: `${aggregate.success_count} / ${aggregate.episode_count} successful episodes`,
+      evaluation_id: "",
+      result_url: release.data_url,
+      protocol_url: release.source_url,
+      task_scores: taskScores,
+      notes: `${modelName} evaluated across the released ${release.setting} task set.`,
+    };
+  }
+
   window.ROBO_SYN_RELEASED_CHECKPOINT_EVALS = release;
+  window.ROBO_SYN_GET_RELEASED_CHECKPOINT_AVERAGE_ROWS = function getReleasedCheckpointAverageRows() {
+    return ["ACT", "DP"].map(releasedPolicyAggregateRow);
+  };
+
   window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS = function getReleasedCheckpointLeaderboardRows() {
     return release.results.flatMap((result) => Object.entries(result.policies).map(([policyName, policy]) => {
       const modelName = policy.repo_id.replace(/^RoboSynChallenge\//, "official ");
