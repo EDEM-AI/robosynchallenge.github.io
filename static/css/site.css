@@ -577,7 +577,7 @@ code {
 .leaderboard-head-select {
   display: grid;
   gap: 5px;
-  min-width: 150px;
+  min-width: 142px;
 }
 
 .leaderboard-head-select span {
@@ -597,6 +597,10 @@ code {
   font: inherit;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.leaderboard-rank-header {
+  width: 168px;
 }
 
 .leaderboard-summary {

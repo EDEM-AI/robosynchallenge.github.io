@@ -1887,11 +1887,11 @@
           <table class="leaderboard-table leaderboard-table-compact">
             <thead>
               <tr>
-                <th>Rank</th>
+                <th class="leaderboard-rank-header">${renderLeaderboardViewSelect(activeView.id)}</th>
                 <th>Model</th>
                 <th>Team</th>
                 <th>Stage</th>
-                <th>${renderLeaderboardViewSelect(activeView.id)}</th>
+                <th>Success</th>
                 <th>Steps</th>
                 <th>Inference (ms)</th>
               </tr>
@@ -1929,7 +1929,7 @@
   function renderLeaderboardViewSelect(activeViewId) {
     return `
       <label class="leaderboard-head-select">
-        <span>Success</span>
+        <span>Rank by</span>
         <select data-leaderboard-view-select aria-label="Select leaderboard task">
           ${LEADERBOARD_VIEWS.map((view) => `
             <option value="${escapeHtml(view.id)}" ${view.id === activeViewId ? "selected" : ""}>${escapeHtml(view.label)}</option>
