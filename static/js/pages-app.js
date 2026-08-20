@@ -1884,6 +1884,7 @@
           <small class="leaderboard-view-meta">
             <b>View</b>
             <strong>${escapeHtml(activeView.label)}</strong>
+            <span aria-hidden="true">|</span>
             <i>${rows.length} published results</i>
           </small>
         </div>

@@ -686,7 +686,9 @@ code {
 
 .leaderboard-view-meta b,
 .leaderboard-view-meta strong,
+.leaderboard-view-meta span,
 .leaderboard-view-meta i {
+  font: inherit;
   font-style: normal;
 }
 
@@ -701,6 +703,13 @@ code {
 .leaderboard-view-meta strong {
   color: var(--ink);
   font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.leaderboard-view-meta span {
+  color: rgba(16, 33, 45, 0.32);
+  font-weight: 700;
 }
 
 .leaderboard-view-meta i {
