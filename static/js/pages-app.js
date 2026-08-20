@@ -1980,9 +1980,10 @@
           <h2>${escapeHtml(stageTitle)} leaderboard</h2>
         </div>
         <div class="leaderboard-summary">
-          <span><strong>1</strong> Weighted score</span>
-          <span><strong>2</strong> Success rate</span>
-          <span><strong>3</strong> Efficiency</span>
+          <span>Score</span>
+          <span>Success rate</span>
+          <span>Action steps</span>
+          <span>Inference time</span>
           <small class="leaderboard-view-meta">
             <b>View</b>
             <strong>${escapeHtml(activeView.label)}</strong>

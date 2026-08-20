@@ -670,17 +670,6 @@ code {
   font-size: 0.84rem;
 }
 
-.leaderboard-summary > span strong {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: var(--ink);
-  color: white;
-  font-size: 0.72rem;
-}
-
 .leaderboard-summary small {
   margin-left: auto;
   color: var(--ink-soft);
