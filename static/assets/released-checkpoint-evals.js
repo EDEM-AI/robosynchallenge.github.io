@@ -16,8 +16,8 @@
         task_name: "Click bell",
         protocol_path: "configs/click_bell/random/gym_config.json",
         policies: {
-          ACT: { success_count: 37, success_rate: 37.0, repo_id: "RoboSynChallenge/ACT_sim_click_bell", revision: "677e65fbb15974024ff840893496197ef7db26d4" },
-          DP: { success_count: 44, success_rate: 44.0, repo_id: "RoboSynChallenge/DP_sim_click_bell", revision: "fb8c9551e0fade7c4888a926ab577b85f0684da1" },
+          ACT: { success_count: 37, success_rate: 37.0, action_steps: 662.00, inference_time_ms: 155, repo_id: "RoboSynChallenge/ACT_sim_click_bell", revision: "677e65fbb15974024ff840893496197ef7db26d4" },
+          DP: { success_count: 44, success_rate: 44.0, action_steps: 584.64, inference_time_ms: 8620, repo_id: "RoboSynChallenge/DP_sim_click_bell", revision: "fb8c9551e0fade7c4888a926ab577b85f0684da1" },
         },
       },
       {
@@ -25,8 +25,8 @@
         task_name: "Drawer open and place",
         protocol_path: "configs/drawer_open_place/random/gym_config.json",
         policies: {
-          ACT: { success_count: 30, success_rate: 30.0, repo_id: "RoboSynChallenge/ACT_sim_drawer_open_place", revision: "592e30434aad83cf7bd8f1ee105d7c401488743d" },
-          DP: { success_count: 0, success_rate: 0.0, repo_id: "RoboSynChallenge/DP_sim_drawer_open_place", revision: "c5600daa96623adb4f8cd0c156b70836c30b1288" },
+          ACT: { success_count: 29, success_rate: 29.0, action_steps: 812.70, inference_time_ms: 190, repo_id: "RoboSynChallenge/ACT_sim_drawer_open_place", revision: "592e30434aad83cf7bd8f1ee105d7c401488743d" },
+          DP: { success_count: 0, success_rate: 0.0, action_steps: 1000.00, inference_time_ms: 14648, repo_id: "RoboSynChallenge/DP_sim_drawer_open_place", revision: "c5600daa96623adb4f8cd0c156b70836c30b1288" },
         },
       },
       {
@@ -34,8 +34,8 @@
         task_name: "Mixer operating",
         protocol_path: "configs/mixer_operating/random/gym_config.json",
         policies: {
-          ACT: { success_count: 77, success_rate: 77.0, repo_id: "RoboSynChallenge/ACT_sim_mixer_operating", revision: "0f12c53a2a6e093ae5e1e28f20480296b45fdf2b" },
-          DP: { success_count: 69, success_rate: 69.0, repo_id: "RoboSynChallenge/DP_sim_mixer_operating", revision: "c05afece66ead46b47f6532c86d95cb3dd0f628e" },
+          ACT: { success_count: 77, success_rate: 77.0, action_steps: 425.49, inference_time_ms: 101, repo_id: "RoboSynChallenge/ACT_sim_mixer_operating", revision: "0f12c53a2a6e093ae5e1e28f20480296b45fdf2b" },
+          DP: { success_count: 69, success_rate: 69.0, action_steps: 490.24, inference_time_ms: 7260, repo_id: "RoboSynChallenge/DP_sim_mixer_operating", revision: "c05afece66ead46b47f6532c86d95cb3dd0f628e" },
         },
       },
       {
@@ -43,8 +43,8 @@
         task_name: "Table rearrangement",
         protocol_path: "configs/table_rearrangement/random/gym_config.json",
         policies: {
-          ACT: { success_count: 70, success_rate: 70.0, repo_id: "RoboSynChallenge/ACT_sim_table_rearrangement", revision: "3a46b36fade1772176b791dd87349f479d0a98c8" },
-          DP: { success_count: 16, success_rate: 16.0, repo_id: "RoboSynChallenge/DP_sim_table_rearrangement", revision: "99c73475a13ec2583b5105dc3773f88bbdeba9f5" },
+          ACT: { success_count: 63, success_rate: 63.0, action_steps: 454.80, inference_time_ms: 109, repo_id: "RoboSynChallenge/ACT_sim_table_rearrangement", revision: "3a46b36fade1772176b791dd87349f479d0a98c8" },
+          DP: { success_count: 16, success_rate: 16.0, action_steps: 855.60, inference_time_ms: 12570, repo_id: "RoboSynChallenge/DP_sim_table_rearrangement", revision: "99c73475a13ec2583b5105dc3773f88bbdeba9f5" },
         },
       },
       {
@@ -52,13 +52,13 @@
         task_name: "Water pouring",
         protocol_path: "configs/water_pouring/random/gym_config.json",
         policies: {
-          ACT: { success_count: 72, success_rate: 72.0, repo_id: "RoboSynChallenge/ACT_sim_water_pouring", revision: "0bf0fcfc931a69c52871385f28068fcf873cf07a" },
-          DP: { success_count: 33, success_rate: 33.0, repo_id: "RoboSynChallenge/DP_sim_water_pouring", revision: "b67e1ce7444dfa2940970088ebbe04a8b01013cc" },
+          ACT: { success_count: 72, success_rate: 72.0, action_steps: 416.00, inference_time_ms: 98, repo_id: "RoboSynChallenge/ACT_sim_water_pouring", revision: "0bf0fcfc931a69c52871385f28068fcf873cf07a" },
+          DP: { success_count: 33, success_rate: 33.0, action_steps: 731.76, inference_time_ms: 10725, repo_id: "RoboSynChallenge/DP_sim_water_pouring", revision: "b67e1ce7444dfa2940970088ebbe04a8b01013cc" },
         },
       },
     ],
     aggregate: {
-      ACT: { success_count: 286, episode_count: 500, macro_success_rate: 57.2 },
+      ACT: { success_count: 278, episode_count: 500, macro_success_rate: 55.6 },
       DP: { success_count: 162, episode_count: 500, macro_success_rate: 32.4 },
     },
   });
@@ -93,12 +93,15 @@
         model_name: modelName,
         username_display: "RoboSynChallenge",
         affiliation: "RoboSynChallenge",
+        task_id: result.task_id,
+        task_name: result.task_name,
         stage_label: `Simulation ${release.setting}`,
         evaluation_stage: "preliminary_simulation",
         data_regime: `${result.task_name} / ${release.setting}`,
         success_rate: policy.success_rate,
-        action_steps: null,
-        real_time: null,
+        action_steps: policy.action_steps,
+        real_time: policy.inference_time_ms / 1000,
+        inference_time_ms: policy.inference_time_ms,
         rank_badge: `${policy.success_count} / ${release.episodes_per_checkpoint} successful episodes`,
         evaluation_id: "",
         result_url: checkpointRevisionUrl(policy),
@@ -124,7 +127,7 @@
         </p>
         <div class="table-shell">
           <table class="leaderboard-table">
-            <thead><tr><th>Task</th><th>ACT success rate</th><th>DP success rate</th></tr></thead>
+            <thead><tr><th>Task</th><th>ACT</th><th>DP</th></tr></thead>
             <tbody>
               ${release.results.map((result) => {
                 const protocolUrl = `https://github.com/EDEM-AI/RoboSynChallenge/blob/${release.protocol_revision}/${result.protocol_path}`;
@@ -137,6 +140,7 @@
                         <td><div class="table-primary">
                           <a href="${escapeHtml(checkpointRevisionUrl(policy))}" target="_blank" rel="noreferrer"><strong>${escapeHtml(formatPercent(policy.success_rate))}</strong></a>
                           <span>${escapeHtml(policy.success_count)} / ${episodes} successful episodes</span>
+                          <span>${escapeHtml(policy.action_steps.toFixed(2))} steps, ${escapeHtml(policy.inference_time_ms)} ms inference</span>
                         </div></td>
                       `;
                     }).join("")}

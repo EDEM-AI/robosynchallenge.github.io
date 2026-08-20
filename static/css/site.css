@@ -574,6 +574,34 @@ code {
   padding-top: 24px;
 }
 
+.leaderboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.leaderboard-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.leaderboard-tab.is-active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: white;
+}
+
 .leaderboard-summary {
   display: flex;
   flex-wrap: wrap;

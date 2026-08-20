@@ -33,6 +33,24 @@
     { file: "sample_loading.mp4", label: "Sample loading" },
   ];
 
+  const LEADERBOARD_TASKS = [
+    { id: "table_rearrangement", label: "Table rearrangement", aliases: ["table rearrangement"] },
+    { id: "click_bell", label: "Click bell", aliases: ["click bell", "click-bell"] },
+    { id: "water_pouring", label: "Water pouring", aliases: ["water pouring", "dual arm water pouring", "dual-arm water pouring"] },
+    { id: "handle_basket", label: "Handle basket", aliases: ["handle basket", "basket pick and place", "basket pick-and-place"] },
+    { id: "items_handover", label: "Items handover", aliases: ["items handover", "items hand-over", "items hand over and place", "items hand-over and place"] },
+    { id: "drawer_open_place", label: "Drawer open place", aliases: ["drawer open place", "drawer open and place", "drawer open-and-place"] },
+    { id: "mixer_operating", label: "Mixer operating", aliases: ["mixer operating"] },
+    { id: "item_assembly", label: "Item assembly", aliases: ["item assembly"] },
+    { id: "manipulate_pipette", label: "Manipulate pipette", aliases: ["manipulate pipette"] },
+    { id: "sample_loading", label: "Sample loading", aliases: ["sample loading"] },
+  ];
+
+  const LEADERBOARD_VIEWS = [
+    { id: "overall", label: "Overall average" },
+    ...LEADERBOARD_TASKS,
+  ];
+
   const REAL_EVALUATION_VIDEO_ASSETS = [
     { file: "cobotmagic_Real_table_rearrangement.mp4", label: "Table rearrangement" },
     { file: "cobotmagic_Real_click_bell.mp4", label: "Click bell" },
@@ -436,6 +454,12 @@
     return `${seconds.toFixed(1)}s`;
   }
 
+  function formatInferenceMilliseconds(value) {
+    if (value === "" || value == null || !Number.isFinite(Number(value))) return "--";
+    const milliseconds = Number(value) * 1000;
+    return `${milliseconds >= 100 ? Math.round(milliseconds) : milliseconds.toFixed(1)} ms`;
+  }
+
   function formatPercent(value) {
     return `${Number(value || 0).toFixed(1)}%`;
   }
@@ -514,6 +538,40 @@
 
   function stageLabel(value) {
     return EVALUATION_STAGE_LABELS[value] || value || "Pending assignment";
+  }
+
+  function normalizeTaskKey(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+    const compact = raw
+      .replace(/&/g, " and ")
+      .replace(/[_-]+/g, " ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    const underscored = compact.replace(/\s+/g, "_");
+    const exact = LEADERBOARD_TASKS.find((task) => task.id === underscored);
+    if (exact) return exact.id;
+    const fuzzy = LEADERBOARD_TASKS.find((task) => {
+      const labels = [task.label, ...(task.aliases || [])].map((label) => normalizeTaskKeyLoose(label));
+      return labels.some((label) => compact === label || compact.includes(label));
+    });
+    return fuzzy ? fuzzy.id : "";
+  }
+
+  function normalizeTaskKeyLoose(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[_-]+/g, " ")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function leaderboardViewById(viewId) {
+    return LEADERBOARD_VIEWS.find((view) => view.id === viewId) || LEADERBOARD_VIEWS[0];
   }
 
   function isHttpUrl(value) {
@@ -688,12 +746,15 @@
     const actionSteps = row.action_steps === "" || row.action_steps == null ? null : Number(row.action_steps);
     const realTime = row.real_time === "" || row.real_time == null ? null : Number(row.real_time);
     const hasEvaluationId = Object.prototype.hasOwnProperty.call(row, "evaluation_id");
+    const taskId = normalizeTaskKey(row.task_id || row.task_key || row.task_name || row.data_regime || row.notes);
     return {
       kind: String(row.kind || "submission"),
       id: String(row.id || row.submission_id || row.evaluation_id || ""),
       model_name: String(row.model_name || row.display_name || row.artifact_name || "Policy artifact"),
       username_display: String(row.username_display || row.team_name || row.email || "Participant"),
       affiliation: String(row.affiliation || ""),
+      task_id: taskId,
+      task_name: String(row.task_name || (taskId ? leaderboardViewById(taskId).label : "")),
       stage_label: row.stage_label || stageLabel(evaluationStage),
       evaluation_stage: evaluationStage,
       data_regime: String(row.data_regime || row.data_source_text || ""),
@@ -704,6 +765,7 @@
       evaluation_id: hasEvaluationId ? String(row.evaluation_id || "") : String(row.id || ""),
       result_url: String(row.result_url || ""),
       protocol_url: String(row.protocol_url || ""),
+      inference_time_ms: row.inference_time_ms === "" || row.inference_time_ms == null ? null : Number(row.inference_time_ms),
       notes: String(row.notes || row.leaderboard_notes || ""),
       episodes: Array.isArray(row.episodes) ? row.episodes : [],
     };
@@ -839,13 +901,18 @@
     }
   }
 
-  function getLeaderboardRows() {
-    const releasedRows = (window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS?.() || [])
+  function getLeaderboardRows(viewId = "overall") {
+    const view = leaderboardViewById(viewId);
+    const isTaskView = view.id !== "overall";
+    const releasedRows = isTaskView ? (window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS?.() || [])
       .map(normalizeLeaderboardRow)
-      .filter(Boolean);
+      .filter((row) => row && row.task_id === view.id) : [];
+    const backendRows = isTaskView
+      ? state.leaderboardRows.map((row) => taskLeaderboardRow(row, view)).filter(Boolean)
+      : state.leaderboardRows;
     const rows = [
       ...releasedRows,
-      ...state.leaderboardRows,
+      ...backendRows,
     ];
 
     rows.sort((left, right) => {
@@ -859,6 +926,78 @@
     });
 
     return rows;
+  }
+
+  function taskLeaderboardRow(row, task) {
+    if (!row || !task || row.kind === "released_checkpoint") return null;
+    if (row.task_id === task.id) return row;
+    const episodes = (row.episodes || []).filter((episode) => episodeMatchesTask(episode, task));
+    if (!episodes.length) return null;
+    const successEpisodes = episodes.filter((episode) => episode.success === true).length;
+    const knownSuccessEpisodes = episodes.filter((episode) => typeof episode.success === "boolean").length;
+    const actionSteps = averageFinite(episodes.map(episodeActionSteps));
+    const realTime = averageFinite(episodes.map(episodeInferenceSeconds));
+    return {
+      ...row,
+      id: `${row.id}-${task.id}`,
+      task_id: task.id,
+      task_name: task.label,
+      data_regime: `${task.label}${row.data_regime ? ` / ${row.data_regime}` : ""}`,
+      success_rate: knownSuccessEpisodes ? (successEpisodes / knownSuccessEpisodes) * 100 : row.success_rate,
+      action_steps: actionSteps,
+      real_time: realTime,
+      rank_badge: knownSuccessEpisodes ? `${successEpisodes} / ${knownSuccessEpisodes} successful episodes` : row.rank_badge,
+      episodes,
+    };
+  }
+
+  function episodeMatchesTask(episode, task) {
+    const values = [
+      episode?.task_id,
+      episode?.task_key,
+      episode?.task_name,
+      episode?.task,
+      episode?.notes,
+    ];
+    return values.some((value) => normalizeTaskKey(value) === task.id);
+  }
+
+  function episodeActionSteps(episode) {
+    return firstFinite([
+      episode?.action_steps,
+      episode?.action_step_count,
+      episode?.steps,
+      episode?.step_count,
+    ]);
+  }
+
+  function episodeInferenceSeconds(episode) {
+    const seconds = firstFinite([
+      episode?.inference_time,
+      episode?.inference_seconds,
+      episode?.real_time,
+    ]);
+    if (Number.isFinite(seconds)) return seconds;
+    const milliseconds = firstFinite([
+      episode?.inference_time_ms,
+      episode?.inference_ms,
+    ]);
+    return Number.isFinite(milliseconds) ? milliseconds / 1000 : null;
+  }
+
+  function firstFinite(values) {
+    for (const value of values) {
+      if (value === "" || value == null) continue;
+      const number = Number(value);
+      if (Number.isFinite(number)) return number;
+    }
+    return null;
+  }
+
+  function averageFinite(values) {
+    const numbers = values.map(Number).filter(Number.isFinite);
+    if (!numbers.length) return null;
+    return numbers.reduce((total, value) => total + value, 0) / numbers.length;
   }
 
   function metricSortValue(value) {
@@ -1683,16 +1822,17 @@
     `;
   }
 
-  function renderLeaderboardPage() {
+  function renderLeaderboardPage(viewId = "overall") {
+    const activeView = leaderboardViewById(viewId);
     if (!backendConfigured()) {
-      const rows = getLeaderboardRows();
+      const rows = getLeaderboardRows(activeView.id);
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
           <h1>Leaderboard.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
-        ${renderLeaderboardTable(rows, "Leaderboard backend unavailable")}
+        ${renderLeaderboardTable(rows, activeView, "Leaderboard backend unavailable")}
       `;
     }
     if (!remoteState.leaderboardLoaded) {
@@ -1703,42 +1843,46 @@
           <h1>Loading leaderboard.</h1>
           <p class="lead narrow">Fetching published ranked evaluations from the RoboSynChallenge backend.</p>
         </section>
-        ${renderLeaderboardTable(getLeaderboardRows())}
+        ${renderLeaderboardTable(getLeaderboardRows(activeView.id), activeView)}
       `;
     }
     if (remoteState.leaderboardError) {
-      const rows = getLeaderboardRows();
+      const rows = getLeaderboardRows(activeView.id);
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
           <h1>Leaderboard.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
-        ${renderLeaderboardTable(rows)}
+        ${renderLeaderboardTable(rows, activeView)}
         <section class="section shell">
           ${renderBackendErrorCard("Could not load leaderboard", remoteState.leaderboardError, "retry-leaderboard")}
         </section>
       `;
     }
-    const rows = getLeaderboardRows();
+    const rows = getLeaderboardRows(activeView.id);
     return `
       <section class="page-hero shell leaderboard-hero">
         <span class="eyebrow">Leaderboard</span>
         <h1>Leaderboard.</h1>
         <p class="lead narrow">Ranked by success rate, with fewer action steps and lower inference time used as tie-breakers.</p>
       </section>
-      ${renderLeaderboardTable(rows)}
+      ${renderLeaderboardTable(rows, activeView)}
     `;
   }
 
-  function renderLeaderboardTable(rows, fallbackTitle = "") {
+  function renderLeaderboardTable(rows, activeView, fallbackTitle = "") {
+    const emptyMessage = activeView.id === "overall"
+      ? "No published overall results yet."
+      : `No published ${activeView.label} results yet.`;
     return `
       <section class="section shell leaderboard-section">
+        ${renderLeaderboardTabs(activeView.id)}
         <div class="leaderboard-summary">
           <span><strong>1</strong> Success rate</span>
           <span><strong>2</strong> Action steps</span>
           <span><strong>3</strong> Inference time</span>
-          <small>${rows.length} published results</small>
+          <small>${escapeHtml(activeView.label)} | ${rows.length} published results</small>
         </div>
         <div class="table-shell leaderboard-shell">
           <table class="leaderboard-table leaderboard-table-compact">
@@ -1750,7 +1894,7 @@
                 <th>Stage</th>
                 <th>Success</th>
                 <th>Steps</th>
-                <th>Inference</th>
+                <th>Inference (ms)</th>
               </tr>
             </thead>
             <tbody>
@@ -1772,14 +1916,26 @@
                     <td>${escapeHtml(row.stage_label)}</td>
                     <td><strong class="score-primary">${formatPercent(row.success_rate)}</strong></td>
                     <td>${formatSteps(row.action_steps)}</td>
-                    <td>${formatSeconds(row.real_time)}</td>
+                    <td>${formatInferenceMilliseconds(row.real_time)}</td>
                   </tr>
                 `).join("")
-                : `<tr><td colspan="7" class="empty-table">${escapeHtml(fallbackTitle || "No published results yet.")}</td></tr>`}
+                : `<tr><td colspan="7" class="empty-table">${escapeHtml(fallbackTitle || emptyMessage)}</td></tr>`}
             </tbody>
           </table>
         </div>
       </section>
+    `;
+  }
+
+  function renderLeaderboardTabs(activeViewId) {
+    return `
+      <nav class="leaderboard-tabs" aria-label="Leaderboard task views">
+        ${LEADERBOARD_VIEWS.map((view) => `
+          <a class="leaderboard-tab ${view.id === activeViewId ? "is-active" : ""}" href="${routeHref(view.id === "overall" ? "leaderboard" : `leaderboard/${view.id}`)}">
+            ${escapeHtml(view.label)}
+          </a>
+        `).join("")}
+      </nav>
     `;
   }
 
@@ -1834,7 +1990,7 @@
           </article>
           <article class="card metric-card">
             <span>Inference time</span>
-            <strong>${formatSeconds(evaluation.real_time)}</strong>
+            <strong>${formatInferenceMilliseconds(evaluation.real_time)}</strong>
           </article>
         </div>
       </section>
@@ -1930,7 +2086,8 @@
     if (route === "evaluation") return { name: "evaluation" };
     if (route === "faq") return { name: "faq" };
     if (route === "dashboard") return { name: "dashboard" };
-    if (route === "leaderboard") return { name: "leaderboard" };
+    if (route === "leaderboard") return { name: "leaderboard", view: "overall" };
+    if (route.startsWith("leaderboard/")) return { name: "leaderboard", view: route.slice("leaderboard/".length) || "overall" };
     if (route === "admin") return { name: "admin" };
     if (route.startsWith("submission/")) return { name: "submission", id: route.slice("submission/".length) };
     if (route.startsWith("results/")) return { name: "results", id: route.slice("results/".length) };
@@ -1966,7 +2123,7 @@
         renderSection(renderSubmissionDetailPage(route.id), "Submission");
         break;
       case "leaderboard":
-        renderSection(renderLeaderboardPage(), "Leaderboard");
+        renderSection(renderLeaderboardPage(route.view), "Leaderboard");
         break;
       case "results":
         renderSection(renderResultsPage(route.id), "Result Viewer");
