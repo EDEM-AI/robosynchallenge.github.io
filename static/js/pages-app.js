@@ -47,7 +47,7 @@
   ];
 
   const LEADERBOARD_VIEWS = [
-    { id: "overall", label: "Overall average" },
+    { id: "overall", label: "Average" },
     ...LEADERBOARD_TASKS,
   ];
 
@@ -1877,7 +1877,6 @@
       : `No published ${activeView.label} results yet.`;
     return `
       <section class="section shell leaderboard-section">
-        ${renderLeaderboardTabs(activeView.id)}
         <div class="leaderboard-summary">
           <span><strong>1</strong> Success rate</span>
           <span><strong>2</strong> Action steps</span>
@@ -1892,7 +1891,7 @@
                 <th>Model</th>
                 <th>Team</th>
                 <th>Stage</th>
-                <th>Success</th>
+                <th>${renderLeaderboardViewSelect(activeView.id)}</th>
                 <th>Steps</th>
                 <th>Inference (ms)</th>
               </tr>
@@ -1927,15 +1926,16 @@
     `;
   }
 
-  function renderLeaderboardTabs(activeViewId) {
+  function renderLeaderboardViewSelect(activeViewId) {
     return `
-      <nav class="leaderboard-tabs" aria-label="Leaderboard task views">
-        ${LEADERBOARD_VIEWS.map((view) => `
-          <a class="leaderboard-tab ${view.id === activeViewId ? "is-active" : ""}" href="${routeHref(view.id === "overall" ? "leaderboard" : `leaderboard/${view.id}`)}">
-            ${escapeHtml(view.label)}
-          </a>
-        `).join("")}
-      </nav>
+      <label class="leaderboard-head-select">
+        <span>Success</span>
+        <select data-leaderboard-view-select aria-label="Select leaderboard task">
+          ${LEADERBOARD_VIEWS.map((view) => `
+            <option value="${escapeHtml(view.id)}" ${view.id === activeViewId ? "selected" : ""}>${escapeHtml(view.label)}</option>
+          `).join("")}
+        </select>
+      </label>
     `;
   }
 
@@ -2472,6 +2472,13 @@
         event.preventDefault();
         handleDeleteEpisode(target.getAttribute("data-submission-id") || "", target.getAttribute("data-episode-id") || "");
       }
+    });
+
+    document.addEventListener("change", (event) => {
+      const target = event.target.closest("[data-leaderboard-view-select]");
+      if (!target) return;
+      const viewId = target.value || "overall";
+      navigate(viewId === "overall" ? "leaderboard" : `leaderboard/${viewId}`);
     });
 
     document.addEventListener("submit", (event) => {
