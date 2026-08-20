@@ -480,7 +480,7 @@
 
   function formatSteps(value) {
     if (value === "" || value == null || !Number.isFinite(Number(value))) return "--";
-    return `${Math.round(Number(value))}`;
+    return Number(value).toFixed(1);
   }
 
   function formatScore(value) {

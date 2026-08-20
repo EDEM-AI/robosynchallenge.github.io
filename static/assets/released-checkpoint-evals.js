@@ -187,7 +187,7 @@
                         <td><div class="table-primary">
                           <a href="${escapeHtml(checkpointRevisionUrl(policy))}" target="_blank" rel="noreferrer"><strong>${escapeHtml(formatPercent(policy.success_rate))}</strong></a>
                           <span>${escapeHtml(policy.success_count)} / ${episodes} successful episodes</span>
-                          <span>${escapeHtml(policy.action_steps.toFixed(2))} steps, ${escapeHtml(policy.inference_time_ms)} ms inference</span>
+                          <span>${escapeHtml(policy.action_steps.toFixed(1))} steps, ${escapeHtml(policy.inference_time_ms)} ms inference</span>
                         </div></td>
                       `;
                     }).join("")}
