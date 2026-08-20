@@ -575,32 +575,63 @@ code {
 }
 
 .leaderboard-head-select {
-  display: grid;
-  gap: 5px;
-  min-width: 142px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
 }
 
-.leaderboard-head-select span {
-  color: var(--ink-soft);
-  font-size: 0.74rem;
+.leaderboard-caret {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(16, 33, 45, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.leaderboard-caret::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 5px solid var(--ink-soft);
+}
+
+.leaderboard-head-select-label {
+  color: inherit;
+  font-size: inherit;
   font-weight: 700;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  white-space: nowrap;
 }
 
 .leaderboard-head-select select {
-  width: 100%;
-  min-height: 34px;
-  padding: 6px 30px 6px 10px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 700;
+  position: absolute;
+  inset: -8px;
+  width: calc(100% + 16px);
+  height: calc(100% + 16px);
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .leaderboard-rank-header {
-  width: 168px;
+  width: 146px;
+}
+
+.leaderboard-head-select:focus-within .leaderboard-caret {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(233, 103, 63, 0.14);
 }
 
 .leaderboard-summary {
@@ -637,6 +668,44 @@ code {
 .leaderboard-summary small {
   margin-left: auto;
   color: var(--ink-soft);
+}
+
+.leaderboard-view-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 6px 11px;
+  border: 1px solid rgba(16, 33, 45, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.leaderboard-view-meta b,
+.leaderboard-view-meta strong,
+.leaderboard-view-meta i {
+  font-style: normal;
+}
+
+.leaderboard-view-meta b {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.leaderboard-view-meta strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.leaderboard-view-meta i {
+  color: var(--ink-soft);
+  font-weight: 600;
 }
 
 .leaderboard-shell {

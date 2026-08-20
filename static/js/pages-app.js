@@ -1881,7 +1881,11 @@
           <span><strong>1</strong> Success rate</span>
           <span><strong>2</strong> Action steps</span>
           <span><strong>3</strong> Inference time</span>
-          <small>${escapeHtml(activeView.label)} | ${rows.length} published results</small>
+          <small class="leaderboard-view-meta">
+            <b>View</b>
+            <strong>${escapeHtml(activeView.label)}</strong>
+            <i>${rows.length} published results</i>
+          </small>
         </div>
         <div class="table-shell leaderboard-shell">
           <table class="leaderboard-table leaderboard-table-compact">
@@ -1929,7 +1933,8 @@
   function renderLeaderboardViewSelect(activeViewId) {
     return `
       <label class="leaderboard-head-select">
-        <span>Rank by</span>
+        <span class="leaderboard-caret" aria-hidden="true"></span>
+        <span class="leaderboard-head-select-label">Rank by</span>
         <select data-leaderboard-view-select aria-label="Select leaderboard task">
           ${LEADERBOARD_VIEWS.map((view) => `
             <option value="${escapeHtml(view.id)}" ${view.id === activeViewId ? "selected" : ""}>${escapeHtml(view.label)}</option>
