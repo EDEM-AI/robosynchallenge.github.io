@@ -574,6 +574,15 @@ code {
   display: grid;
 }
 
+.leaderboard-overview {
+  padding-top: 24px;
+  padding-bottom: 0;
+}
+
+.leaderboard-overview .leaderboard-summary {
+  margin-bottom: 0;
+}
+
 .leaderboard-section {
   padding-top: 24px;
   padding-bottom: 34px;

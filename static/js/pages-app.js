@@ -1967,9 +1967,25 @@
   }
 
   function renderLeaderboardTables(activeViewId = "overall", fallbackTitle = "") {
+    const tables = orderedLeaderboardViews(activeViewId).map((view) => ({
+      view,
+      rows: getLeaderboardRows(view.id),
+    }));
+    const stageTitle = leaderboardStageTitle(tables.flatMap((table) => table.rows));
     return `
+      <section class="section shell leaderboard-overview">
+        <div class="leaderboard-table-heading">
+          <h2>${escapeHtml(stageTitle)} leaderboard</h2>
+        </div>
+        <div class="leaderboard-summary">
+          <span>Score</span>
+          <span>Success rate</span>
+          <span>Action steps</span>
+          <span>Inference time</span>
+        </div>
+      </section>
       <div class="leaderboard-stack">
-        ${orderedLeaderboardViews(activeViewId).map((view) => renderLeaderboardTable(getLeaderboardRows(view.id), view, fallbackTitle)).join("")}
+        ${tables.map(({ view, rows }) => renderLeaderboardTable(rows, view, fallbackTitle)).join("")}
       </div>
     `;
   }
@@ -1987,23 +2003,15 @@
     const emptyMessage = activeView.id === "overall"
       ? "No published overall results yet."
       : `No published ${activeView.label} results yet.`;
-    const stageTitle = leaderboardStageTitle(rows);
     return `
       <section id="leaderboard-${escapeHtml(activeView.id)}" class="section shell leaderboard-section">
         <div class="leaderboard-table-heading">
-          <h2>${escapeHtml(stageTitle)} leaderboard</h2>
           <small class="leaderboard-view-meta">
             <b>View</b>
             <strong>${escapeHtml(activeView.label)}</strong>
             <span aria-hidden="true">|</span>
             <i>${rows.length} published results</i>
           </small>
-        </div>
-        <div class="leaderboard-summary">
-          <span>Score</span>
-          <span>Success rate</span>
-          <span>Action steps</span>
-          <span>Inference time</span>
         </div>
         <div class="table-shell leaderboard-shell">
           <table class="leaderboard-table leaderboard-table-compact">
