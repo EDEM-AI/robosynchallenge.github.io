@@ -312,6 +312,12 @@
       `,
     },
     {
+      question: "Can teams submit separate checkpoints for different tasks?",
+      answer: `
+        <p>Yes. Teams may provide task-specific checkpoints. Please submit one GitHub repository that contains the evaluation code for all tasks, and list the Hugging Face checkpoint for each task in the submission notes or README. The organizers will use the corresponding checkpoint when evaluating each task.</p>
+      `,
+    },
+    {
       question: "How many times may a team submit, and what is the deadline?",
       answer: `
         <p>Teams may submit multiple times before <strong>October 11, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
