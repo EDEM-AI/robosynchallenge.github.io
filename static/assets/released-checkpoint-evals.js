@@ -1,8 +1,10 @@
 (() => {
   "use strict";
 
+  const POLICY_ORDER = ["SmolVLA", "ACT", "DP"];
+
   const release = Object.freeze({
-    published_at: "2026-08-17",
+    published_at: "2026-08-21",
     environment: "simulation",
     setting: "random",
     metric: "success_rate",
@@ -12,55 +14,97 @@
     data_url: "https://github.com/EDEM-AI/RoboSynChallenge/blob/main/evaluation_results/released_checkpoint_results.json",
     results: [
       {
-        task_id: "click_bell",
-        task_name: "Click bell",
-        protocol_path: "configs/click_bell/random/gym_config.json",
-        policies: {
-          ACT: { success_count: 37, success_rate: 37.0, action_steps: 662.00, inference_time_ms: 155, repo_id: "RoboSynChallenge/ACT_sim_click_bell", revision: "677e65fbb15974024ff840893496197ef7db26d4" },
-          DP: { success_count: 44, success_rate: 44.0, action_steps: 584.64, inference_time_ms: 8620, repo_id: "RoboSynChallenge/DP_sim_click_bell", revision: "fb8c9551e0fade7c4888a926ab577b85f0684da1" },
-        },
-      },
-      {
-        task_id: "drawer_open_place",
-        task_name: "Drawer open and place",
-        protocol_path: "configs/drawer_open_place/random/gym_config.json",
-        policies: {
-          ACT: { success_count: 29, success_rate: 29.0, action_steps: 812.70, inference_time_ms: 190, repo_id: "RoboSynChallenge/ACT_sim_drawer_open_place", revision: "592e30434aad83cf7bd8f1ee105d7c401488743d" },
-          DP: { success_count: 0, success_rate: 0.0, action_steps: 1000.00, inference_time_ms: 14648, repo_id: "RoboSynChallenge/DP_sim_drawer_open_place", revision: "c5600daa96623adb4f8cd0c156b70836c30b1288" },
-        },
-      },
-      {
-        task_id: "mixer_operating",
-        task_name: "Mixer operating",
-        protocol_path: "configs/mixer_operating/random/gym_config.json",
-        policies: {
-          ACT: { success_count: 77, success_rate: 77.0, action_steps: 425.49, inference_time_ms: 101, repo_id: "RoboSynChallenge/ACT_sim_mixer_operating", revision: "0f12c53a2a6e093ae5e1e28f20480296b45fdf2b" },
-          DP: { success_count: 69, success_rate: 69.0, action_steps: 490.24, inference_time_ms: 7260, repo_id: "RoboSynChallenge/DP_sim_mixer_operating", revision: "c05afece66ead46b47f6532c86d95cb3dd0f628e" },
-        },
-      },
-      {
         task_id: "table_rearrangement",
         task_name: "Table rearrangement",
+        max_action_steps: 361,
         protocol_path: "configs/table_rearrangement/random/gym_config.json",
         policies: {
-          ACT: { success_count: 63, success_rate: 63.0, action_steps: 454.80, inference_time_ms: 109, repo_id: "RoboSynChallenge/ACT_sim_table_rearrangement", revision: "3a46b36fade1772176b791dd87349f479d0a98c8" },
-          DP: { success_count: 16, success_rate: 16.0, action_steps: 855.60, inference_time_ms: 12570, repo_id: "RoboSynChallenge/DP_sim_table_rearrangement", revision: "99c73475a13ec2583b5105dc3773f88bbdeba9f5" },
+          SmolVLA: { success_count: 82, success_rate: 82.0, action_steps: 196.98, inference_time_ms: 287.013, model_name: "official SmolVLA_sim_table_rearrangement" },
+          ACT: { success_count: 63, success_rate: 63.0, action_steps: 218.37, inference_time_ms: 57.6, repo_id: "RoboSynChallenge/ACT_sim_table_rearrangement", revision: "3a46b36fade1772176b791dd87349f479d0a98c8" },
+          DP: { success_count: 16, success_rate: 16.0, action_steps: 318.84, inference_time_ms: 4879.7, repo_id: "RoboSynChallenge/DP_sim_table_rearrangement", revision: "99c73475a13ec2583b5105dc3773f88bbdeba9f5" },
+        },
+      },
+      {
+        task_id: "click_bell",
+        task_name: "Click bell",
+        max_action_steps: 361,
+        protocol_path: "configs/click_bell/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 35, success_rate: 35.0, action_steps: 269.15, inference_time_ms: 273.2, model_name: "official SmolVLA_sim_click_bell" },
+          ACT: { success_count: 37, success_rate: 37.0, action_steps: 259.43, inference_time_ms: 66.9, repo_id: "RoboSynChallenge/ACT_sim_click_bell", revision: "677e65fbb15974024ff840893496197ef7db26d4" },
+          DP: { success_count: 44, success_rate: 44.0, action_steps: 226.80, inference_time_ms: 3492.7, repo_id: "RoboSynChallenge/DP_sim_click_bell", revision: "fb8c9551e0fade7c4888a926ab577b85f0684da1" },
         },
       },
       {
         task_id: "water_pouring",
         task_name: "Water pouring",
+        max_action_steps: 500,
         protocol_path: "configs/water_pouring/random/gym_config.json",
         policies: {
-          ACT: { success_count: 72, success_rate: 72.0, action_steps: 416.00, inference_time_ms: 98, repo_id: "RoboSynChallenge/ACT_sim_water_pouring", revision: "0bf0fcfc931a69c52871385f28068fcf873cf07a" },
-          DP: { success_count: 33, success_rate: 33.0, action_steps: 731.76, inference_time_ms: 10725, repo_id: "RoboSynChallenge/DP_sim_water_pouring", revision: "b67e1ce7444dfa2940970088ebbe04a8b01013cc" },
+          SmolVLA: { success_count: 65, success_rate: 65.0, action_steps: 303.75, inference_time_ms: 271.1, model_name: "official SmolVLA_sim_water_pouring" },
+          ACT: { success_count: 72, success_rate: 72.0, action_steps: 276.00, inference_time_ms: 65.9, repo_id: "RoboSynChallenge/ACT_sim_water_pouring", revision: "0bf0fcfc931a69c52871385f28068fcf873cf07a" },
+          DP: { success_count: 33, success_rate: 33.0, action_steps: 396.76, inference_time_ms: 5818.1, repo_id: "RoboSynChallenge/DP_sim_water_pouring", revision: "b67e1ce7444dfa2940970088ebbe04a8b01013cc" },
+        },
+      },
+      {
+        task_id: "handle_basket",
+        task_name: "Handle basket",
+        max_action_steps: 500,
+        protocol_path: "configs/handle_basket/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 40, success_rate: 40.0, action_steps: 434.50, inference_time_ms: 270.674, model_name: "official SmolVLA_sim_handle_basket" },
+        },
+      },
+      {
+        task_id: "items_handover",
+        task_name: "Items handover",
+        max_action_steps: 350,
+        protocol_path: "configs/items_handover/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 30, success_rate: 30.0, action_steps: 342.50, inference_time_ms: 263.571, model_name: "official SmolVLA_sim_items_handover" },
+        },
+      },
+      {
+        task_id: "drawer_open_place",
+        task_name: "Drawer open and place",
+        max_action_steps: 900,
+        protocol_path: "configs/drawer_open_place/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 62, success_rate: 62.0, action_steps: 583.00, inference_time_ms: 254.478, model_name: "official SmolVLA_sim_drawer_open_place" },
+          ACT: { success_count: 29, success_rate: 29.0, action_steps: 741.70, inference_time_ms: 173.7, repo_id: "RoboSynChallenge/ACT_sim_drawer_open_place", revision: "592e30434aad83cf7bd8f1ee105d7c401488743d" },
+          DP: { success_count: 0, success_rate: 0.0, action_steps: 900.00, inference_time_ms: 13275.0, repo_id: "RoboSynChallenge/DP_sim_drawer_open_place", revision: "c5600daa96623adb4f8cd0c156b70836c30b1288" },
+        },
+      },
+      {
+        task_id: "mixer_operating",
+        task_name: "Mixer operating",
+        max_action_steps: 500,
+        protocol_path: "configs/mixer_operating/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 58, success_rate: 58.0, action_steps: 362.50, inference_time_ms: 264.997, model_name: "official SmolVLA_sim_mixer_operating" },
+          ACT: { success_count: 77, success_rate: 77.0, action_steps: 310.49, inference_time_ms: 74.6, repo_id: "RoboSynChallenge/ACT_sim_mixer_operating", revision: "0f12c53a2a6e093ae5e1e28f20480296b45fdf2b" },
+          DP: { success_count: 69, success_rate: 69.0, action_steps: 335.24, inference_time_ms: 4989.6, repo_id: "RoboSynChallenge/DP_sim_mixer_operating", revision: "c05afece66ead46b47f6532c86d95cb3dd0f628e" },
+        },
+      },
+      {
+        task_id: "item_assembly",
+        task_name: "Item assembly",
+        max_action_steps: 361,
+        protocol_path: "configs/item_assembly/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 24, success_rate: 24.0, action_steps: 337.16, inference_time_ms: 271.9, model_name: "official SmolVLA_sim_item_assembly" },
+        },
+      },
+      {
+        task_id: "manipulate_pipette",
+        task_name: "Manipulate pipette",
+        max_action_steps: 1000,
+        protocol_path: "configs/manipulate_pipette/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 36, success_rate: 36.0, action_steps: 728.50, inference_time_ms: 258.076, model_name: "official SmolVLA_sim_manipulate_pipette" },
         },
       },
     ],
-    aggregate: {
-      ACT: { success_count: 278, episode_count: 500, macro_success_rate: 55.6 },
-      DP: { success_count: 162, episode_count: 500, macro_success_rate: 32.4 },
-    },
   });
 
   function escapeHtml(value) {
@@ -78,8 +122,22 @@
     return `${number.toFixed(1).replace(/\.0$/, "")}%`;
   }
 
+  function formatMilliseconds(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return "Not available";
+    return Number.isInteger(number) ? String(number) : number.toFixed(3).replace(/0+$/, "").replace(/\.$/, "");
+  }
+
   function checkpointRevisionUrl(policy) {
+    if (!policy.repo_id) return "";
+    if (!policy.revision) return `https://huggingface.co/${policy.repo_id}`;
     return `https://huggingface.co/${policy.repo_id}/tree/${policy.revision}`;
+  }
+
+  function policyDisplayName(policyName, policy, taskId = "average") {
+    if (policy?.model_name) return policy.model_name;
+    if (policy?.repo_id) return policy.repo_id.replace(/^RoboSynChallenge\//, "official ");
+    return `official ${policyName}_sim_${taskId}`;
   }
 
   function average(numbers) {
@@ -88,19 +146,50 @@
     return finite.reduce((total, value) => total + value, 0) / finite.length;
   }
 
+  function releasedPolicyNames() {
+    const names = new Set();
+    release.results.forEach((result) => {
+      Object.keys(result.policies).forEach((policyName) => names.add(policyName));
+    });
+    return [
+      ...POLICY_ORDER.filter((policyName) => names.has(policyName)),
+      ...Array.from(names).filter((policyName) => !POLICY_ORDER.includes(policyName)).sort(),
+    ];
+  }
+
+  function releasedPolicyResults(policyName) {
+    return release.results
+      .map((result) => ({ result, policy: result.policies[policyName] }))
+      .filter((entry) => entry.policy);
+  }
+
   function releasedPolicyTaskScore(result, policyName) {
     const policy = result.policies[policyName];
     return {
       task_id: result.task_id,
       success_rate: policy.success_rate,
       action_steps: policy.action_steps,
+      max_action_steps: result.max_action_steps,
       real_time: policy.inference_time_ms / 1000,
     };
   }
 
+  function releasedPolicyAggregate(policyName) {
+    const entries = releasedPolicyResults(policyName);
+    const taskScores = entries.map(({ result }) => releasedPolicyTaskScore(result, policyName));
+    return {
+      taskScores,
+      taskCount: taskScores.length,
+      success_count: entries.reduce((total, { policy }) => total + Number(policy.success_count || 0), 0),
+      episode_count: entries.length * release.episodes_per_checkpoint,
+      macro_success_rate: average(taskScores.map((score) => score.success_rate)),
+      action_steps: average(taskScores.map((score) => score.action_steps)),
+      real_time: average(taskScores.map((score) => score.real_time)),
+    };
+  }
+
   function releasedPolicyAggregateRow(policyName) {
-    const aggregate = release.aggregate[policyName];
-    const taskScores = release.results.map((result) => releasedPolicyTaskScore(result, policyName));
+    const aggregate = releasedPolicyAggregate(policyName);
     const modelName = `official ${policyName}_sim_average`;
     return {
       kind: "released_checkpoint_average",
@@ -112,27 +201,27 @@
       task_name: "Average",
       stage_label: `Simulation ${release.setting}`,
       evaluation_stage: "preliminary_simulation",
-      data_regime: `Five-task macro average / ${release.setting}`,
+      data_regime: `${aggregate.taskCount}-task macro average / ${release.setting}`,
       success_rate: aggregate.macro_success_rate,
-      action_steps: average(taskScores.map((score) => score.action_steps)),
-      real_time: average(taskScores.map((score) => score.real_time)),
+      action_steps: aggregate.action_steps,
+      real_time: aggregate.real_time,
       rank_badge: `${aggregate.success_count} / ${aggregate.episode_count} successful episodes`,
       evaluation_id: "",
       result_url: release.data_url,
       protocol_url: release.source_url,
-      task_scores: taskScores,
+      task_scores: aggregate.taskScores,
       notes: `${modelName} evaluated across the released ${release.setting} task set.`,
     };
   }
 
   window.ROBO_SYN_RELEASED_CHECKPOINT_EVALS = release;
   window.ROBO_SYN_GET_RELEASED_CHECKPOINT_AVERAGE_ROWS = function getReleasedCheckpointAverageRows() {
-    return ["ACT", "DP"].map(releasedPolicyAggregateRow);
+    return releasedPolicyNames().map(releasedPolicyAggregateRow);
   };
 
   window.ROBO_SYN_GET_RELEASED_CHECKPOINT_LEADERBOARD_ROWS = function getReleasedCheckpointLeaderboardRows() {
     return release.results.flatMap((result) => Object.entries(result.policies).map(([policyName, policy]) => {
-      const modelName = policy.repo_id.replace(/^RoboSynChallenge\//, "official ");
+      const modelName = policyDisplayName(policyName, policy, result.task_id);
       const protocolUrl = `https://github.com/EDEM-AI/RoboSynChallenge/blob/${release.protocol_revision}/${result.protocol_path}`;
       return {
         kind: "released_checkpoint",
@@ -147,6 +236,7 @@
         data_regime: `${result.task_name} / ${release.setting}`,
         success_rate: policy.success_rate,
         action_steps: policy.action_steps,
+        max_action_steps: result.max_action_steps,
         real_time: policy.inference_time_ms / 1000,
         inference_time_ms: policy.inference_time_ms,
         rank_badge: `${policy.success_count} / ${release.episodes_per_checkpoint} successful episodes`,
@@ -157,8 +247,9 @@
       };
     }));
   };
+
   window.ROBO_SYN_RENDER_RELEASED_CHECKPOINT_RESULTS = function renderReleasedCheckpointResults() {
-    const policies = ["ACT", "DP"];
+    const policies = releasedPolicyNames();
     const episodes = release.episodes_per_checkpoint;
 
     return `
@@ -169,12 +260,12 @@
         </div>
         <p class="field-note">
           Each task uses the <code>random</code> configuration for ${episodes} episodes.
-          Every score links to the exact evaluated Hugging Face checkpoint revision; task names link to
+          Every score links to the exact evaluated Hugging Face checkpoint revision when available; task names link to
           the pinned evaluation configuration.
         </p>
         <div class="table-shell">
           <table class="leaderboard-table">
-            <thead><tr><th>Task</th><th>ACT</th><th>DP</th></tr></thead>
+            <thead><tr><th>Task</th>${policies.map((policyName) => `<th>${escapeHtml(policyName)}</th>`).join("")}</tr></thead>
             <tbody>
               ${release.results.map((result) => {
                 const protocolUrl = `https://github.com/EDEM-AI/RoboSynChallenge/blob/${release.protocol_revision}/${result.protocol_path}`;
@@ -183,11 +274,16 @@
                     <th scope="row"><a href="${escapeHtml(protocolUrl)}" target="_blank" rel="noreferrer">${escapeHtml(result.task_name)}</a></th>
                     ${policies.map((policyName) => {
                       const policy = result.policies[policyName];
+                      if (!policy) return "<td>Not available</td>";
+                      const scoreUrl = checkpointRevisionUrl(policy);
+                      const scoreHtml = scoreUrl
+                        ? `<a href="${escapeHtml(scoreUrl)}" target="_blank" rel="noreferrer"><strong>${escapeHtml(formatPercent(policy.success_rate))}</strong></a>`
+                        : `<strong>${escapeHtml(formatPercent(policy.success_rate))}</strong>`;
                       return `
                         <td><div class="table-primary">
-                          <a href="${escapeHtml(checkpointRevisionUrl(policy))}" target="_blank" rel="noreferrer"><strong>${escapeHtml(formatPercent(policy.success_rate))}</strong></a>
+                          ${scoreHtml}
                           <span>${escapeHtml(policy.success_count)} / ${episodes} successful episodes</span>
-                          <span>${escapeHtml(policy.action_steps.toFixed(1))} steps, ${escapeHtml(policy.inference_time_ms)} ms inference</span>
+                          <span>${escapeHtml(policy.action_steps.toFixed(1))} / ${escapeHtml(result.max_action_steps)} steps, ${escapeHtml(formatMilliseconds(policy.inference_time_ms))} ms inference</span>
                         </div></td>
                       `;
                     }).join("")}
@@ -195,13 +291,14 @@
                 `;
               }).join("")}
               <tr>
-                <th scope="row">Five-task macro average</th>
+                <th scope="row">Macro average</th>
                 ${policies.map((policyName) => {
-                  const aggregate = release.aggregate[policyName];
+                  const aggregate = releasedPolicyAggregate(policyName);
                   return `
                     <td><div class="table-primary">
                       <strong>${escapeHtml(formatPercent(aggregate.macro_success_rate))}</strong>
                       <span>${escapeHtml(aggregate.success_count)} / ${escapeHtml(aggregate.episode_count)} successful episodes</span>
+                      <span>${escapeHtml(aggregate.taskCount)} tasks</span>
                     </div></td>
                   `;
                 }).join("")}

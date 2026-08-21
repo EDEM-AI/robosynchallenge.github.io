@@ -50,19 +50,29 @@
     { id: "overall", label: "Average" },
     ...LEADERBOARD_TASKS,
   ];
-  // Public report Table 5 defines leaderboard Action Steps as max 1000; simulator episode horizons use different units.
-  const LEADERBOARD_MAX_ACTION_STEPS = 1000;
+  const DEFAULT_LEADERBOARD_MAX_ACTION_STEPS = 1000;
+  const LEADERBOARD_MAX_ACTION_STEPS_BY_TASK = Object.freeze({
+    click_bell: 361,
+    drawer_open_place: 900,
+    mixer_operating: 500,
+    table_rearrangement: 361,
+    water_pouring: 500,
+    handle_basket: 500,
+    items_handover: 350,
+    item_assembly: 361,
+    manipulate_pipette: 1000,
+  });
   const LEADERBOARD_SCORE_WEIGHTS = Object.freeze({
     success: 0.75,
     action: 0.2,
     inference: 0.05,
   });
   const ACT_INFERENCE_BASELINE_SECONDS = Object.freeze({
-    click_bell: 0.155,
-    drawer_open_place: 0.190,
-    mixer_operating: 0.101,
-    table_rearrangement: 0.109,
-    water_pouring: 0.098,
+    click_bell: 0.0669,
+    drawer_open_place: 0.1737,
+    mixer_operating: 0.0746,
+    table_rearrangement: 0.0576,
+    water_pouring: 0.0659,
   });
 
   const REAL_EVALUATION_VIDEO_ASSETS = [
@@ -765,6 +775,7 @@
     if (!row) return null;
     const evaluationStage = String(row.evaluation_stage || "");
     const actionSteps = row.action_steps === "" || row.action_steps == null ? null : Number(row.action_steps);
+    const maxActionSteps = row.max_action_steps === "" || row.max_action_steps == null ? null : Number(row.max_action_steps);
     const realTime = row.real_time === "" || row.real_time == null ? null : Number(row.real_time);
     const weightedScore = row.weighted_score === "" || row.weighted_score == null ? null : Number(row.weighted_score);
     const hasEvaluationId = Object.prototype.hasOwnProperty.call(row, "evaluation_id");
@@ -782,6 +793,7 @@
       data_regime: String(row.data_regime || row.data_source_text || ""),
       success_rate: Number(row.success_rate || 0),
       action_steps: Number.isFinite(actionSteps) ? actionSteps : null,
+      max_action_steps: Number.isFinite(maxActionSteps) ? maxActionSteps : null,
       real_time: Number.isFinite(realTime) ? realTime : null,
       rank_badge: String(row.rank_badge || "Participant ranked"),
       evaluation_id: hasEvaluationId ? String(row.evaluation_id || "") : String(row.id || ""),
@@ -800,11 +812,13 @@
     const taskId = normalizeTaskKey(score.task_id || score.task_key || score.task_name || score.task || "");
     if (!taskId) return null;
     const actionSteps = score.action_steps === "" || score.action_steps == null ? null : Number(score.action_steps);
+    const maxActionSteps = score.max_action_steps === "" || score.max_action_steps == null ? null : Number(score.max_action_steps);
     const realTime = score.real_time === "" || score.real_time == null ? null : Number(score.real_time);
     return {
       task_id: taskId,
       success_rate: Number(score.success_rate || 0),
       action_steps: Number.isFinite(actionSteps) ? actionSteps : null,
+      max_action_steps: Number.isFinite(maxActionSteps) ? maxActionSteps : null,
       real_time: Number.isFinite(realTime) ? realTime : null,
     };
   }
@@ -990,18 +1004,25 @@
   }
 
   function taskWeightedScore(metric, taskId) {
+    const normalizedTaskId = taskId || metric.task_id;
     const successRate = Math.max(0, Math.min(100, Number(metric.success_rate || 0)));
-    const actionEfficiency = actionEfficiencyScore(metric.action_steps);
-    const inferenceEfficiency = inferenceEfficiencyScore(metric.real_time, taskId);
+    const actionEfficiency = actionEfficiencyScore(metric.action_steps, normalizedTaskId, metric.max_action_steps);
+    const inferenceEfficiency = inferenceEfficiencyScore(metric.real_time, normalizedTaskId);
     return (LEADERBOARD_SCORE_WEIGHTS.success * successRate)
       + (LEADERBOARD_SCORE_WEIGHTS.action * actionEfficiency)
       + (LEADERBOARD_SCORE_WEIGHTS.inference * inferenceEfficiency);
   }
 
-  function actionEfficiencyScore(actionSteps) {
+  function actionEfficiencyScore(actionSteps, taskId, explicitMaxSteps = null) {
     const steps = Number(actionSteps);
-    if (!Number.isFinite(steps)) return 0;
-    return Math.max(0, Math.min(100, (1 - (steps / LEADERBOARD_MAX_ACTION_STEPS)) * 100));
+    const maxSteps = Number.isFinite(Number(explicitMaxSteps)) ? Number(explicitMaxSteps) : maxActionStepsForTask(taskId);
+    if (!Number.isFinite(steps) || !Number.isFinite(maxSteps) || maxSteps <= 0) return 0;
+    return Math.max(0, Math.min(100, (1 - (steps / maxSteps)) * 100));
+  }
+
+  function maxActionStepsForTask(taskId) {
+    const normalizedTaskId = normalizeTaskKey(taskId);
+    return LEADERBOARD_MAX_ACTION_STEPS_BY_TASK[normalizedTaskId] || DEFAULT_LEADERBOARD_MAX_ACTION_STEPS;
   }
 
   function inferenceEfficiencyScore(realTime, taskId) {
