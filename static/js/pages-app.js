@@ -61,6 +61,7 @@
     items_handover: 350,
     item_assembly: 361,
     manipulate_pipette: 1000,
+    sample_loading: 500,
   });
   const LEADERBOARD_SCORE_WEIGHTS = Object.freeze({
     success: 0.75,

@@ -104,6 +104,15 @@
           SmolVLA: { success_count: 36, success_rate: 36.0, action_steps: 728.50, inference_time_ms: 258.076, repo_id: "RoboSynChallenge/SmolVLA_sim_manipulate_pipette", revision: "dd0e80bc7d5fa5081e1fa07f1b7115bad6dbffa0", model_name: "official SmolVLA_sim_manipulate_pipette" },
         },
       },
+      {
+        task_id: "sample_loading",
+        task_name: "Sample loading",
+        max_action_steps: 500,
+        protocol_path: "configs/sample_loading/random/gym_config.json",
+        policies: {
+          SmolVLA: { success_count: 25, success_rate: 25.0, action_steps: 461.50, inference_time_ms: 253.8, repo_id: "RoboSynChallenge/SmolVLA_sim_sample_loading", revision: "2a4f41ab3be8e5f544c890d6054bc8de3be5c53b", model_name: "official SmolVLA_sim_sample_loading" },
+        },
+      },
     ],
   });
 
