@@ -1923,14 +1923,13 @@
   function renderLeaderboardPage(viewId = "overall") {
     const activeView = leaderboardViewById(viewId);
     if (!backendConfigured()) {
-      const rows = getLeaderboardRows(activeView.id);
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
           <h1>Leaderboard.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
-        ${renderLeaderboardTable(rows, activeView, "Leaderboard backend unavailable")}
+        ${renderLeaderboardTables(activeView.id, "Leaderboard backend unavailable")}
       `;
     }
     if (!remoteState.leaderboardLoaded) {
@@ -1941,32 +1940,47 @@
           <h1>Loading leaderboard.</h1>
           <p class="lead narrow">Fetching published ranked evaluations from the RoboSynChallenge backend.</p>
         </section>
-        ${renderLeaderboardTable(getLeaderboardRows(activeView.id), activeView)}
+        ${renderLeaderboardTables(activeView.id)}
       `;
     }
     if (remoteState.leaderboardError) {
-      const rows = getLeaderboardRows(activeView.id);
       return `
         <section class="page-hero shell leaderboard-hero">
           <span class="eyebrow">Leaderboard</span>
           <h1>Leaderboard.</h1>
           <p class="lead narrow">Published ranked evaluations are served by the RoboSynChallenge backend.</p>
         </section>
-        ${renderLeaderboardTable(rows, activeView)}
+        ${renderLeaderboardTables(activeView.id)}
         <section class="section shell">
           ${renderBackendErrorCard("Could not load leaderboard", remoteState.leaderboardError, "retry-leaderboard")}
         </section>
       `;
     }
-    const rows = getLeaderboardRows(activeView.id);
     return `
       <section class="page-hero shell leaderboard-hero">
         <span class="eyebrow">Leaderboard</span>
         <h1>Leaderboard.</h1>
         <p class="lead narrow">Ranked by the FAQ weighted score across success rate, action efficiency, and inference efficiency.</p>
       </section>
-      ${renderLeaderboardTable(rows, activeView)}
+      ${renderLeaderboardTables(activeView.id)}
     `;
+  }
+
+  function renderLeaderboardTables(activeViewId = "overall", fallbackTitle = "") {
+    return `
+      <div class="leaderboard-stack">
+        ${orderedLeaderboardViews(activeViewId).map((view) => renderLeaderboardTable(getLeaderboardRows(view.id), view, fallbackTitle)).join("")}
+      </div>
+    `;
+  }
+
+  function orderedLeaderboardViews(activeViewId) {
+    const activeView = leaderboardViewById(activeViewId);
+    if (activeView.id === "overall") return LEADERBOARD_VIEWS;
+    return [
+      activeView,
+      ...LEADERBOARD_VIEWS.filter((view) => view.id !== activeView.id),
+    ];
   }
 
   function renderLeaderboardTable(rows, activeView, fallbackTitle = "") {
@@ -1975,15 +1989,9 @@
       : `No published ${activeView.label} results yet.`;
     const stageTitle = leaderboardStageTitle(rows);
     return `
-      <section class="section shell leaderboard-section">
+      <section id="leaderboard-${escapeHtml(activeView.id)}" class="section shell leaderboard-section">
         <div class="leaderboard-table-heading">
           <h2>${escapeHtml(stageTitle)} leaderboard</h2>
-        </div>
-        <div class="leaderboard-summary">
-          <span>Score</span>
-          <span>Success rate</span>
-          <span>Action steps</span>
-          <span>Inference time</span>
           <small class="leaderboard-view-meta">
             <b>View</b>
             <strong>${escapeHtml(activeView.label)}</strong>
@@ -1991,11 +1999,17 @@
             <i>${rows.length} published results</i>
           </small>
         </div>
+        <div class="leaderboard-summary">
+          <span>Score</span>
+          <span>Success rate</span>
+          <span>Action steps</span>
+          <span>Inference time</span>
+        </div>
         <div class="table-shell leaderboard-shell">
           <table class="leaderboard-table leaderboard-table-compact">
             <thead>
               <tr>
-                <th class="leaderboard-rank-header">${renderLeaderboardViewSelect(activeView.id)}</th>
+                <th>Rank</th>
                 <th>Model</th>
                 <th>Team</th>
                 <th>Score</th>
@@ -2040,20 +2054,6 @@
     const labels = Array.from(new Set(rows.map((row) => row.stage_label).filter(Boolean)));
     if (labels.length === 1) return labels[0];
     return "Preliminary simulation";
-  }
-
-  function renderLeaderboardViewSelect(activeViewId) {
-    return `
-      <label class="leaderboard-head-select">
-        <span class="leaderboard-caret" aria-hidden="true"></span>
-        <span class="leaderboard-head-select-label">Rank by</span>
-        <select data-leaderboard-view-select aria-label="Select leaderboard task">
-          ${LEADERBOARD_VIEWS.map((view) => `
-            <option value="${escapeHtml(view.id)}" ${view.id === activeViewId ? "selected" : ""}>${escapeHtml(view.label)}</option>
-          `).join("")}
-        </select>
-      </label>
-    `;
   }
 
   function renderResultsPage(evaluationId) {
@@ -2589,13 +2589,6 @@
         event.preventDefault();
         handleDeleteEpisode(target.getAttribute("data-submission-id") || "", target.getAttribute("data-episode-id") || "");
       }
-    });
-
-    document.addEventListener("change", (event) => {
-      const target = event.target.closest("[data-leaderboard-view-select]");
-      if (!target) return;
-      const viewId = target.value || "overall";
-      navigate(viewId === "overall" ? "leaderboard" : `leaderboard/${viewId}`);
     });
 
     document.addEventListener("submit", (event) => {
