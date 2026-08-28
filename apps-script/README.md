@@ -26,7 +26,7 @@ CONTACT_EMAIL=robosynchallenge@gmail.com
 WEB_APP_URL=https://script.google.com/macros/s/AKfycbwg9Ee-ZK9eNiMeJGsjzjxF8D6TFMlcuqclrHrVi8-AKHHhP_rYk-FVLZ-3lRSWs-HIXQ/exec
 WECHAT_QR_FILE_ID=<可选，内部微信群二维码图片的 Google Drive file id>
 SITE_LOGIN_URL=https://robosyn-bench.net/#/login
-DISCORD_INVITE_URL=https://discord.gg/3DfJu5HTS
+DISCORD_INVITE_URL=https://discord.gg/tUDEtJG92
 API_BASE_URL=https://script.google.com/macros/s/AKfycbwg9Ee-ZK9eNiMeJGsjzjxF8D6TFMlcuqclrHrVi8-AKHHhP_rYk-FVLZ-3lRSWs-HIXQ/exec
 ```
 
@@ -125,7 +125,7 @@ Property: SITE_LOGIN_URL
 Value: https://robosyn-bench.net/#/login
 
 Property: DISCORD_INVITE_URL
-Value: https://discord.gg/3DfJu5HTS
+Value: https://discord.gg/tUDEtJG92
 ```
 
 说明：
@@ -142,7 +142,7 @@ Value: https://discord.gg/3DfJu5HTS
 - `WEB_APP_URL`：当前 Apps Script Web App URL。注册审核邮件里的 Approve / Deny 按钮需要它。
 - `WECHAT_QR_FILE_ID`：可选。审批通过邮件会把这个 Google Drive 图片文件作为内部微信群二维码直接显示在邮件正文中。
 - `SITE_LOGIN_URL`：可选。approval / token reminder 邮件里的登录测试链接；默认是 `https://robosyn-bench.net/#/login`。
-- `DISCORD_INVITE_URL`：可选。approval / token reminder / token regenerated 邮件里的 Discord 邀请链接；默认是 `https://discord.gg/3DfJu5HTS`。
+- `DISCORD_INVITE_URL`：可选。approval / token reminder / token regenerated 邮件里的 Discord 邀请链接；默认是 `https://discord.gg/tUDEtJG92`。
 
 ## 初始化 Sheet 和 Gmail Labels
 

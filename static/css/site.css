@@ -1236,6 +1236,162 @@ code {
   font-size: 1rem;
 }
 
+.partner-section {
+  position: relative;
+  overflow: hidden;
+  padding: 76px 0 82px;
+  color: var(--ink);
+  background: #fff;
+  border-top: 1px solid rgba(16, 33, 45, 0.08);
+  border-bottom: 1px solid rgba(16, 33, 45, 0.08);
+}
+
+.partner-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(16, 33, 45, 0.028) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16, 33, 45, 0.028) 1px, transparent 1px);
+  background-size: 104px 104px;
+  opacity: 0.8;
+}
+
+.partner-shell {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 44px;
+}
+
+.partner-heading {
+  text-align: center;
+}
+
+.partner-heading .eyebrow {
+  color: var(--accent-dark);
+}
+
+.partner-heading .eyebrow::before {
+  background: var(--accent);
+}
+
+.partner-heading h2 {
+  margin: 12px 0 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(2.1rem, 4.2vw, 3.8rem);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.partner-board {
+  display: grid;
+  gap: 42px;
+}
+
+.partner-group {
+  display: grid;
+  gap: 20px;
+  justify-items: center;
+}
+
+.partner-group h3 {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.partner-logo-grid {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  gap: 26px 44px;
+}
+
+.partner-logo-grid-organizers {
+  max-width: 680px;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+}
+
+.partner-logo-grid-sponsors {
+  max-width: 940px;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
+.partner-logo-grid-institutions {
+  max-width: 1080px;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+}
+
+.partner-logo-grid-academic {
+  max-width: 360px;
+  grid-template-columns: 1fr;
+}
+
+.partner-logo-grid-media {
+  max-width: 560px;
+  grid-template-columns: repeat(2, minmax(140px, 1fr));
+}
+
+.partner-logo-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  min-height: 74px;
+  padding: 4px 10px;
+}
+
+.partner-logo-item img {
+  width: auto;
+  max-width: min(100%, 230px);
+  max-height: 58px;
+  object-fit: contain;
+  opacity: 0.92;
+  filter: drop-shadow(0 10px 20px rgba(16, 33, 45, 0.08));
+}
+
+.partner-logo-wide img {
+  max-width: min(100%, 270px);
+  max-height: 62px;
+}
+
+.partner-logo-medium img {
+  max-width: min(100%, 230px);
+  max-height: 68px;
+}
+
+.partner-logo-square img {
+  max-width: min(100%, 118px);
+  max-height: 74px;
+}
+
+.partner-logo-mark img {
+  max-width: min(100%, 150px);
+  max-height: 82px;
+}
+
+.partner-group-organizers .partner-logo-item {
+  min-height: 86px;
+}
+
+.partner-group-organizers .partner-logo-item img {
+  max-height: 72px;
+}
+
+.partner-group-academic .partner-logo-item img,
+.partner-group-media .partner-logo-item img {
+  max-height: 78px;
+}
+
 .resource-panel {
   display: grid;
   grid-template-columns: 0.8fr 1.2fr;
@@ -1835,6 +1991,54 @@ code {
   .metric-strip,
   .resource-links {
     grid-template-columns: 1fr;
+  }
+
+  .partner-section {
+    padding: 58px 0 62px;
+  }
+
+  .partner-shell {
+    gap: 34px;
+  }
+
+  .partner-board {
+    gap: 34px;
+  }
+
+  .partner-heading h2 {
+    font-size: clamp(2rem, 10vw, 2.7rem);
+    overflow-wrap: anywhere;
+  }
+
+  .partner-logo-grid,
+  .partner-logo-grid-organizers,
+  .partner-logo-grid-sponsors,
+  .partner-logo-grid-institutions,
+  .partner-logo-grid-academic,
+  .partner-logo-grid-media {
+    max-width: 300px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .partner-logo-item {
+    min-height: 66px;
+    padding: 2px 4px;
+  }
+
+  .partner-logo-item img,
+  .partner-logo-wide img,
+  .partner-logo-medium img {
+    max-width: min(100%, 230px);
+    max-height: 58px;
+  }
+
+  .partner-logo-square img {
+    max-height: 64px;
+  }
+
+  .partner-logo-mark img {
+    max-height: 70px;
   }
 
   .stage-arrow {

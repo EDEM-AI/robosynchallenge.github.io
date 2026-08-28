@@ -110,6 +110,55 @@
     { value: "1", label: "standardized final platform" },
   ];
 
+  const PARTNER_GROUPS = [
+    {
+      title: "Organizers",
+      layout: "organizers",
+      logos: [
+        { name: "Shenzhen Loop Area Institute", file: "shenzhen-loop-area-institute.png", size: "wide" },
+        { name: "DEXFORCE", file: "dexforce.png", size: "medium" },
+      ],
+    },
+    {
+      title: "Sponsors",
+      layout: "sponsors",
+      logos: [
+        { name: "DEXFORCE", file: "dexforce.png", size: "medium" },
+        { name: "Tencent Cloud", file: "tencent-cloud.png", size: "wide" },
+        { name: "AGILE·X Robotics", file: "agilex.png", size: "wide" },
+        { name: "Computational Freedom", file: "computational-freedom.png", size: "wide" },
+      ],
+    },
+    {
+      title: "Partner Institutions",
+      layout: "institutions",
+      logos: [
+        { name: "The Chinese University of Hong Kong, Shenzhen", file: "cuhk-shenzhen.png", size: "wide" },
+        { name: "The Chinese University of Hong Kong", file: "cuhk.png", size: "wide" },
+        { name: "The Hong Kong University of Science and Technology", file: "hkust.png", size: "wide" },
+        { name: "Fudan University", file: "fudan.png", size: "square" },
+        { name: "Sun Yat-sen University", file: "sun-yat-sen.png", size: "wide" },
+        { name: "University of Waterloo", file: "waterloo.png", size: "wide" },
+        { name: "Vector Institute", file: "vector-institute.png", size: "wide" },
+      ],
+    },
+    {
+      title: "Academic Platform",
+      layout: "academic",
+      logos: [
+        { name: "NeurIPS", file: "neurips.png", size: "wide" },
+      ],
+    },
+    {
+      title: "Media Partners",
+      layout: "media",
+      logos: [
+        { name: "Xbotics", file: "xbotics.png", size: "wide" },
+        { name: "NICE Academic", file: "nice-academic.png", size: "mark" },
+      ],
+    },
+  ];
+
   const BENCHMARK_SUMMARY = [
     { label: "pi0 (sim)", model_name: "pi0", track: "sim-only", evaluation_stage: "preliminary_simulation", data_regime: "Sim only", success_rate: 22.0, action_steps: 898.12, real_time: 90.56 },
     { label: "pi0 (real)", model_name: "pi0", track: "real-only", evaluation_stage: "final_real_robot", data_regime: "Real only", success_rate: 22.5, action_steps: 881.15, real_time: 90.2 },
@@ -658,6 +707,33 @@
           </div>
         `).join("")}
       </div>
+    `;
+  }
+
+  function renderPartnerSection() {
+    return `
+      <section class="partner-section" aria-labelledby="partners-title">
+        <div class="shell partner-shell">
+          <div class="partner-heading">
+            <span class="eyebrow">Competition network</span>
+            <h2 id="partners-title">Organizers and sponsors.</h2>
+          </div>
+          <div class="partner-board">
+            ${PARTNER_GROUPS.map((group) => `
+              <section class="partner-group partner-group-${escapeHtml(group.layout)}" aria-label="${escapeHtml(group.title)}">
+                <h3>${escapeHtml(group.title)}</h3>
+                <div class="partner-logo-grid partner-logo-grid-${escapeHtml(group.layout)}">
+                  ${group.logos.map((logo) => `
+                    <div class="partner-logo-item partner-logo-${escapeHtml(logo.size)}">
+                      <img src="static/assets/partners/${escapeHtml(logo.file)}" alt="${escapeHtml(logo.name)}" loading="lazy">
+                    </div>
+                  `).join("")}
+                </div>
+              </section>
+            `).join("")}
+          </div>
+        </div>
+      </section>
     `;
   }
 
@@ -1349,6 +1425,8 @@
           <span><strong>Inference time</strong> policy runtime</span>
         </div>
       </section>
+
+      ${renderPartnerSection()}
     `;
   }
 
