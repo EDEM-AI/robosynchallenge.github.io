@@ -1239,7 +1239,7 @@ code {
 .partner-section {
   position: relative;
   overflow: hidden;
-  padding: 76px 0 82px;
+  padding: 62px 0 68px;
   color: var(--ink);
   background: #fff;
   border-top: 1px solid rgba(16, 33, 45, 0.08);
@@ -1262,7 +1262,7 @@ code {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 44px;
+  gap: 34px;
 }
 
 .partner-heading {
@@ -1271,6 +1271,8 @@ code {
 
 .partner-heading .eyebrow {
   color: var(--accent-dark);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
 }
 
 .partner-heading .eyebrow::before {
@@ -1278,30 +1280,32 @@ code {
 }
 
 .partner-heading h2 {
-  margin: 12px 0 0;
+  max-width: 620px;
+  margin: 10px auto 0;
   font-family: "Fraunces", Georgia, serif;
-  font-size: clamp(2.1rem, 4.2vw, 3.8rem);
-  line-height: 1.05;
+  font-size: clamp(1.8rem, 2.8vw, 2.45rem);
+  line-height: 1.08;
   letter-spacing: 0;
+  text-wrap: balance;
 }
 
 .partner-board {
   display: grid;
-  gap: 42px;
+  gap: 34px;
 }
 
 .partner-group {
   display: grid;
-  gap: 20px;
+  gap: 16px;
   justify-items: center;
 }
 
 .partner-group h3 {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   line-height: 1.2;
   text-align: center;
   text-transform: uppercase;
@@ -1312,32 +1316,32 @@ code {
   align-items: center;
   justify-items: center;
   width: 100%;
-  gap: 26px 44px;
+  gap: 18px 34px;
 }
 
 .partner-logo-grid-organizers {
-  max-width: 680px;
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  max-width: 560px;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
 }
 
 .partner-logo-grid-sponsors {
-  max-width: 940px;
-  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  max-width: 780px;
+  grid-template-columns: repeat(4, minmax(120px, 1fr));
 }
 
 .partner-logo-grid-institutions {
-  max-width: 1080px;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  max-width: 920px;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
 }
 
 .partner-logo-grid-academic {
-  max-width: 360px;
+  max-width: 300px;
   grid-template-columns: 1fr;
 }
 
 .partner-logo-grid-media {
-  max-width: 560px;
-  grid-template-columns: repeat(2, minmax(140px, 1fr));
+  max-width: 460px;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
 }
 
 .partner-logo-item {
@@ -1346,50 +1350,50 @@ code {
   justify-content: center;
   min-width: 0;
   width: 100%;
-  min-height: 74px;
-  padding: 4px 10px;
+  min-height: 58px;
+  padding: 2px 8px;
 }
 
 .partner-logo-item img {
   width: auto;
-  max-width: min(100%, 230px);
-  max-height: 58px;
+  max-width: min(100%, 190px);
+  max-height: 46px;
   object-fit: contain;
   opacity: 0.92;
-  filter: drop-shadow(0 10px 20px rgba(16, 33, 45, 0.08));
+  filter: drop-shadow(0 8px 16px rgba(16, 33, 45, 0.06));
 }
 
 .partner-logo-wide img {
-  max-width: min(100%, 270px);
-  max-height: 62px;
+  max-width: min(100%, 220px);
+  max-height: 48px;
 }
 
 .partner-logo-medium img {
-  max-width: min(100%, 230px);
-  max-height: 68px;
+  max-width: min(100%, 190px);
+  max-height: 54px;
 }
 
 .partner-logo-square img {
-  max-width: min(100%, 118px);
-  max-height: 74px;
+  max-width: min(100%, 96px);
+  max-height: 60px;
 }
 
 .partner-logo-mark img {
-  max-width: min(100%, 150px);
-  max-height: 82px;
+  max-width: min(100%, 124px);
+  max-height: 64px;
 }
 
 .partner-group-organizers .partner-logo-item {
-  min-height: 86px;
+  min-height: 68px;
 }
 
 .partner-group-organizers .partner-logo-item img {
-  max-height: 72px;
+  max-height: 56px;
 }
 
 .partner-group-academic .partner-logo-item img,
 .partner-group-media .partner-logo-item img {
-  max-height: 78px;
+  max-height: 54px;
 }
 
 .resource-panel {
@@ -1994,19 +1998,20 @@ code {
   }
 
   .partner-section {
-    padding: 58px 0 62px;
+    padding: 46px 0 52px;
   }
 
   .partner-shell {
-    gap: 34px;
+    gap: 28px;
   }
 
   .partner-board {
-    gap: 34px;
+    gap: 30px;
   }
 
   .partner-heading h2 {
-    font-size: clamp(2rem, 10vw, 2.7rem);
+    max-width: 280px;
+    font-size: clamp(1.55rem, 7vw, 1.95rem);
     overflow-wrap: anywhere;
   }
 
@@ -2022,23 +2027,23 @@ code {
   }
 
   .partner-logo-item {
-    min-height: 66px;
+    min-height: 54px;
     padding: 2px 4px;
   }
 
   .partner-logo-item img,
   .partner-logo-wide img,
   .partner-logo-medium img {
-    max-width: min(100%, 230px);
-    max-height: 58px;
+    max-width: min(100%, 190px);
+    max-height: 46px;
   }
 
   .partner-logo-square img {
-    max-height: 64px;
+    max-height: 54px;
   }
 
   .partner-logo-mark img {
-    max-height: 70px;
+    max-height: 58px;
   }
 
   .stage-arrow {
