@@ -110,6 +110,8 @@
     { value: "1", label: "standardized final platform" },
   ];
 
+  const PARTNER_ASSET_VERSION = "20260831-color-transparent";
+
   const PARTNER_GROUPS = [
     {
       title: "Organizers",
@@ -334,6 +336,12 @@
       question: "Is ranking based mainly on Success Rate, and is the official evaluation identical to the public code?",
       answer: `
         <p>Success Rate has the largest weight at 75%. The official evaluation uses private hold-out test parameters that are not published. They differ from the public parameters but follow a similar in-distribution setting. Please do not overfit the public test parameters.</p>
+      `,
+    },
+    {
+      question: "Will the preliminary evaluation use the same settings as the current public code?",
+      answer: `
+        <p>The evaluation script interface will remain unchanged. For the official first-stage test, both the seed and the configuration values will change from the currently released public examples.</p>
       `,
     },
     {
@@ -712,12 +720,8 @@
 
   function renderPartnerSection() {
     return `
-      <section class="partner-section" aria-labelledby="partners-title">
+      <section class="partner-section" aria-label="Competition network">
         <div class="shell partner-shell">
-          <div class="partner-heading">
-            <span class="eyebrow">Competition network</span>
-            <h2 id="partners-title">Organizers and sponsors.</h2>
-          </div>
           <div class="partner-board">
             ${PARTNER_GROUPS.map((group) => `
               <section class="partner-group partner-group-${escapeHtml(group.layout)}" aria-label="${escapeHtml(group.title)}">
@@ -725,7 +729,7 @@
                 <div class="partner-logo-grid partner-logo-grid-${escapeHtml(group.layout)}">
                   ${group.logos.map((logo) => `
                     <div class="partner-logo-item partner-logo-${escapeHtml(logo.size)}">
-                      <img src="static/assets/partners/${escapeHtml(logo.file)}" alt="${escapeHtml(logo.name)}" loading="lazy">
+                      <img src="static/assets/partners/${escapeHtml(logo.file)}?v=${PARTNER_ASSET_VERSION}" alt="${escapeHtml(logo.name)}" loading="lazy">
                     </div>
                   `).join("")}
                 </div>
