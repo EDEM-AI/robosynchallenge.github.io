@@ -110,7 +110,7 @@
     { value: "1", label: "standardized final platform" },
   ];
 
-  const PARTNER_ASSET_VERSION = "20260831-color-transparent";
+  const PARTNER_ASSET_VERSION = "20260901-logo-cutouts";
 
   const PARTNER_GROUPS = [
     {
