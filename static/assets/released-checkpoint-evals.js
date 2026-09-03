@@ -4,12 +4,12 @@
   const POLICY_ORDER = ["SmolVLA", "ACT", "DP"];
 
   const release = Object.freeze({
-    published_at: "2026-08-21",
+    published_at: "2026-09-03",
     environment: "simulation",
     setting: "random",
     metric: "success_rate",
     episodes_per_checkpoint: 100,
-    protocol_revision: "bd6bf77a63300f4b9a9d32337b519194dc7311a4",
+    protocol_revision: "c97d440e339cd270b096e27e281daa29f8712b36",
     source_url: "https://github.com/EDEM-AI/RoboSynChallenge/tree/main/evaluation_results",
     data_url: "https://github.com/EDEM-AI/RoboSynChallenge/blob/main/evaluation_results/released_checkpoint_results.json",
     results: [
@@ -53,6 +53,8 @@
         protocol_path: "configs/handle_basket/random/gym_config.json",
         policies: {
           SmolVLA: { success_count: 40, success_rate: 40.0, action_steps: 434.50, inference_time_ms: 270.674, repo_id: "RoboSynChallenge/SmolVLA_sim_handle_basket", revision: "0de9a93f124bd4ebe2fbd0d572ce3133806b82a9", model_name: "official SmolVLA_sim_handle_basket" },
+          ACT: { success_count: 37, success_rate: 37.0, action_steps: 448.71, inference_time_ms: 72.871, repo_id: "RoboSynChallenge/ACT_sim_handle_basket", revision: "6d5c70c4bb367e23b43e95cb155f7ad53f30cc79" },
+          DP: { success_count: 11, success_rate: 11.0, action_steps: 483.88, inference_time_ms: 143.165, repo_id: "RoboSynChallenge/DP_sim_handle_basket", revision: "07f77f6ba48722677ad85efe8cb18c56ca002da7" },
         },
       },
       {
@@ -62,6 +64,8 @@
         protocol_path: "configs/items_handover/random/gym_config.json",
         policies: {
           SmolVLA: { success_count: 30, success_rate: 30.0, action_steps: 342.50, inference_time_ms: 263.571, repo_id: "RoboSynChallenge/SmolVLA_sim_items_handover", revision: "fabe9462853965228e90e34bd517aa4e43bad323", model_name: "official SmolVLA_sim_items_handover" },
+          ACT: { success_count: 11, success_rate: 11.0, action_steps: 345.74, inference_time_ms: 73.577, repo_id: "RoboSynChallenge/ACT_sim_items_handover", revision: "86f6ca7f5decd17a92c3218f295de53497383d14" },
+          DP: { success_count: 0, success_rate: 0.0, action_steps: 348.76, inference_time_ms: 144.945, repo_id: "RoboSynChallenge/DP_sim_items_handover", revision: "8fcaba9ae2530ec919ae51c9a559b43cf39b36a9" },
         },
       },
       {
@@ -93,6 +97,8 @@
         protocol_path: "configs/item_assembly/random/gym_config.json",
         policies: {
           SmolVLA: { success_count: 24, success_rate: 24.0, action_steps: 337.16, inference_time_ms: 271.9, repo_id: "RoboSynChallenge/SmolVLA_sim_item_assembly", revision: "db32020164ed2c7264804a5eb036a38a07d879ca", model_name: "official SmolVLA_sim_item_assembly" },
+          ACT: { success_count: 64, success_rate: 64.0, action_steps: 298.21, inference_time_ms: 76.987, repo_id: "RoboSynChallenge/ACT_sim_item_assembly", revision: "58955958519157176712a1eff319018d78177ddb" },
+          DP: { success_count: 57, success_rate: 57.0, action_steps: 303.53, inference_time_ms: 141.390, repo_id: "RoboSynChallenge/DP_sim_item_assembly", revision: "dcdb3ee8ec57108e04982b3c9b78394be1a5c8d8" },
         },
       },
       {
@@ -102,6 +108,8 @@
         protocol_path: "configs/manipulate_pipette/random/gym_config.json",
         policies: {
           SmolVLA: { success_count: 36, success_rate: 36.0, action_steps: 728.50, inference_time_ms: 258.076, repo_id: "RoboSynChallenge/SmolVLA_sim_manipulate_pipette", revision: "dd0e80bc7d5fa5081e1fa07f1b7115bad6dbffa0", model_name: "official SmolVLA_sim_manipulate_pipette" },
+          ACT: { success_count: 61, success_rate: 61.0, action_steps: 536.91, inference_time_ms: 38.962, repo_id: "RoboSynChallenge/ACT_sim_manipulate_pipette", revision: "ca013b2e202d594bf347530c61c3ba28c06d1bc2" },
+          DP: { success_count: 49, success_rate: 49.0, action_steps: 628.24, inference_time_ms: 135.691, repo_id: "RoboSynChallenge/DP_sim_manipulate_pipette", revision: "0476572763551b514f11339eab16e9ad4e2b75d4" },
         },
       },
       {
@@ -111,6 +119,8 @@
         protocol_path: "configs/sample_loading/random/gym_config.json",
         policies: {
           SmolVLA: { success_count: 25, success_rate: 25.0, action_steps: 461.50, inference_time_ms: 253.8, repo_id: "RoboSynChallenge/SmolVLA_sim_sample_loading", revision: "2a4f41ab3be8e5f544c890d6054bc8de3be5c53b", model_name: "official SmolVLA_sim_sample_loading" },
+          ACT: { success_count: 2, success_rate: 2.0, action_steps: 498.65, inference_time_ms: 45.920, repo_id: "RoboSynChallenge/ACT_sim_sample_loading", revision: "917bf2796f18abd0a16f723573382161f1a5c5c8" },
+          DP: { success_count: 0, success_rate: 0.0, action_steps: 500.00, inference_time_ms: 144.198, repo_id: "RoboSynChallenge/DP_sim_sample_loading", revision: "9bfc527f94c2bdc3e87a1d3796f0a46be8d32a65" },
         },
       },
     ],
