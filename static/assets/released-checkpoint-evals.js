@@ -118,7 +118,7 @@
         max_action_steps: 500,
         protocol_path: "configs/sample_loading/random/gym_config.json",
         policies: {
-          SmolVLA: { success_count: 25, success_rate: 25.0, action_steps: 461.50, inference_time_ms: 253.8, repo_id: "RoboSynChallenge/SmolVLA_sim_sample_loading", revision: "2a4f41ab3be8e5f544c890d6054bc8de3be5c53b", model_name: "official SmolVLA_sim_sample_loading" },
+          SmolVLA: { success_count: 25, success_rate: 25.0, action_steps: 491.40, inference_time_ms: 264.2, repo_id: "RoboSynChallenge/SmolVLA_sim_sample_loading", revision: "2a4f41ab3be8e5f544c890d6054bc8de3be5c53b", model_name: "official SmolVLA_sim_sample_loading" },
           ACT: { success_count: 2, success_rate: 2.0, action_steps: 498.65, inference_time_ms: 45.920, repo_id: "RoboSynChallenge/ACT_sim_sample_loading", revision: "917bf2796f18abd0a16f723573382161f1a5c5c8" },
           DP: { success_count: 0, success_rate: 0.0, action_steps: 500.00, inference_time_ms: 144.198, repo_id: "RoboSynChallenge/DP_sim_sample_loading", revision: "9bfc527f94c2bdc3e87a1d3796f0a46be8d32a65" },
         },
