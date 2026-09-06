@@ -351,6 +351,24 @@
       `,
     },
     {
+      question: "How is success defined for each task?",
+      answer: `
+        <p>All 10 tasks are judged by observable final or steady-state physical conditions in the environment. Some tasks use sticky success flags or require the condition to hold for a number of steps.</p>
+        <ol class="faq-task-list">
+          <li><strong>water_pouring.</strong> The agent tilts the bottle to pour into the cup, returns the bottle upright, and the cup is not tipped over.</li>
+          <li><strong>mixer_operating.</strong> The beaker is placed next to the mixer and the mixer button is pressed, with the beaker remaining upright.</li>
+          <li><strong>items_handover.</strong> The item is placed near the receiver or holder and remains in position without falling.</li>
+          <li><strong>click_bell.</strong> The bell or button is pressed through its detectable travel, producing a clear press displacement.</li>
+          <li><strong>manipulate_pipette.</strong> The pipette slide is pushed to the target minimum position the required number of times, and related objects have not fallen.</li>
+          <li><strong>item_assembly.</strong> The two parts are aligned and joined, with parallel axes and lateral alignment indicating a completed assembly.</li>
+          <li><strong>table_rearrangement.</strong> The spoon and fork are placed at the designated positions beside the plate and are not floating excessively above it.</li>
+          <li><strong>handle_basket.</strong> The contents are placed into the basket, the basket is lifted and moved toward the target direction, then placed down and kept stable for the required duration.</li>
+          <li><strong>drawer_open_place.</strong> The target object is placed within the drawer or place region and remains there.</li>
+          <li><strong>sample_loading.</strong> The sample is placed into the rack slot and remains stably placed, not held or tipped, for the required stabilization period.</li>
+        </ol>
+      `,
+    },
+    {
       question: "Can participants use depth data, camera intrinsics, or point clouds as model inputs?",
       answer: `
         <p>No. Official evaluation provides RGB images only, without depth data, camera intrinsics, or point clouds. Participants may estimate depth or 3D information from a single RGB image using their own models.</p>
