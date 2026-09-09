@@ -3,6 +3,7 @@
 
   const SESSION_STORAGE_KEY = "robosynchallenge-session-v1";
   const ACCESS_REQUEST_STORAGE_KEY = "robosynchallenge-access-request-id-v1";
+  const POST_LOGIN_ROUTE_STORAGE_KEY = "robosynchallenge-post-login-route-v1";
   const CONFIG = window.ROBO_SYN_CONFIG || {};
   const API_BASE_URL = String(CONFIG.API_BASE_URL || "").trim().replace(/\/+$/, "");
   const CONTACT_EMAIL = String(CONFIG.CONTACT_EMAIL || "robosynchallenge@gmail.com").trim();
@@ -389,7 +390,7 @@
     {
       question: "What should a policy submission include?",
       answer: `
-        <p><a href="#/login">Sign in</a> with your registered team account before submitting. Each submission should include the required fields from the <a href="#/evaluation">evaluation page</a>:</p>
+        <p><a href="#/login">Sign in</a> with your registered team account before submitting. Each submission should include the required fields from the <a href="#/submit-policy">evaluation page</a>:</p>
         <ol class="faq-task-list">
           <li><strong>Artifact name and experiment name.</strong> Use names that clearly identify the policy checkpoint being evaluated.</li>
           <li><strong>Short description.</strong> Summarize the method, training setup, or intended run in a few sentences.</li>
@@ -523,6 +524,24 @@
 
   function navigate(route) {
     window.location.hash = routeHref(route);
+  }
+
+  function setPostLoginRoute(route) {
+    try {
+      window.sessionStorage.setItem(POST_LOGIN_ROUTE_STORAGE_KEY, String(route || "dashboard"));
+    } catch {
+      // Ignore storage failures; sign-in still works and falls back to the dashboard.
+    }
+  }
+
+  function takePostLoginRoute() {
+    try {
+      const route = window.sessionStorage.getItem(POST_LOGIN_ROUTE_STORAGE_KEY) || "";
+      window.sessionStorage.removeItem(POST_LOGIN_ROUTE_STORAGE_KEY);
+      return route;
+    } catch {
+      return "";
+    }
   }
 
   function pushFlash(category, message) {
@@ -1263,7 +1282,7 @@
 
     navEl.innerHTML = links
       .map(([path, label]) => {
-        const active = route === path || route.startsWith(`${path}/`);
+        const active = route === path || route.startsWith(`${path}/`) || (path === "evaluation" && route === "submit-policy");
         return `<a href="${routeHref(path)}" class="${active ? "active" : ""}">${escapeHtml(label)}</a>`;
       })
       .join("");
@@ -1664,12 +1683,8 @@
     `;
   }
 
-  function renderEvaluationPage() {
-    const user = currentUser();
-    const submitAction = user
-      ? `<button type="button" class="button button-primary" data-action="focus-policy-submit" ${backendConfigured() ? "" : "disabled"}>Submit Policy</button>`
-      : `<a href="${routeHref("login")}" class="button button-primary">Submit Policy</a>`;
-    const submissionForm = user && backendConfigured() ? `
+  function renderPolicySubmissionForm() {
+    return `
       <section class="section shell" data-policy-submit>
         <form class="panel-stack" data-form="evaluation">
           <article class="card">
@@ -1718,15 +1733,44 @@
           </div>
         </form>
       </section>
-    ` : user ? `
+    `;
+  }
+
+  function renderSubmitPolicyPage() {
+    const user = currentUser();
+    if (!user) {
+      setPostLoginRoute("submit-policy");
+      pushFlash("warning", "Sign in before submitting your policy.");
+      navigate("login");
+      return renderLoginPage();
+    }
+
+    const submissionForm = backendConfigured() ? renderPolicySubmissionForm() : `
       <section class="section shell" data-policy-submit>
         ${renderBackendUnavailableCard("Policy submission backend unavailable")}
       </section>
-    ` : "";
+    `;
 
     return `
-      ${submissionForm}
+      <section class="page-hero shell data-hero">
+        <span class="eyebrow">Policy submission</span>
+        <h1>Submit your evaluation artifact.</h1>
+        <p class="lead data-lead">
+          Provide the code repository, Hugging Face checkpoint, data source, and run notes needed by
+          the organizers to evaluate your policy.
+        </p>
+        <div class="cta-row">
+          <a href="${routeHref("evaluation")}" class="button button-secondary">Evaluation overview</a>
+          <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Policy tutorial ↗</a>
+        </div>
+      </section>
 
+      ${submissionForm}
+    `;
+  }
+
+  function renderEvaluationPage() {
+    return `
       <section class="page-hero shell data-hero">
         <span class="eyebrow">Evaluation</span>
         <h1>Sim first. Robot final.</h1>
@@ -1735,7 +1779,7 @@
           final round. Published results report success rate, action steps, and inference time.
         </p>
         <div class="cta-row">
-          ${submitAction}
+          <a href="${routeHref("submit-policy")}" class="button button-primary">Submit Policy</a>
           <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-secondary">Policy tutorial ↗</a>
           <a href="${routeHref("leaderboard")}" class="button button-ghost">View leaderboard</a>
         </div>
@@ -1866,7 +1910,7 @@
           <article class="card card-soft">
             <span class="tag">Quick actions</span>
             <div class="cta-row">
-              <a href="${routeHref("evaluation")}" class="button button-primary">New submission</a>
+              <a href="${routeHref("submit-policy")}" class="button button-primary">New submission</a>
               <a href="${routeHref("leaderboard")}" class="button button-secondary">Public leaderboard</a>
             </div>
           </article>
@@ -2356,6 +2400,7 @@
     if (route === "login") return { name: "login" };
     if (route === "register") return { name: "register" };
     if (route === "evaluation") return { name: "evaluation" };
+    if (route === "submit-policy") return { name: "submit-policy" };
     if (route === "faq") return { name: "faq" };
     if (route === "dashboard") return { name: "dashboard" };
     if (route === "leaderboard") return { name: "leaderboard", view: "overall" };
@@ -2384,6 +2429,9 @@
         break;
       case "evaluation":
         renderSection(renderEvaluationPage(), "Evaluation");
+        break;
+      case "submit-policy":
+        renderSection(renderSubmitPolicyPage(), currentUser() ? "Submit Policy" : "Sign In");
         break;
       case "faq":
         renderSection(renderFaqPage(), "FAQ");
@@ -2525,7 +2573,7 @@
       remoteState.submissionsLoaded = false;
       remoteState.submissionsError = "";
       pushFlash("success", `Signed in as ${state.user.username}.`);
-      navigate("dashboard");
+      navigate(takePostLoginRoute() || "dashboard");
     } catch (error) {
       pushFlash("error", error.message || "Sign in failed.");
     }
@@ -2715,16 +2763,7 @@
       const action = target.getAttribute("data-action");
       if (!action) return;
 
-      if (action === "focus-policy-submit") {
-        event.preventDefault();
-        const submitSection = appEl.querySelector("[data-policy-submit]");
-        if (!submitSection) {
-          navigate("login");
-          return;
-        }
-        submitSection.scrollIntoView({ behavior: "smooth", block: "start" });
-        submitSection.querySelector("input, textarea, select, button")?.focus({ preventScroll: true });
-      } else if (action === "logout") {
+      if (action === "logout") {
         event.preventDefault();
         logoutUser();
       } else if (action === "retry-submissions") {
