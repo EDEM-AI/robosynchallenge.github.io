@@ -583,6 +583,29 @@ code {
   margin-bottom: 0;
 }
 
+.leaderboard-warning {
+  display: grid;
+  gap: 6px;
+  max-width: 860px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid rgba(165, 54, 54, 0.28);
+  border-left: 4px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: rgba(165, 54, 54, 0.075);
+  color: var(--ink-soft);
+  line-height: 1.55;
+}
+
+.leaderboard-warning strong {
+  color: var(--danger);
+  font-weight: 800;
+}
+
+.leaderboard-warning span {
+  overflow-wrap: anywhere;
+}
+
 .leaderboard-section {
   padding-top: 24px;
   padding-bottom: 34px;

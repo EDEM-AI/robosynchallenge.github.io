@@ -383,7 +383,22 @@
     {
       question: "Does the code repository need to be public for policy evaluation?",
       answer: `
-        <p>No. The GitHub repository can remain private. Please invite our official GitHub account, <a href="https://github.com/EDEM-AI" target="_blank" rel="noreferrer">EDEM-AI</a>, as a collaborator and make sure the organizers have access to the repository for evaluation.</p>
+        <p>No. The GitHub repository can remain private. Please invite our official GitHub account, <a href="https://github.com/robosynchallenge" target="_blank" rel="noreferrer">robosynchallenge</a>, as a collaborator and make sure the organizers have access to the repository for evaluation.</p>
+      `,
+    },
+    {
+      question: "What should a policy submission include?",
+      answer: `
+        <p>Sign in with your registered team account before submitting. Each submission should include the required fields from the evaluation page:</p>
+        <ol class="faq-task-list">
+          <li><strong>Artifact name and experiment name.</strong> Use names that clearly identify the policy checkpoint being evaluated.</li>
+          <li><strong>Short description.</strong> Summarize the method, training setup, or intended run in a few sentences.</li>
+          <li><strong>Code URL.</strong> Use a GitHub repository for the evaluation code. Teams should register a GitHub account if they do not already have one. Private repositories are allowed if <a href="https://github.com/robosynchallenge" target="_blank" rel="noreferrer">robosynchallenge</a> is invited as a collaborator.</li>
+          <li><strong>Hugging Face checkpoint URL.</strong> Provide the checkpoint link on Hugging Face for the submitted policy.</li>
+          <li><strong>Data source.</strong> Describe the data used for training, including official released data and any additional allowed data.</li>
+          <li><strong>Run and dependency notes.</strong> Include the commands, environment details, and dependencies needed by the organizers. The repository should expose the RoboSynChallenge policy adapter entrypoints and include <code>eval.sh</code>, <code>deploy_policy.yml</code>, and <code>deploy_policy.py</code>.</li>
+          <li><strong>Leaderboard option.</strong> Choose whether the run should count on the public leaderboard once the result is published.</li>
+        </ol>
       `,
     },
     {
@@ -2102,6 +2117,10 @@
     const stageTitle = leaderboardStageTitle(tables.flatMap((table) => table.rows));
     return `
       <section class="section shell leaderboard-overview">
+        <article class="leaderboard-warning" role="note" aria-label="Leaderboard reproducibility notice">
+          <strong>Reference results notice</strong>
+          <span>Published evaluation results may vary across reproduction runs. Treat the leaderboard numbers as reference results, not deterministic guarantees.</span>
+        </article>
         <div class="leaderboard-table-heading">
           <h2>${escapeHtml(stageTitle)} leaderboard</h2>
         </div>
