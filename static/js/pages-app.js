@@ -389,7 +389,7 @@
     {
       question: "What should a policy submission include?",
       answer: `
-        <p>Sign in with your registered team account before submitting. Each submission should include the required fields from the evaluation page:</p>
+        <p><a href="#/login">Sign in</a> with your registered team account before submitting. Each submission should include the required fields from the <a href="#/evaluation">evaluation page</a>:</p>
         <ol class="faq-task-list">
           <li><strong>Artifact name and experiment name.</strong> Use names that clearly identify the policy checkpoint being evaluated.</li>
           <li><strong>Short description.</strong> Summarize the method, training setup, or intended run in a few sentences.</li>
