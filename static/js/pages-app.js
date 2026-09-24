@@ -420,6 +420,12 @@
         <p>We expect approximately <strong>30-40 teams</strong> to advance from the preliminary simulation stage to the real-robot final round. The final count may be adjusted based on valid submission quality, evaluation capacity, and organizer review.</p>
       `,
     },
+    {
+      question: "Can finalists submit a paper?",
+      answer: `
+        <p>Yes. Finalist teams may submit papers of up to 6 pages, and the papers will be presented in the RoboSynChallenge session at NeurIPS.</p>
+      `,
+    },
   ];
 
   const BASELINE_SEEDS = BENCHMARK_SUMMARY.map((item) => ({
