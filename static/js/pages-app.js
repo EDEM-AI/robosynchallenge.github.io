@@ -336,13 +336,13 @@
     {
       question: "Is ranking based mainly on Success Rate, and is the official evaluation identical to the public code?",
       answer: `
-        <p>Success Rate has the largest weight at 75%. The official evaluation uses private hold-out test parameters that are not published. They differ from the public parameters but follow a similar in-distribution setting. Please do not overfit the public test parameters.</p>
+        <p>Success Rate has the largest weight at 75%. The official evaluation uses private held-out test parameters that are not published. They differ from the public parameters but follow a similar in-distribution setting. Please do not overfit the public test parameters.</p>
       `,
     },
     {
       question: "Will the preliminary evaluation use the same settings as the current public code?",
       answer: `
-        <p>The evaluation script interface will remain unchanged. For the official first-stage test, both the seed and the configuration values will change from the currently released public examples.</p>
+        <p>No. The official preliminary simulation evaluation will use a held-out test setup. The evaluation script interface and policy adapter contract remain unchanged, but seeds, domain-randomization settings, scene/config values, and other test parameters may differ from the currently released public examples.</p>
       `,
     },
     {
@@ -411,7 +411,13 @@
     {
       question: "How many times may a team submit, and what is the deadline?",
       answer: `
-        <p>Teams may submit multiple times before <strong>October 11, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
+        <p>Teams may submit multiple times before <strong>October 18, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. The preliminary simulation evaluation period has been extended by one week. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
+      `,
+    },
+    {
+      question: "How many teams will advance to the final round?",
+      answer: `
+        <p>We expect approximately <strong>30-40 teams</strong> to advance from the preliminary simulation stage to the real-robot final round. The final count may be adjusted based on valid submission quality, evaluation capacity, and organizer review.</p>
       `,
     },
   ];
@@ -1395,7 +1401,7 @@
               <a href="${TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
               <a href="${REPORT_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read report ↗</a>
             </div>
-            <p class="hero-note">Registration opens July 13 · Updates close November 15 · Final evaluation starts November 15</p>
+            <p class="hero-note">Registration opens July 13 · Preliminary submissions close October 18 · Final evaluation starts November 15</p>
           </div>
           <figure class="home-hero-figure">
             <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge pipeline from synthetic data generation to real-world evaluation">
@@ -1430,7 +1436,7 @@
             <div>
               <span class="tag">Preliminary evaluation</span>
               <h3>Train, then qualify in simulation</h3>
-              <p>Train from July 13 to October 11. Simulation evaluation runs October 11–18, with finalists announced on October 18.</p>
+              <p>Train from July 13 to October 18. Simulation evaluation runs October 18–25 on held-out tests, with roughly 30-40 finalists announced on October 25.</p>
             </div>
           </article>
           <div class="stage-arrow" aria-hidden="true">→</div>
@@ -1453,9 +1459,9 @@
           </div>
           <ol class="competition-timeline">
             <li><time>July 13</time><div><h3>Registration</h3><p>Teams receive the codebase, tutorial, released data, and baselines.</p></div></li>
-            <li><time>July 13 – October 11</time><div><h3>Training period</h3><p>Train and improve models with official synthetic and limited real data.</p></div></li>
-            <li><time>October 11 – 18</time><div><h3>Preliminary evaluation & finalists</h3><p>Models are evaluated in simulation; finalists are announced on October 18.</p></div></li>
-            <li><time>October 18 – November 15</time><div><h3>Model update period</h3><p>Finalists continue updating models before the final submission deadline.</p></div></li>
+            <li><time>July 13 – October 18</time><div><h3>Training period</h3><p>Train and improve models with official synthetic and limited real data.</p></div></li>
+            <li><time>October 18 – 25</time><div><h3>Preliminary evaluation & finalists</h3><p>Models are evaluated in simulation on held-out tests; roughly 30-40 finalists are announced on October 25.</p></div></li>
+            <li><time>October 25 – November 15</time><div><h3>Model update period</h3><p>Finalists continue updating models before the final submission deadline.</p></div></li>
             <li><time>Starts November 15</time><div><h3>Final evaluation</h3><p>Final submissions are evaluated on the unified real dual-arm robot platform.</p></div></li>
             <li><time>Early December</time><div><h3>Awards and showcase</h3><p>Winning teams are invited to present and receive awards at NeurIPS 2026.</p></div></li>
           </ol>
@@ -1792,12 +1798,12 @@
               <div><span class="tag">Preliminary round</span><h2>Simulation-only evaluation</h2></div>
               <strong class="data-count">01<small>stage</small></strong>
             </header>
-            <p>Policies are evaluated in RoboSynChallenge simulation before finalists are selected.</p>
+            <p>Policies are evaluated in RoboSynChallenge simulation on held-out test settings before finalists are selected.</p>
             ${renderEvaluationVideoWall()}
             <div class="randomization-list">
               <div><strong>Simulation only.</strong><span>No physical robot is used in the preliminary round.</span></div>
               <div><strong>Same metrics.</strong><span>Success rate, action steps, and inference time are reported.</span></div>
-              <div><strong>Finalists advance.</strong><span>Top teams move to the real-robot final round.</span></div>
+              <div><strong>Finalists advance.</strong><span>Approximately 30-40 teams move to the real-robot final round.</span></div>
             </div>
           </article>
 
