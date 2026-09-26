@@ -411,7 +411,7 @@
     {
       question: "How many times may a team submit, and what is the deadline?",
       answer: `
-        <p>Teams may submit multiple times before <strong>October 18, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. The preliminary simulation evaluation period has been extended by one week. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
+        <p>Teams may submit multiple times before <strong>October 11, 2026, Anywhere on Earth (AoE, UTC−12)</strong>. The preliminary simulation evaluation period has been extended by one week. We will evaluate each team only once, using its latest valid submission received before the deadline.</p>
       `,
     },
     {
@@ -1407,7 +1407,7 @@
               <a href="${TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read tutorial ↗</a>
               <a href="${REPORT_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Read report ↗</a>
             </div>
-            <p class="hero-note">Registration opens July 13 · Preliminary submissions close October 18 · Final evaluation starts November 15</p>
+            <p class="hero-note">Registration opens July 13 · Preliminary submissions close October 11 · Final evaluation starts November 15</p>
           </div>
           <figure class="home-hero-figure">
             <img src="static/assets/robosynchallenge-pipeline.png" alt="RoboSynChallenge pipeline from synthetic data generation to real-world evaluation">
@@ -1442,7 +1442,7 @@
             <div>
               <span class="tag">Preliminary evaluation</span>
               <h3>Train, then qualify in simulation</h3>
-              <p>Train from July 13 to October 18. Simulation evaluation runs October 18–25 on held-out tests, with roughly 30-40 finalists announced on October 25.</p>
+              <p>Train from July 13 to October 11. Simulation evaluation runs October 11–25 on held-out tests, with roughly 30-40 finalists announced on October 25.</p>
             </div>
           </article>
           <div class="stage-arrow" aria-hidden="true">→</div>
@@ -1465,8 +1465,8 @@
           </div>
           <ol class="competition-timeline">
             <li><time>July 13</time><div><h3>Registration</h3><p>Teams receive the codebase, tutorial, released data, and baselines.</p></div></li>
-            <li><time>July 13 – October 18</time><div><h3>Training period</h3><p>Train and improve models with official synthetic and limited real data.</p></div></li>
-            <li><time>October 18 – 25</time><div><h3>Preliminary evaluation & finalists</h3><p>Models are evaluated in simulation on held-out tests; roughly 30-40 finalists are announced on October 25.</p></div></li>
+            <li><time>July 13 – October 11</time><div><h3>Training period</h3><p>Train and improve models with official synthetic and limited real data.</p></div></li>
+            <li><time>October 11 – 25</time><div><h3>Preliminary evaluation & finalists</h3><p>Models are evaluated in simulation on held-out tests; roughly 30-40 finalists are announced on October 25.</p></div></li>
             <li><time>October 25 – November 15</time><div><h3>Model update period</h3><p>Finalists continue updating models before the final submission deadline.</p></div></li>
             <li><time>Starts November 15</time><div><h3>Final evaluation</h3><p>Final submissions are evaluated on the unified real dual-arm robot platform.</p></div></li>
             <li><time>Early December</time><div><h3>Awards and showcase</h3><p>Winning teams are invited to present and receive awards at NeurIPS 2026.</p></div></li>
