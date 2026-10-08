@@ -395,7 +395,7 @@
           <li><strong>Artifact name and experiment name.</strong> Use names that clearly identify the policy checkpoint being evaluated.</li>
           <li><strong>Short description.</strong> Summarize the method, training setup, or intended run in a few sentences.</li>
           <li><strong>Code URL.</strong> Use a GitHub repository for the evaluation code. Teams should register a GitHub account if they do not already have one. Private repositories are allowed if <a href="https://github.com/robosynchallenge" target="_blank" rel="noreferrer">robosynchallenge</a> is invited as a collaborator.</li>
-          <li><strong>Hugging Face checkpoint URL.</strong> Provide the checkpoint link on Hugging Face for the submitted policy.</li>
+          <li><strong>Hugging Face checkpoint URL.</strong> Provide checkpoints covering all 10 tasks, with a clear task-to-checkpoint mapping in the run notes or README.</li>
           <li><strong>Data source.</strong> Describe the data used for training, including official released data and any additional allowed data.</li>
           <li><strong>Run and dependency notes.</strong> Include the commands, environment details, and dependencies needed by the organizers. The repository should expose the RoboSynChallenge policy adapter entrypoints and include <code>eval.sh</code>, <code>deploy_policy.yml</code>, and <code>deploy_policy.py</code>.</li>
           <li><strong>Leaderboard option.</strong> Choose whether the run should count on the public leaderboard once the result is published.</li>
@@ -405,7 +405,7 @@
     {
       question: "Can teams submit separate checkpoints for different tasks?",
       answer: `
-        <p>Yes. Teams may provide task-specific checkpoints. Please submit one GitHub repository that contains the evaluation code for all tasks, and list the Hugging Face checkpoint for each task in the submission notes or README. The organizers will use the corresponding checkpoint when evaluating each task.</p>
+        <p>Yes. Teams may provide task-specific checkpoints, but <strong>each evaluation request must cover all 10 tasks</strong>. Please submit one GitHub repository containing the evaluation code for all tasks, and list the corresponding Hugging Face checkpoints and run commands in the submission notes or README. A shared checkpoint is also allowed if its task coverage is clearly stated. Requests covering only a subset of tasks are not valid; do not split the tasks across separate requests.</p>
       `,
     },
     {
@@ -1704,6 +1704,7 @@
               <span class="eyebrow">Policy submission</span>
               <h2>Required fields</h2>
             </div>
+            <p class="helper-note"><strong>Each evaluation request must cover all 10 tasks.</strong> List every task's checkpoint and run command in the run notes or repository README. Task-specific checkpoints are allowed within one request; partial-task requests are not valid. <a href="#/faq">Submission FAQ</a></p>
             <div class="form-grid">
               <label class="field">
                 <span>Artifact name</span>
@@ -1731,7 +1732,11 @@
               </label>
               <label class="field field-span-2">
                 <span>Run and dependency notes</span>
-                <textarea name="technical_notes" rows="5" placeholder="Run notes" required></textarea>
+                <textarea name="technical_notes" rows="7" placeholder="Checkpoint mapping and run commands for all 10 tasks, environment details, and dependencies" required></textarea>
+              </label>
+              <label class="choice-inline field-span-2">
+                <input type="checkbox" name="all_tasks_confirmed" required>
+                <span>I confirm that this evaluation request includes all 10 tasks and their checkpoint mapping.</span>
               </label>
               <label class="choice-inline">
                 <input type="checkbox" name="is_ranked" checked>
@@ -1790,6 +1795,7 @@
           RoboSynChallenge evaluation includes one simulation-only preliminary round and one real-robot
           final round. Published results report success rate, action steps, and inference time.
         </p>
+        <p class="helper-note"><strong>Each evaluation request must cover all 10 tasks.</strong> Include the checkpoint mapping and run commands in one submission. Partial-task requests are not valid.</p>
         <div class="cta-row">
           <a href="${routeHref("submit-policy")}" class="button button-primary">Submit Policy</a>
           <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-secondary">Policy tutorial ↗</a>
