@@ -965,12 +965,14 @@
     const actionSteps = score.action_steps === "" || score.action_steps == null ? null : Number(score.action_steps);
     const maxActionSteps = score.max_action_steps === "" || score.max_action_steps == null ? null : Number(score.max_action_steps);
     const realTime = score.real_time === "" || score.real_time == null ? null : Number(score.real_time);
+    const weightedScore = score.weighted_score === "" || score.weighted_score == null ? null : Number(score.weighted_score);
     return {
       task_id: taskId,
       success_rate: Number(score.success_rate || 0),
       action_steps: Number.isFinite(actionSteps) ? actionSteps : null,
       max_action_steps: Number.isFinite(maxActionSteps) ? maxActionSteps : null,
       real_time: Number.isFinite(realTime) ? realTime : null,
+      weighted_score: Number.isFinite(weightedScore) ? weightedScore : null,
     };
   }
 
@@ -1195,6 +1197,16 @@
   function taskLeaderboardRow(row, task) {
     if (!row || !task || row.kind === "released_checkpoint") return null;
     if (row.task_id === task.id) return row;
+    const officialMetric = (row.task_scores || []).find((score) => score.task_id === task.id);
+    if (officialMetric) {
+      return {
+        ...row,
+        ...officialMetric,
+        id: `${row.id}-${task.id}`,
+        task_name: task.label,
+        data_regime: `${task.label}${row.data_regime ? ` / ${row.data_regime}` : ""}`,
+      };
+    }
     const episodes = (row.episodes || []).filter((episode) => episodeMatchesTask(episode, task));
     if (!episodes.length) return null;
     const successEpisodes = episodes.filter((episode) => episode.success === true).length;
@@ -1210,6 +1222,7 @@
       success_rate: knownSuccessEpisodes ? (successEpisodes / knownSuccessEpisodes) * 100 : row.success_rate,
       action_steps: actionSteps,
       real_time: realTime,
+      weighted_score: null,
       rank_badge: knownSuccessEpisodes ? `${successEpisodes} / ${knownSuccessEpisodes} successful episodes` : row.rank_badge,
       episodes,
     };

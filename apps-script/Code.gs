@@ -98,6 +98,11 @@ const SHEETS = {
     "videos_link",
     "result_status",
     "result_sent_at",
+    "task_scores_json",
+    "weighted_score",
+    "result_url",
+    "protocol_url",
+    "result_digest",
   ],
   FullNameUpdates: [
     "update_id",
@@ -712,6 +717,10 @@ function handleLeaderboard_() {
         rank_badge: "Participant ranked",
         notes: evaluation.leaderboard_notes || evaluation.notes || submission.short_description,
         episodes: parseJson_(evaluation.episodes_json, []),
+        task_scores: parseJson_(evaluation.task_scores_json, []),
+        weighted_score: evaluation.weighted_score === "" || evaluation.weighted_score == null ? null : Number(evaluation.weighted_score),
+        result_url: evaluation.result_url || "",
+        protocol_url: evaluation.protocol_url || "",
       };
     })
     .filter(Boolean);
@@ -1586,6 +1595,10 @@ function publicEvaluation_(row) {
     notes: row.notes || "",
     leaderboard_notes: row.leaderboard_notes || "",
     episodes: parseJson_(row.episodes_json, []),
+    task_scores: parseJson_(row.task_scores_json, []),
+    weighted_score: row.weighted_score === "" || row.weighted_score == null ? null : Number(row.weighted_score),
+    result_url: row.result_url || "",
+    protocol_url: row.protocol_url || "",
   };
 }
 
