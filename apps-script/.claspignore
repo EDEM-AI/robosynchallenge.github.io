@@ -3,6 +3,7 @@
 !Reviewer.gs
 !ReviewResponse.gs
 !ArchiveUpload.gs
+!CheckpointAccess.gs
 !SubmissionWindow.gs
 !Scoring.gs
 !SubmissionReceipts.gs

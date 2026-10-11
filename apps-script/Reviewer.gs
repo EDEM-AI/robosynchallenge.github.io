@@ -628,6 +628,8 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  if (action === "reviewer_configure_checkpoint_access") return reviewConfigureCheckpointAccess_(payload);
+  if (action === "reviewer_checkpoint_credential") return reviewCheckpointCredential_(payload);
   if (action === "reviewer_audit_submission_links") return reviewAuditSubmissionLinks_(payload);
   if (action === "reviewer_reassign") return reviewReassign_(payload);
   if (action === "reviewer_version_check") return reviewVersionCheck_(payload);

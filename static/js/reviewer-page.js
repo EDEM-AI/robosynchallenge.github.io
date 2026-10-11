@@ -16,7 +16,7 @@
     { title: "Environment check", description: "Run the built-in environment check. Continue only when the command prints ENVIRONMENT CHECK PASSED and exits successfully.",
       checks: { machine_checked: "The built-in environment check printed ENVIRONMENT CHECK PASSED with exit code 0.", reference_checked: "The official expert planning, rendering comparison and action/state smoke check passed." },
       issue: "Evaluation is paused while we investigate an environment or runtime issue. No participant-side changes are requested unless the details below identify a policy issue." },
-    { title: "Result upload", description: "Evaluate all ten tasks using the frozen seeds. Upload each task's JSON manifest after saving its videos, states, and actions in the private evidence archive.",
+    { title: "Evaluation and upload", description: "Run each task from the terminal. The official collector generates JSON + ZIP, uploads the ZIP to OneDrive and registers the verified JSON automatically. No browser file upload is needed.",
       checks: { all_runs: "All ten tasks were evaluated with the pinned code and frozen seed packet.", archives_uploaded: "All evidence archives are uploaded and accessible to the organizers." },
       issue: "Evaluation could not finish with the submitted policy. Please review the affected task and error below. Use the response form to confirm the current code or submit your single permitted code correction, including checkpoint URLs for all 10 tasks." },
     { title: "Result review", description: "Review each task's evidence and checksum before accepting it. This records the reviewer decision; it does not publish anything on the public leaderboard.",
@@ -47,7 +47,7 @@
       ["task_mapping", "Task or checkpoint mismatch", "We found a mismatch between the documented task entrypoint/checkpoint and the evaluated policy. Please confirm the intended mapping and clarify the affected task."]
     ]
   ];
-  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "" };
+  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "" };
   try { state.credentials = JSON.parse(sessionStorage.getItem(STORAGE) || "null"); } catch { /* Require sign-in. */ }
   const escape = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const label = (value) => String(value || "").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -75,7 +75,7 @@
   };
   const versionSuffix = (job) => `${job.preparation_attempt ? "-correction1" : ""}${job.version_generation ? "-exception" + job.version_generation : ""}`;
   const cloneCommand = (job) => `git clone --single-branch --branch submissions/${job.evaluation_id}${versionSuffix(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} checkout --detach ${job.bundle_commit}`;
-  const cloneDirectory = (job) => `RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}`;
+  const cloneDirectory = (job) => `"$HOME/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}"`;
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
   const nextBlocker = (job) => {
     if (LOCAL && job.local_walkthrough) return "";
@@ -217,20 +217,24 @@
     const values = draft(job);
     return `${state.stage === 4 ? scoreSummary(job) : ""}<div class="reviewer-checks"><h4>Completion checklist</h4>${Object.entries(STAGES[state.stage].checks).filter(([key]) => key !== "repository_access").map(([key, text]) => `<label class="reviewer-check"><input type="checkbox" data-stage-check="${key}" ${values[key] ? "checked" : ""} ${flow(job).stages[state.stage].done ? "disabled" : ""}><span>${text}</span></label>`).join("")}</div>${admissionControls(job)}`;
   }
-  const notice = (text, success = false) => `<div class="reviewer-notice ${success ? "success" : ""}">${text}</div>`;
+  const notice = (text, success = false, severity = "info") => `<div class="reviewer-notice ${success ? "success" : severity}">${["warning", "error"].includes(severity) ? `<strong>${severity.toUpperCase()}:</strong> ` : ""}${text}</div>`;
+  const step = (number, title, body) => `<section class="reviewer-instruction"><h4><span class="reviewer-instruction-number">${number}</span>${title}</h4>${body}</section>`;
   const metric = (value, unit = "", digits = 1) => Number.isFinite(value) ? Number(value).toFixed(digits) + unit : "Pending";
   const commandBox = (text, title) => `<div class="reviewer-command"><code data-copy-command>${escape(text)}</code><button class="reviewer-icon" data-review-action="copy" title="${escape(title)}" aria-label="${escape(title)}">${icon("copy")}</button></div>`;
   function scoreSummary(job) {
     const overall = job.overall_summary || {};
     const row = resultFor(job, state.task);
-    return `<h4>Ten-task average</h4><dl class="reviewer-meta"><div><dt>Success rate</dt><dd>${metric(overall.success_rate, "%")}</dd></div><div><dt>Action steps</dt><dd>${metric(overall.average_steps)}</dd></div><div><dt>Inference / episode</dt><dd>${metric(overall.inference_per_episode_ms, " ms")}</dd></div><div><dt>Weighted score</dt><dd>${metric(overall.weighted_score)}</dd></div></dl>${!["calibrated", "published_act_reference"].includes(overall.score_status) ? notice("Final weighted score awaits complete ten-task evidence and the pinned published RTX 5090 ACT reference. Uncalibrated values are not published.") : ""}${row && job.task_commands?.[state.task] ? commandBox(job.task_commands[state.task], "Copy recorded evaluation command") : ""}${row ? commandBox(`printf '%s  %s\\n' '${row.artifacts?.sha256}' '${job.evaluation_id}-${state.task}-evidence.zip' | sha256sum --check`, "Copy downloaded archive checksum check") : ""}`;
+    return `<h4>Ten-task average</h4><dl class="reviewer-meta"><div><dt>Success rate</dt><dd>${metric(overall.success_rate, "%")}</dd></div><div><dt>Action steps</dt><dd>${metric(overall.average_steps)}</dd></div><div><dt>Inference / episode</dt><dd>${metric(overall.inference_per_episode_ms, " ms")}</dd></div><div><dt>Weighted score</dt><dd>${metric(overall.weighted_score)}</dd></div></dl>${!["calibrated", "published_act_reference"].includes(overall.score_status) ? notice("Final weighted score awaits complete ten-task evidence and the pinned published RTX 5090 ACT reference. Uncalibrated values are not published.", false, "warning") : ""}${row && job.task_commands?.[state.task] ? commandBox(job.task_commands[state.task], "Copy recorded evaluation command") : ""}${row ? commandBox(`printf '%s  %s\\n' '${row.artifacts?.sha256}' '${job.evaluation_id}-${state.task}-evidence.zip' | sha256sum --check`, "Copy downloaded archive checksum check") : ""}`;
   }
   function runCommands(job) {
     const dirs = job.policy_dirs || [];
     const dir = dirs.includes(state.policyDir) ? state.policyDir : dirs.length === 1 ? dirs[0] : "";
     const target = `results/${state.task}`;
     const command = `cd ${cloneDirectory(job)}\npython tools/run_task_evaluation.py --task ${state.task} --submission-id ${job.submission_id} --policy-dir ${dir || "SELECT_POLICY_DIRECTORY"} --seeds "\${RSC_SEED_PACKET:?Set the organizer seed packet path}" --checkpoints "\${RSC_CHECKPOINTS:?Set the downloaded checkpoint directory}" --policy-image "\${RSC_POLICY_IMAGE:?Set the approved image@sha256 digest}" --output ${target}`;
-    return `<div class="reviewer-task-picker"><label>Task<select data-task-picker>${TASKS.map(task => `<option value="${task}" ${task === state.task ? "selected" : ""}>${label(task)}</option>`).join("")}</select></label><label>Detected policy entrypoint<select data-policy-picker required><option value="">Select entrypoint</option>${dirs.map(value => `<option value="${escape(value)}" ${value === dir ? "selected" : ""}>${escape(value)}</option>`).join("")}</select></label></div>${!dir ? notice("Choose the documented entrypoint for this task before copying the run command.") : commandBox(command, "Copy task evaluation command")}${notice("The official collector runs 100 frozen episodes, records the actual command, generates task JSON + ZIP and automatically uploads verified evidence to OneDrive. Configure model-specific arguments with --model-config and --checkpoint-relative when required by the adapter. Checkpoints, seeds and the approved dependency image stay outside participant code.")}${commandBox(`cd ${cloneDirectory(job)}\npython tools/check_upload.py`, "Copy storage check command")}${commandBox(`cd ${cloneDirectory(job)}\npython tools/upload_evidence.py --manifest ${target}/package/${job.evaluation_id}-${state.task}-result.json --archive ${target}/package/${job.evaluation_id}-${state.task}-evidence.zip`, "Copy upload retry command")}`;
+    const retry = `cd ${cloneDirectory(job)}\npython tools/upload_evidence.py --manifest ${target}/package/${job.evaluation_id}-${state.task}-result.json --archive ${target}/package/${job.evaluation_id}-${state.task}-evidence.zip`;
+    return step(1, "Check OneDrive access", commandBox(`cd ${cloneDirectory(job)}\npython tools/check_upload.py`, "Copy storage check command") + "<p>Run once before evaluation. The private clone already contains its evaluation-scoped authorization; no Microsoft sign-in is needed.</p>") +
+      step(2, "Select a task and run the official collector", `<div class="reviewer-task-picker"><label>Task<select data-task-picker>${TASKS.map(task => `<option value="${task}" ${task === state.task ? "selected" : ""}>${label(task)}</option>`).join("")}</select></label><label>Detected policy entrypoint<select data-policy-picker required><option value="">Select entrypoint</option>${dirs.map(value => `<option value="${escape(value)}" ${value === dir ? "selected" : ""}>${escape(value)}</option>`).join("")}</select></label></div>${!dir ? notice("Choose the documented entrypoint for this task before copying the run command.", false, "warning") : commandBox(command, "Copy task evaluation command")}<p>The collector runs 100 frozen episodes and records the actual command. Set the checkpoint directory, seed packet and approved dependency image on the machine. Add --model-config and --checkpoint-relative when required by the participant's adapter.</p>`) +
+      step(3, "Wait for automatic upload; retry only if it fails", "<p>Each task produces JSON + ZIP. The ZIP is uploaded directly to OneDrive under evaluation_id/task/latest. The script verifies SHA256 and registers the JSON and actual command in the backend. Retrying does not rerun the policy.</p>" + commandBox(retry, "Copy upload retry command") + notice("If the uploaded ZIP fails checksum verification, add --restart to the retry command. Do not rerun evaluation or register unfinished JSON. Accepted task results are locked.", false, "warning"));
   }
   function admissionControls(job) {
     const hasIssue = job?.preparation_status === "failed" || ["awaiting", "confirmed"].includes(job?.correction?.status) ||
@@ -242,7 +246,7 @@
   function versionControls(job) {
     if (job.local_walkthrough) return "";
     const report = job.version_report?.code;
-    const metadata = report ? notice(`Version selection: ${escape(job.version_status)}<br>Commit: <code>${escape(report.revision)}</code><br>Committed: ${escape(report.committed_at)}<br>Cutoff: ${escape(report.cutoff_at)}`) : "";
+    const metadata = report ? notice(`Version selection: ${escape(job.version_status)}<br>Commit: <code>${escape(report.revision)}</code><br>Committed: ${escape(report.committed_at)}<br>Cutoff: ${escape(report.cutoff_at)}`, false, job.version_status === "provisional" ? "warning" : "info") : "";
     const appeal = String(job.preparation_error || "").includes("NO_LEGAL_VERSION") ? `<form class="reviewer-form" data-review-form="version-exception"><h4>Approve participant argument</h4><label>Accepted email argument and reason<textarea name="reason" required maxlength="6000"></textarea></label><label class="reviewer-confirm"><input type="checkbox" name="argument_reviewed" required>I reviewed the participant's email argument and approve one rebuild using versions available now.</label><button class="button button-secondary">${icon("check")}Approve / Queue rebuild</button></form>` : "";
     return metadata + appeal;
   }
@@ -257,32 +261,32 @@
     return stageContentDetails(job) + (state.stage === 0 ? versionControls(job) : "");
   }
   function stageContentDetails(job) {
-    if (state.stage === 0) return `${job.bundle_commit ? notice("Code prepared automatically. Evaluation commit: <code>" + escape(job.bundle_commit) + "</code>. Participant policy/ is retained; environment code comes from the private official base.", true) : codeStage(job)}<dl class="reviewer-meta"><div><dt>Participant</dt><dd>${escape(job.email)}</dd></div><div><dt>Submission ID</dt><dd>${escape(job.submission_id)}</dd></div><div><dt>Submitted</dt><dd>${escape(job.created_at)}</dd></div><div><dt>Task checkpoints</dt><dd>${job.coverage_status === "legacy_unverified" ? "10 task checkpoint URLs required" : "Checkpoint URLs recorded for all 10 tasks"}</dd></div></dl><div class="reviewer-links">${sourceLinks(job.code_link, "Code repository", "github")}${sourceLinks(job.checkpoint_link, "Checkpoint", "external-link")}</div>${job.technical_notes ? `<details class="reviewer-notes"><summary>Participant run commands and dependencies</summary><p>${escape(job.technical_notes)}</p></details>` : ""}${job.coverage_status !== "legacy_unverified" ? taskTable(job, true) : `${notice("This legacy request did not provide a checkpoint URL for each task. Enter the Hugging Face URL used for each of the 10 tasks, including any checkpoint subdirectory or revision shown in the participant\'s documentation. Multiple tasks may use the same URL only when the participant explicitly documents a shared checkpoint; 10 different models are not required. If the documentation is unclear, use Issue / Send email instead of guessing. Saving this list starts automatic access checks and code preparation.")}${`<form class="reviewer-form" data-review-form="verify"><h3>Task checkpoints for this legacy request</h3><div class="reviewer-verify-grid">${TASKS.map((task) => `<label>${label(task)}<input type="url" name="${task}" value="${escape(job.task_checkpoint_links?.[task] || "")}" required></label>`).join("")}</div><label class="reviewer-confirm"><input type="checkbox" name="coverage_confirmed" required>I verified the checkpoint used for each task from the participant\'s documentation. Shared checkpoints are explicitly documented.</label><button class="button button-secondary">${icon("check")}Save task checkpoints</button></form>`}`}`;
-    if (state.stage === 1) return `${codeStage(job)}${job.bundle_commit ? commandBox(`cd ${cloneDirectory(job)}\npython tools/download_checkpoints.py --output /path/to/checkpoints --token-file /path/to/private/hf.token`, "Copy pinned checkpoint download example") + notice("The evaluator runs downloads and prepares checkpoint paths. This example uses frozen HF revisions and writes the checksum receipt required by the collector. Keep the token outside the clone and participant container. Participants are responsible for adapter configuration and dependencies; record the exact command and configuration used.") : ""}`;
-    if (state.stage === 2) return `<div class="reviewer-command"><code data-copy-command>cd ${escape(cloneDirectory(job))}
-python tools/check_environment.py</code><button class="reviewer-icon" data-review-action="copy" title="Copy environment check command" aria-label="Copy environment check command">${icon("copy")}</button></div>${notice("Expected: ENVIRONMENT CHECK PASSED (exit code 0). Requires organizer-installed fixed reference scenes and approved thresholds in the private repository. Missing references, unset thresholds or failed checks stop the command. No machine ID, metric input or report upload is required.")}`;
-    if (state.stage === 3) return `${runCommands(job)}<details class="reviewer-notes"><summary>Actual commands / manual upload fallback</summary>${taskCommands(job)}<form class="reviewer-form" data-review-form="onedrive"><h4>Upload ZIP to OneDrive</h4><div class="reviewer-verify-grid"><label>Task evidence ZIP<input type="file" name="evidence_zip" accept=".zip,application/zip" required></label><label>Matching task JSON<input type="file" name="evidence_manifest" accept=".json,application/json" required></label></div><label class="reviewer-confirm"><input type="checkbox" name="restart">Cancel an unfinished upload and restart the same ZIP.</label><button class="button button-secondary">${icon("upload-cloud")}${LOCAL ? "Check demo ZIP" : "Upload ZIP"}</button><div data-upload-status role="status"></div><progress data-upload-progress max="1" value="0" hidden></progress></form><hr><form class="reviewer-form" data-review-form="result"><label>Task result JSON<input type="file" name="result_file" accept=".json,application/json" required></label><button class="button button-secondary">${icon("upload")}Validate and upload JSON</button></form></details>${notice("No extra Microsoft sign-in is needed. Both upload methods use evaluation_id/task/latest. ZIPs go directly to OneDrive, not through Google Sheets. Accepted results are locked.")}${taskTable(job)}`;
+    if (state.stage === 0) {
+      const identity = `<dl class="reviewer-meta"><div><dt>Participant</dt><dd>${escape(job.email)}</dd></div><div><dt>Submission ID</dt><dd>${escape(job.submission_id)}</dd></div><div><dt>Submitted</dt><dd>${escape(job.created_at)}</dd></div><div><dt>Task checkpoints</dt><dd>${job.coverage_status === "legacy_unverified" ? "10 task checkpoint URLs required" : "Checkpoint URLs recorded for all 10 tasks"}</dd></div></dl><div class="reviewer-links">${sourceLinks(job.code_link, "Code repository", "github")}${sourceLinks(job.checkpoint_link, "Checkpoint", "external-link")}</div>${job.technical_notes ? `<details class="reviewer-notes"><summary>Participant run commands and dependencies</summary><p>${escape(job.technical_notes)}</p></details>` : ""}`;
+      const checkpoints = job.coverage_status !== "legacy_unverified" ? taskTable(job, true) :
+        notice("This legacy request did not specify each task's checkpoint. Use the participant's documentation; do not guess. Multiple tasks may share a URL only when documented. Ten different models are not required. Unclear documentation: use Issue / Send email.", false, "warning") +
+        `<form class="reviewer-form" data-review-form="verify"><p>Enter the Hugging Face URL for each task, including the documented revision or checkpoint subdirectory. Saving starts automatic access checks and code preparation.</p><div class="reviewer-verify-grid">${TASKS.map(task => `<label>${label(task)}<input type="url" name="${task}" value="${escape(job.task_checkpoint_links?.[task] || "")}" required></label>`).join("")}</div><label class="reviewer-confirm"><input type="checkbox" name="coverage_confirmed" required>I verified every task's checkpoint from the participant's documentation; shared checkpoints are explicitly documented.</label><button class="button button-secondary">${icon("check")}Save task checkpoints</button></form>`;
+      const preparation = job.bundle_commit ? notice("Code prepared automatically. Evaluation commit: <code>" + escape(job.bundle_commit) + "</code>. Participant policy/ is retained; environment code comes from the private official base.", true) : codeStage(job);
+      return step(1, "Read the participant's submission", identity) + step(2, "Verify checkpoint URLs for all 10 tasks", checkpoints) + `<div class="reviewer-automatic-status"><h4>Automatic preparation status</h4>${preparation}</div>`;
+    }
+    if (state.stage === 1) return step(1, "Clone the prepared code", codeStage(job)) + (job.bundle_commit ? step(2, "Download the frozen task checkpoints", commandBox(`cd ${cloneDirectory(job)}\nexport RSC_CHECKPOINTS=/path/to/checkpoints\npython tools/download_checkpoints.py --output "$RSC_CHECKPOINTS"`, "Copy pinned checkpoint download command") + "<p>Replace /path/to/checkpoints with the chosen local directory. The command uses the organizer's RoboSynChallenge HF authorization automatically. No personal HF token or login is required. It downloads pinned revisions and writes the checksum receipt; retry the same command if interrupted.</p>") + step(3, "Install the participant's dependencies", "<p>Follow the repository README and policy documentation. Use an isolated dependency image; keep checkpoints, seed packets and clone credentials outside the participant runtime. Check the documented entrypoint for every task.</p>") : "");
+    if (state.stage === 2) return step(1, "Run the built-in check", commandBox(`cd ${cloneDirectory(job)}\npython tools/check_environment.py`, "Copy environment check command")) + step(2, "Confirm the result", "<p>Continue only when the terminal prints <strong>ENVIRONMENT CHECK PASSED</strong> and returns exit code 0. The script checks official planning, rendering and state/action capture. No machine ID, metric input or report upload is required.</p>" + notice("Missing official reference scenes, unset SSIM/PSNR thresholds or a failed check block evaluation. Contact the organizers; do not change the official environment to bypass the check.", false, "warning"));
+    if (state.stage === 3) return runCommands(job) + step(4, "Refresh and check all 10 task results", "<p>After terminal upload succeeds, use Refresh requests above. Check that every task is Submitted before continuing. The recorded commands will be provided to the participant with the results.</p>" + taskTable(job) + `<details class="reviewer-notes"><summary>Recorded commands / record a custom entrypoint command</summary><p>The collector records commands automatically. Use this form only when a different documented command needs to be recorded before its task result is registered.</p>${taskCommands(job)}</details>`);
     const row = resultFor(job, state.task);
-    return `<div class="reviewer-task-picker"><select data-task-picker aria-label="Task to review">${TASKS.map((task) => `<option value="${task}" ${task === state.task ? "selected" : ""}>${label(task)} · ${label(resultFor(job, task)?.status || "Not uploaded")}</option>`).join("")}</select><span>${(job.results || []).filter((result) => result.status === "checked").length} / 10 accepted</span></div>${row ? `<dl class="reviewer-meta"><div><dt>Episodes</dt><dd>${row.summary.episodes} / 100</dd></div><div><dt>Success rate</dt><dd>${Number(row.summary.success_rate).toFixed(1)}%</dd></div><div><dt>Average action steps</dt><dd>${Number(row.summary.average_steps).toFixed(1)} / ${STEPS[state.task]}</dd></div><div><dt>Archive SHA256</dt><dd>${escape(row.artifacts?.sha256 || "")}</dd></div></dl><div class="reviewer-links"><a href="${escape(safeHref(row.artifacts?.url))}" target="_blank" rel="noreferrer">${icon("folder-open")}Open task evidence</a></div>${row.status === "checked" ? notice("This task result has been reviewed and accepted.", true) : `<form data-review-form="accept" class="reviewer-form"><label class="reviewer-confirm"><input type="checkbox" name="video" required>I reviewed task videos and success/failure outcomes.</label><label class="reviewer-confirm"><input type="checkbox" name="trajectory" required>I checked episode state/action trajectories.</label><label class="reviewer-confirm"><input type="checkbox" name="checksum" required>The downloaded archive matches the recorded SHA256.</label><button class="button button-secondary">${icon("check")}Accept this task result</button></form>`}` : notice("No manifest has been uploaded for this task.")}${taskTable(job)}`;
+    const picker = `<div class="reviewer-task-picker"><select data-task-picker aria-label="Task to review">${TASKS.map(task => `<option value="${task}" ${task === state.task ? "selected" : ""}>${label(task)} · ${label(resultFor(job, task)?.status || "Not uploaded")}</option>`).join("")}</select><span>${(job.results || []).filter(result => result.status === "checked").length} / 10 accepted</span></div>`;
+    const evidence = row ? `<dl class="reviewer-meta"><div><dt>Episodes</dt><dd>${row.summary.episodes} / 100</dd></div><div><dt>Success rate</dt><dd>${Number(row.summary.success_rate).toFixed(1)}%</dd></div><div><dt>Average action steps</dt><dd>${Number(row.summary.average_steps).toFixed(1)} / ${STEPS[state.task]}</dd></div><div><dt>Archive SHA256</dt><dd>${escape(row.artifacts?.sha256 || "")}</dd></div></dl><div class="reviewer-links"><a href="${escape(safeHref(row.artifacts?.url))}" target="_blank" rel="noreferrer">${icon("folder-open")}Open task evidence</a></div>${row.status === "checked" ? notice("This task result has been reviewed and accepted.", true) : `<form data-review-form="accept" class="reviewer-form"><label class="reviewer-confirm"><input type="checkbox" name="video" required>I reviewed task videos and success/failure outcomes.</label><label class="reviewer-confirm"><input type="checkbox" name="trajectory" required>I checked episode state/action trajectories.</label><label class="reviewer-confirm"><input type="checkbox" name="checksum" required>The downloaded archive matches the recorded SHA256.</label><button class="button button-secondary">${icon("check")}Accept this task result</button></form>`}` : notice("No manifest has been uploaded for this task.", false, "warning");
+    return step(1, "Select the task to review", picker) + step(2, "Check evidence and accept this task", "<p>Inspect the videos and trajectories, then compare the downloaded ZIP with its recorded SHA256. Repeat for all 10 tasks.</p>" + evidence) + step(3, "Check the complete result table", taskTable(job));
   }
   function codeStage(job) {
     const instructions = "";
-    if (job.coverage_status === "legacy_unverified") return notice("First record the checkpoint used for each of the 10 tasks below. The script will check access and prepare the branch automatically after you save. No commit SHA, branch name or code-preparation form is required.");
+    if (job.coverage_status === "legacy_unverified") return notice("Waiting for task checkpoint URLs to be saved. Repository access, HF access and code preparation then run automatically. No additional reviewer input is required for these checks.");
     if (!job.bundle_commit) return `${notice(job.preparation_status === "failed"
       ? `Automatic code preparation failed.<br>${escape(job.preparation_error || "The submitted policy could not be prepared.")}<br>Use Issue / Send email to request clarification. This stage stays blocked until preparation succeeds.`
-      : "Task checkpoints recorded. The background script is checking repository and checkpoint access and preparing the evaluation branch. It keeps the participant's complete policy/ folder and uses the official held-out environment for everything else. Refresh to see the result; do not prepare or clone the participant's environment yourself.")}${instructions}${job.preparation_status === "failed" ? `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>` : ""}`;
+      : "Task checkpoints recorded. The background script is checking repository and checkpoint access and preparing the evaluation branch. It keeps the participant's complete policy/ folder and uses the official held-out environment for everything else. Refresh to see the result; do not prepare or clone the participant's environment yourself.", false, job.preparation_status === "failed" ? "error" : "info")}${instructions}${job.preparation_status === "failed" ? `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>` : ""}`;
     return `<div class="reviewer-code"><div class="reviewer-links"><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.bundle_url))}">${icon("git-branch")}Prepared evaluation branch</a></div><div class="reviewer-command"><code data-copy-command>${escape(cloneCommand(job))}</code><button class="reviewer-icon" data-review-action="copy" title="Copy clone and checkout commands" aria-label="Copy clone and checkout commands">${icon("copy")}</button></div><dl class="reviewer-meta"><div><dt>Evaluation commit (set automatically)</dt><dd>${escape(job.bundle_commit)}</dd></div><div><dt>Detected evaluation entrypoints</dt><dd>${escape(job.policy_dirs.join(", "))}</dd></div></dl>${notice("The entire policy/ tree is preserved, including shared files and nested folders. The script detects evaluation entrypoints; no directory names or commit SHA need to be entered here.", true)}${instructions}${taskTable(job, true)}</div>`;
   }
   function taskCommands(job) {
     return `<form class="reviewer-form" data-review-form="commands"><h4>Actual task evaluation commands <span class="reviewer-required">*</span></h4><div class="reviewer-command-fields">${TASKS.map((task) => `<label>${escape(label(task))}<textarea name="command_${task}" rows="2" maxlength="4000" ${resultFor(job, task) ? "readonly" : ""} required>${escape(job.task_commands?.[task] || "")}</textarea></label>`).join("")}</div><button class="button button-secondary">${icon("save")}Save commands</button></form>`;
-  }
-  function previewSamples(job) {
-    if (!LOCAL) return "";
-    const base = "../static/reviewer-demo-files/";
-    if (state.stage <= 1 && !job.bundle_commit) return notice("Acceptance sample: this simulates code preparation and does not create a GitHub branch.") + button("demo-code", "Load sample code preparation", "file-json");
-    if (state.stage === 1 && job.bundle_commit === "a".repeat(40)) return notice("Sample code preparation, not a real GitHub commit. Use only for workflow acceptance.");
-    if (state.stage === 3 && job.bundle_commit === "a".repeat(40)) return `<details class="reviewer-notes"><summary>Sample task results (not competition results)</summary><div class="reviewer-samples">${TASKS.map(task => `<a href="${base}${escape(job.evaluation_id)}/${task}-result.json" download>${label(task)} ${icon("download")}</a>`).join("")}</div></details>`;
-    return "";
   }
   function newEmail(job, template = "stage") {
     const blank = template === "blank";
@@ -299,11 +303,16 @@ python tools/check_environment.py</code><button class="reviewer-icon" data-revie
   function jobDetail(job) {
     if (!job) return `<div class="reviewer-empty">No requests are currently assigned to you.</div>`;
     const workflow = flow(job);
-return `<article class="reviewer-detail"><header class="reviewer-detail-head"><div><span class="reviewer-id" data-evaluation-id>${escape(job.evaluation_id)}</span><h2>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</h2><p>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)} · ${escape(job.email)}</p></div><span class="reviewer-state ${doneCount(job) === 5 ? "completed" : ""}">${doneCount(job) === 5 ? "Completed" : doneCount(job) + " / 5 stages complete"}</span></header><nav class="reviewer-stage-nav" aria-label="Evaluation stages">${STAGES.map((stage, index) => `<button type="button" data-review-stage="${index}" aria-current="${state.stage === index ? "step" : "false"}" class="${state.stage === index ? "active" : ""} ${workflow.stages[index].done ? "done" : ""}" ${index > firstOpen(job) ? "disabled" : ""}><span class="reviewer-step-number">${workflow.stages[index].done ? icon("check") : index + 1}</span><span>${stage.title}</span></button>`).join("")}</nav><div class="reviewer-stage-body"><div class="reviewer-stage-title"><h3>${STAGES[state.stage].title}</h3><span>Step ${state.stage + 1} of 5</span></div><p class="reviewer-description">${STAGES[state.stage].description}</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}${state.toast ? `<p class="reviewer-toast" role="status">${escape(state.toast)}</p>` : ""}${job.correction ? notice("Participant response: " + escape(job.correction.status) + " · Deadline (UTC): " + escape(job.correction.deadline_at) + "<br>" + escape(job.correction.notes || "")) : ""}${stageContent(job)}${previewSamples(job)}${checks(job)}${composer(job)}${job.messages?.length ? `<div class="reviewer-mail-log"><h4>Email history</h4>${job.messages.map((message) => `<p>${escape(STAGES[message.stage]?.title)} · ${escape(label(message.status))} · ${escape(message.sent_at || "")}<br>${escape(message.subject)}</p>`).join("")}</div>` : ""}</div><footer class="reviewer-footer">${button("previous", "Previous stage", "arrow-left", state.stage === 0 ? "disabled" : "")}${button("email", "Issue / Send email", "mail")}<button type="button" class="button button-primary" data-review-action="next" ${state.busy || (!workflow.stages[state.stage].done && nextBlocker(job)) ? "disabled" : ""} title="${escape(workflow.stages[state.stage].done ? "Stage already completed" : nextBlocker(job))}">${state.stage === 4 ? "Complete review" : "Complete / Next stage"}${icon(state.stage === 4 ? "check" : "arrow-right")}</button></footer></article>`;
+return `<article class="reviewer-detail"><header class="reviewer-detail-head"><div><span class="reviewer-id" data-evaluation-id>${escape(job.evaluation_id)}</span><h2>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</h2><p>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)} · ${escape(job.email)}</p></div><span class="reviewer-state ${doneCount(job) === 5 ? "completed" : ""}">${doneCount(job) === 5 ? "Completed" : doneCount(job) + " / 5 stages complete"}</span></header><nav class="reviewer-stage-nav" aria-label="Evaluation stages">${STAGES.map((stage, index) => `<button type="button" data-review-stage="${index}" aria-current="${state.stage === index ? "step" : "false"}" class="${state.stage === index ? "active" : ""} ${workflow.stages[index].done ? "done" : ""}" ${index > firstOpen(job) ? "disabled" : ""}><span class="reviewer-step-number">${workflow.stages[index].done ? icon("check") : index + 1}</span><span>${stage.title}</span></button>`).join("")}</nav><div class="reviewer-stage-body"><div class="reviewer-stage-title"><h3>${STAGES[state.stage].title}</h3><span>Step ${state.stage + 1} of 5</span></div><p class="reviewer-description">${STAGES[state.stage].description}</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}${state.toast ? `<p class="reviewer-toast" role="status">${escape(state.toast)}</p>` : ""}${job.correction ? notice("Participant response: " + escape(job.correction.status) + " · Deadline (UTC): " + escape(job.correction.deadline_at) + "<br>" + escape(job.correction.notes || "")) : ""}${stageContent(job)}${checks(job)}${composer(job)}${job.messages?.length ? `<div class="reviewer-mail-log"><h4>Email history</h4>${job.messages.map((message) => `<p>${escape(STAGES[message.stage]?.title)} · ${escape(label(message.status))} · ${escape(message.sent_at || "")}<br>${escape(message.subject)}</p>`).join("")}</div>` : ""}</div><footer class="reviewer-footer">${button("previous", "Previous stage", "arrow-left", state.stage === 0 ? "disabled" : "")}${button("email", "Issue / Send email", "mail")}<button type="button" class="button button-primary" data-review-action="next" ${state.busy || (!workflow.stages[state.stage].done && nextBlocker(job)) ? "disabled" : ""} title="${escape(workflow.stages[state.stage].done ? "Stage already completed" : nextBlocker(job))}">${state.stage === 4 ? "Complete review" : "Complete / Next stage"}${icon(state.stage === 4 ? "check" : "arrow-right")}</button></footer></article>`;
   }
   function paint() {
     const content = root()?.querySelector("[data-reviewer-content]");
     if (!content) return;
+    const queueScroll = content.querySelector(".reviewer-queue")?.scrollTop || 0;
+    const previousBody = content.querySelector(".reviewer-stage-body");
+    const bodyScroll = previousBody?.scrollTop || 0;
+    const paneKey = state.selected + ":" + state.stage;
+    const samePane = previousBody?.dataset.paneKey === paneKey;
     if (!state.credentials) content.innerHTML = `${heading(false)}<div class="reviewer-login-layout"><form data-review-form="login" class="reviewer-form reviewer-login"><h2>Reviewer sign in</h2><p>Preliminary simulation evaluation</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}<label>Email<input type="email" name="email" autocomplete="username" value="${LOCAL ? "1070055979@qq.com" : ""}" required></label><label>Evaluation token<input type="password" name="token" autocomplete="current-password" placeholder="Your assigned evaluation token" required></label><button class="button button-primary" ${state.busy ? "disabled" : ""}>${icon("log-in")}Sign in</button></form></div><div class="reviewer-login-meta"><a href="../#/leaderboard">Public leaderboard</a></div>`;
     else {
       const realJobs = state.jobs.filter((job) => !job.local_walkthrough);
@@ -313,11 +322,17 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       if (LOCAL && selected()?.local_walkthrough) {
         const message = document.createElement("div");
         message.className = "reviewer-notice";
-        message.textContent = "Workflow demo: every field and upload is optional. No emails are sent, branches created, or backend records changed.";
+        message.classList.add("warning");
+        message.textContent = "WARNING: Workflow demo only. All fields are optional; no emails, uploads, branches or backend changes are made.";
         content.querySelector(".reviewer-stage-body").prepend(message);
       }
     }
     markRequiredFields(content);
+    const queue = content.querySelector(".reviewer-queue");
+    if (queue) queue.scrollTop = queueScroll;
+    const body = content.querySelector(".reviewer-stage-body");
+    if (body) { body.dataset.paneKey = paneKey; if (samePane) body.scrollTop = bodyScroll; }
+    content.querySelectorAll(".reviewer-error").forEach(error => { error.prepend("ERROR: "); });
     window.lucide?.createIcons();
   }
   function markRequiredFields(content) {
@@ -353,10 +368,18 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   async function perform(action) {
     if (state.busy) return;
     state.busy = true;
-    root()?.querySelectorAll("button").forEach((element) => { element.disabled = true; });
+    root()?.querySelectorAll("button:not([data-review-job])").forEach((element) => { element.disabled = true; });
     try { state.error = ""; await action(); await refresh(); }
     catch (error) { if (!sessionStorage.getItem(STORAGE)) state.credentials = null; state.error = error.message || String(error); }
-    finally { state.busy = false; paint(); }
+    finally {
+      if (state.pendingSelection && state.jobs.some(job => job.evaluation_id === state.pendingSelection)) {
+        state.selected = state.pendingSelection;
+        state.stage = firstOpen(selected());
+        state.emailDraft = null; state.toast = "";
+      }
+      state.pendingSelection = "";
+      state.busy = false; paint();
+    }
   }
   function saveStage() {
     const job = selected();
@@ -373,8 +396,9 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const element = root();
     element.addEventListener("click", (event) => {
       const jobButton = event.target.closest("[data-review-job]");
-      if (jobButton && !state.busy) {
-        perform(async () => { await saveStage(); state.selected = jobButton.dataset.reviewJob; state.stage = firstOpen(selected()); state.emailDraft = null; state.toast = ""; });
+      if (jobButton) {
+        state.pendingSelection = jobButton.dataset.reviewJob;
+        if (!state.busy) perform(async () => { await saveStage(); });
         return;
       }
       const stageButton = event.target.closest("[data-review-stage]");
@@ -390,12 +414,6 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       if (action === "previous" && state.stage > 0) perform(async () => { await saveStage(); state.stage -= 1; state.emailDraft = null; state.toast = ""; });
       if (action === "email") openEmail();
       if (action === "retry-code") perform(async () => { await request("reviewer_retry_preparation", { evaluation_id: selected().evaluation_id }); state.toast = "Preparation retry queued. Refresh after the organizer's script runs."; });
-      if (action === "demo-code" && LOCAL) perform(async () => {
-        const job = selected();
-        const response = await fetch("../static/reviewer-demo-files/" + encodeURIComponent(job.evaluation_id) + "/code-receipt.json");
-        if (!response.ok) throw new Error("Generate the acceptance sample files first.");
-        await request("reviewer_prepare", { evaluation_id: job.evaluation_id, ...await response.json() });
-      });
       if (action === "close-email") { state.emailDraft = null; paint(); }
       if (action === "next") perform(async () => {
         const job = selected();
@@ -465,34 +483,6 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         state.toast = "Actual evaluation commands saved.";
       });
       if (type === "verify") perform(() => request("reviewer_verify_coverage", { evaluation_id: job.evaluation_id, coverage_confirmed: data.has("coverage_confirmed"), task_checkpoint_links: Object.fromEntries(TASKS.map((task) => [task, String(data.get(task) || "").trim()])) }));
-      if (type === "onedrive") perform(async () => {
-        const file = data.get("evidence_zip");
-        const json = data.get("evidence_manifest");
-        if (!file?.size || !json?.size || json.size > 45000) throw new Error("Select the evidence ZIP and its matching JSON (under 45 KB).");
-        const record = JSON.parse(await json.text());
-        if (record.evaluation_id !== job.evaluation_id || record.submission_id !== job.submission_id || record.bundle_commit !== job.bundle_commit || !TASKS.includes(record.task)) throw new Error("The evidence belongs to a different evaluation, commit or task.");
-        const progress = (title, fraction) => {
-          const text = element.querySelector("[data-upload-status]");
-          const meter = element.querySelector("[data-upload-progress]");
-          if (text) text.textContent = title;
-          if (meter) { meter.hidden = false; meter.value = fraction; }
-        };
-        if (LOCAL) {
-          const checksum = await RSCOneDrive.hashBlob(file, value => progress("Checking demo ZIP", value));
-          if (checksum !== record.artifacts?.sha256) throw new Error("Selected ZIP SHA256 does not match the JSON.");
-          state.toast = "Demo ZIP checksum checked. No ZIP or JSON was uploaded.";
-          return;
-        }
-        const ready = await RSCOneDrive.upload({ file, record, request, progress, restart: form.querySelector('[name="restart"]')?.checked === true });
-        await request("reviewer_submit_result", { evaluation_id: job.evaluation_id, result: ready });
-        state.toast = label(ready.task) + " ZIP uploaded, SHA256 verified and JSON registered.";
-      });
-      if (type === "result") perform(async () => {
-        const file = data.get("result_file");
-        if (!file?.size || file.size > 45000) throw new Error("Select a JSON manifest smaller than 45 KB.");
-        const record = JSON.parse(await file.text());
-        { await request("reviewer_submit_result", { evaluation_id: job.evaluation_id, result: record }); state.toast = label(record.task) + " manifest uploaded and validated."; }
-      });
       if (type === "accept") perform(() => request("reviewer_check_result", { evaluation_id: job.evaluation_id, task: state.task, decision: "checked", note: "", checks: { video: data.has("video"), trajectory: data.has("trajectory"), checksum: data.has("checksum") } }));
       if (type === "email") perform(async () => {
         const email = state.emailDraft;

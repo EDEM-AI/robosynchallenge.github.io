@@ -37,7 +37,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 function insert(name, row) {
   const headers = vm.runInContext(`SHEETS.${name}`, context);
@@ -97,6 +97,21 @@ assert.throws(() => call("reviewUploadContext_", { evaluation_id: "eval_new", up
 assert.throws(() => call("reviewSendIssue_", { evaluation_id: "eval_new", upload_token: capability.upload_token }), /Email is required/);
 call("reviewPrepare_", { ...credentials, evaluation_id: "eval_new", bundle_commit: bundleCommit,
   bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_new", policy_dirs: ["policy/act"] });
+const cloneAccess = { evaluation_id: "eval_new", upload_token: capability.upload_token, bundle_commit: bundleCommit };
+assert.throws(() => call("reviewCheckpointCredential_", { ...credentials, evaluation_id: "eval_new", bundle_commit: bundleCommit }), /Private clone capability/);
+assert.throws(() => call("reviewCheckpointCredential_", { ...cloneAccess, upload_token: "upl_bad" }), /Invalid or expired/);
+assert.throws(() => call("reviewCheckpointCredential_", { ...cloneAccess, bundle_commit: "b".repeat(40) }), /another prepared commit/);
+assert.throws(() => call("reviewCheckpointCredential_", cloneAccess), /not configured/);
+assert.throws(() => call("reviewConfigureCheckpointAccess_", { ...cloneAccess, hf_token: "hf_synthetic" }), /Email is required/);
+context.UrlFetchApp = { fetch: (url, options) => {
+  assert.equal(url, "https://huggingface.co/api/whoami-v2");
+  assert.equal(options.headers.Authorization, "Bearer hf_synthetic");
+  return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ type: "user", name: "RoboSynChallenge" }) };
+} };
+assert.equal(call("reviewConfigureCheckpointAccess_", { ...credentials, hf_token: "hf_synthetic" }).configured, true);
+assert.equal(call("reviewCheckpointCredential_", cloneAccess).hf_token, "hf_synthetic");
+assert(!JSON.stringify(call("reviewQueue_", credentials)).includes("hf_synthetic"), "Shared HF token must never reach the reviewer page or Sheet queue");
+assert(!JSON.stringify([...sheets.values()].map(value => value.cells)).includes("hf_synthetic"));
 const stage = (index, checks, extra = {}) => call("reviewCompleteStage_", { ...credentials, evaluation_id: "eval_new", stage: index, checks, ...extra });
 const hfReport = Object.fromEntries(taskNames.map(task => [task, { url: taskLinks[task], revision: "c".repeat(40), accessible: true, files_checked: 3 }]));
 // Access checks are recorded before attaching the bundle by the real preparer.
