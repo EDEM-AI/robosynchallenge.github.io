@@ -262,7 +262,11 @@
     return `<table class="reviewer-task-table"><thead><tr><th>Task</th>${checkpoints ? "<th>Checkpoint</th><th>Max steps</th>" : "<th>Episodes</th><th>Success</th><th>Steps</th><th>Inference / episode</th><th>Score</th><th>Status</th>"}</tr></thead><tbody>${TASKS.map((task) => {
       const row = resultFor(job, task);
       const access = job.hf_access?.[task];
-      return `<tr><td><strong>${escape(label(task))}</strong></td>${checkpoints ? `<td><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.task_checkpoint_links?.[task]))}">Hugging Face ${icon("external-link")}</a><br><small>${access?.accessible ? `${Number(access.files_checked)} files checked · <code>${escape(access.revision.slice(0, 12))}</code>` : "Access check pending"}</small></td><td>${STEPS[task]}</td>` : `<td>${row?.summary?.episodes || "—"} / 100</td><td>${metric(row?.summary?.success_rate, "%")}</td><td>${metric(row?.summary?.average_steps)}</td><td>${metric(row?.summary?.inference_per_episode_ms, " ms")}</td><td>${metric(row?.summary?.weighted_score)}</td><td class="${row?.status === "checked" ? "checked" : ""}">${escape(label(row?.status || "Not uploaded"))}</td>`}</tr>`;
+      const accessStatus = access?.accessible
+        ? `${Number(access.files_checked)} files checked · <code>${escape(access.revision.slice(0, 12))}</code>`
+        : job.hf_check_status === "failed" ? "WARNING: Access not confirmed; see check error below"
+          : job.hf_check_status === "checking" ? "Checking checkpoint access" : "Access check queued";
+      return `<tr><td><strong>${escape(label(task))}</strong></td>${checkpoints ? `<td><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.task_checkpoint_links?.[task]))}">Hugging Face ${icon("external-link")}</a><br><small>${accessStatus}</small></td><td>${STEPS[task]}</td>` : `<td>${row?.summary?.episodes || "—"} / 100</td><td>${metric(row?.summary?.success_rate, "%")}</td><td>${metric(row?.summary?.average_steps)}</td><td>${metric(row?.summary?.inference_per_episode_ms, " ms")}</td><td>${metric(row?.summary?.weighted_score)}</td><td class="${row?.status === "checked" ? "checked" : ""}">${escape(label(row?.status || "Not uploaded"))}</td>`}</tr>`;
     }).join("")}</tbody></table>`;
   }
   function stageContent(job) {

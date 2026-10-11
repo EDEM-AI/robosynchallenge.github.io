@@ -92,10 +92,10 @@ async function main() {
     assert.equal(await evaluate("document.body.innerText.includes('local preview')"), false);
     assert.equal(await evaluate("document.querySelector('[data-review-action=demo-code]') === null"), true, "Real requests must never show sample code preparation");
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 2, "Automatic preparation is status, not a reviewer step");
-    const flowJob = codeJob || JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.find(job => !job.local_walkthrough && job.preparation_status !== "failed");
+    const flowJob = JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.find(job => !job.local_walkthrough && job.coverage_status === "legacy_unverified" && job.preparation_status !== "failed");
     assert(flowJob, "Use a non-failing request for the simulated five-stage fixture");
     await evaluate(`document.querySelector('[data-review-job="${flowJob.evaluation_id}"]').click()`);
-    await until("document.querySelector('[data-evaluation-id]').textContent !== 'eval_LOCALWALKTHROUGH'");
+    await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(flowJob.evaluation_id)}`);
     await evaluate("document.fonts.ready.then(() => true)");
     const screenshot = async (name) => { const shot = await rpc("Page.captureScreenshot", { format: "png" }); fs.writeFileSync("/tmp/rsc-review-" + name + ".png", Buffer.from(shot.data, "base64")); };
     await screenshot("queue-desktop");
@@ -126,7 +126,7 @@ async function main() {
     assert.equal(await evaluate("document.body.textContent.includes('Automatic HF access check is queued')"), true);
     await evaluate("document.querySelectorAll('.reviewer-instruction')[1].scrollIntoView({block:'start'})");
     await screenshot("checkpoint-check-desktop");
-    assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') !== null && document.querySelector('[data-review-form=verify]').closest('details') !== null"), true, "Saved checkpoint mappings stay editable until a formal bundle is prepared");
     assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null && document.querySelector('[data-review-form=reassign]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-stage-check=repository_access]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[name=bundle_commit]') === null && document.querySelector('[name=policy_dirs]') === null"), true);
