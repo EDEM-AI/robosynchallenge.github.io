@@ -50,12 +50,23 @@ function reviewReconcileFinalProgress_(payload) {
     if (!selected || !/^[a-f0-9]{40}$/.test(selected.code?.revision || "") || selected.code.cutoff_at !== job.version_cutoff_at ||
         Object.keys(selected.hf || {}).length !== 10 || Object.keys(REVIEW_TASK_STEPS).some(task => !selected.hf[task]?.accessible ||
         selected.hf[task].url !== job.task_checkpoint_links[task] || !/^[a-f0-9]{40}$/.test(selected.hf[task].revision || "") || selected.hf[task].cutoff_at !== job.version_cutoff_at)) throw new Error("Final progress check requires the current code and all ten checkpoint receipts.");
+    const limit = Date.parse(job.version_cutoff_at);
+    if (JSON.stringify(selected).length > 30000 || ![selected.code.committed_at, selected.code.authored_at].every(value =>
+        Number.isFinite(Date.parse(value)) && Date.parse(value) < limit) || Object.values(selected.hf).some(row =>
+        !Number.isFinite(Date.parse(row.committed_at)) || Date.parse(row.committed_at) >= limit ||
+        !Number.isInteger(row.files_checked) || row.files_checked < 1 || row.files_checked > 10000)) throw new Error("Invalid final version timestamps or access receipts.");
     const old = reviewRows_("ReviewVersionChecks").find(row => row.evaluation_id === run.evaluation_id);
     if (!old || old.status !== "provisional") return { ok: true, state: "no_provisional_progress", reset: false };
     const prior = parseJson_(old.report_json, {});
     const unchanged = prior.code?.revision === selected.code.revision && Object.keys(REVIEW_TASK_STEPS).every(task =>
       prior.hf?.[task]?.url === selected.hf[task].url && prior.hf[task].revision === selected.hf[task].revision);
-    if (unchanged) return { ok: true, state: "unchanged", reset: false };
+    if (unchanged) {
+      const access = reviewRows_("ReviewAccessChecks").find(row => row.evaluation_id === run.evaluation_id);
+      reviewWrite_("ReviewAccessChecks", access?._rowNumber, { evaluation_id: run.evaluation_id, report_json: JSON.stringify(selected.hf), checked_at: now_() });
+      reviewCheckpointStatus_(job, "passed", "", job.version_cutoff_at);
+      reviewWrite_("ReviewVersionChecks", old._rowNumber, { evaluation_id: run.evaluation_id, status: "final", report_json: JSON.stringify(selected), checked_at: now_() });
+      return { ok: true, state: "unchanged", reset: false };
+    }
     const reason = "Deadline freeze selected different code/checkpoint revisions. Prior progress was backed up; use the new clone and pinned checkpoints.";
     const backupId = reviewBackupProgress_(run, reason);
     reviewResetParticipantProgress_(run, job.task_checkpoint_links, reason);

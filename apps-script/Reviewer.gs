@@ -296,7 +296,7 @@ function reviewCheckpointStatus_(job, status, message, cutoff) {
 function reviewCheckpointCheck_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewOwnedRun_(payload, true);
-    if (viewer.role !== "admin" || run.bundle_commit) throw new Error("Only the preparer can record checkpoint checks before handoff.");
+    if (viewer.role !== "admin") throw new Error("Only the preparer can record checkpoint checks.");
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     if (payload.context_json && payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Checkpoint inputs changed while the check was running.");
     if (!job || !reviewTaskLinks_(job.task_checkpoint_links) || !reviewTaskLinks_(payload.task_checkpoint_links) ||
@@ -525,7 +525,8 @@ function reviewPrepare_(payload) {
     const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === run.evaluation_id);
     const attempt = reviewCorrectionAttempt_(correction);
     const decision = reviewRows_("ReviewVersionDecisions").find(row => row.evaluation_id === run.evaluation_id);
-    if (url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (attempt ? "-correction" + attempt : "") + (decision ? "-exception" + decision.generation : "")) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
+    const expected = "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (attempt ? "-correction" + attempt : "") + (decision ? "-exception" + decision.generation : "");
+    if (url !== expected && !(url.startsWith(expected + "-snapshot") && /^[a-f0-9]{16}$/.test(url.slice((expected + "-snapshot").length)))) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
     if (payload.context_json && payload.context_json !== reviewCheckpointContext_(reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id))) throw new Error("Participant inputs changed during preparation. Retry with the latest correction.");
     reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_url: url,
       bundle_commit: commit, policy_dirs_json: JSON.stringify([...new Set(dirs)]),
@@ -835,6 +836,7 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_migrate_response_schema") return reviewMigrateResponseSchema_(payload);
   if (action === "reviewer_reconcile_final_progress") return reviewReconcileFinalProgress_(payload);
   if (action === "reviewer_pool") return reviewPool_(payload);
+  if (action === "reviewer_move_evaluator_email") return reviewMoveEvaluatorEmail_(payload);
   if (action === "reviewer_set_pool") return reviewSetPool_(payload);
   if (action === "reviewer_balance_pool") return reviewBalancePool_(payload);
   if (action === "reviewer_provision_account") return reviewProvisionAccount_(payload);

@@ -77,8 +77,12 @@
     return values;
   };
   const versionSuffix = (job) => `${job.preparation_attempt ? "-correction" + job.preparation_attempt : ""}${job.version_generation ? "-exception" + job.version_generation : ""}`;
-  const cloneCommand = (job) => `git clone --single-branch --branch submissions/${job.evaluation_id}${versionSuffix(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} checkout --detach ${job.bundle_commit}`;
-  const cloneDirectory = (job) => `"$HOME/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}"`;
+  const cloneBranch = (job) => {
+    const match = String(job.bundle_url || "").match(/^https:\/\/github\.com\/ZhaoRunyi\/RoboSynChallenge_eval\/tree\/(submissions\/[A-Za-z0-9_.-]+)$/);
+    return match ? match[1] : `submissions/${job.evaluation_id}${versionSuffix(job)}`;
+  };
+  const cloneCommand = (job) => `git clone --single-branch --branch ${cloneBranch(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} checkout --detach ${job.bundle_commit}`;
+  const cloneDirectory = (job) => `"$HOME/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}${job.bundle_commit ? "_" + job.bundle_commit.slice(0, 12) : ""}"`;
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
   const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
@@ -87,7 +91,7 @@
     if (state.stage === 0 && job.coverage_status === "legacy_unverified") return "Record a checkpoint URL for each of the 10 tasks";
     if (state.stage === 0 && !codeVerified(job)) return "Automatic code preparation must succeed before continuing";
     if (state.stage === 1 && !job.bundle_commit) return job.version_status === "provisional"
-      ? "Submission checks passed. The formal evaluation branch will be prepared automatically after the submission deadline; no participant correction is needed."
+      ? "Submission checks passed. The runnable evaluation branch is being prepared automatically. No deadline wait or additional reviewer form is required."
       : "The formal evaluation branch is not available yet. Check automatic preparation status.";
     if (state.stage === 0 && job.hf_check_status !== "passed" && !TASKS.every(task => job.hf_access?.[task]?.accessible && job.hf_access[task].url === job.task_checkpoint_links?.[task])) return "Automatic HF access checks must pass for all 10 task URLs";
     if (Object.keys(STAGES[state.stage].checks).some((key) => checks[key] !== true)) return "Complete the reviewer checklist";
@@ -298,11 +302,11 @@
   }
   function codeStage(job) {
     const instructions = preparationWarnings(job);
-    if (!job.bundle_commit && job.code_bundle_commit) return notice(`Code composed automatically. The participant's entire policy/ tree is preserved on the official held-out base.<br><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.code_bundle_url))}">Open private validation branch</a><br>Commit: <code>${escape(job.code_bundle_commit)}</code><br>Detected entrypoints: ${escape((job.code_policy_dirs || []).join(", "))}`, true) + instructions + notice(job.preparation_status === "failed" ? `Checkpoint / evaluation preparation failed.<br>${escape(job.preparation_error || "")}<br>Use Issue / Send email, then retry after participant follow-up.` : "This is a code validation branch, not the frozen evaluation branch. Complete the ten-task checkpoint mapping and access checks. Formal evaluation also requires the deadline version freeze.", false, job.preparation_status === "failed" ? "error" : "warning") + (job.preparation_status === "failed" ? `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>` : "");
+    if (!job.bundle_commit && job.code_bundle_commit) return notice(`Code composed automatically. The participant's entire policy/ tree is preserved on the official held-out base.<br><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.code_bundle_url))}">Open private validation branch</a><br>Commit: <code>${escape(job.code_bundle_commit)}</code><br>Detected entrypoints: ${escape((job.code_policy_dirs || []).join(", "))}`, true) + instructions + notice(job.preparation_status === "failed" ? `Checkpoint / evaluation preparation failed.<br>${escape(job.preparation_error || "")}<br>Use Issue / Send email, then retry after participant follow-up.` : "Complete the ten-task checkpoint mapping and access checks. The runnable evaluation branch is then prepared automatically; evaluation does not wait for the submission deadline.", false, job.preparation_status === "failed" ? "error" : "warning") + (job.preparation_status === "failed" ? `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>` : "");
     if (!job.bundle_commit) return `${notice(job.preparation_status === "failed"
       ? `Automatic code preparation failed.<br>${escape(job.preparation_error || "The submitted policy could not be prepared.")}<br>Use Issue / Send email to request clarification. This stage stays blocked until preparation succeeds.`
       : "Code preparation is queued or running automatically; it does not wait for task checkpoint URLs. The script keeps the participant's complete policy/ folder and uses the official held-out environment for everything else. Refresh to see the result. No reviewer code-preparation form is required.", false, job.preparation_status === "failed" ? "error" : "info")}${instructions}${job.preparation_status === "failed" ? `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>` : ""}`;
-    return `<div class="reviewer-code"><div class="reviewer-links"><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.bundle_url))}">${icon("git-branch")}Prepared evaluation branch</a></div><div class="reviewer-command"><code data-copy-command>${escape(cloneCommand(job))}</code><button class="reviewer-icon" data-review-action="copy" title="Copy clone and checkout commands" aria-label="Copy clone and checkout commands">${icon("copy")}</button></div><dl class="reviewer-meta"><div><dt>Evaluation commit (set automatically)</dt><dd>${escape(job.bundle_commit)}</dd></div><div><dt>Detected evaluation entrypoints</dt><dd>${escape(job.policy_dirs.join(", "))}</dd></div></dl>${notice("The entire policy/ tree is preserved, including shared files and nested folders. The script detects evaluation entrypoints; no directory names or commit SHA need to be entered here.", true)}${instructions}${taskTable(job, true)}</div>`;
+    return `<div class="reviewer-code">${job.version_status === "provisional" ? notice("This pinned branch is ready for evaluation now. After the deadline, unchanged code and checkpoint revisions keep all progress. Changed versions are backed up and the affected stages reset automatically; use the new branch and checkpoint index after a reset.", false, "warning") : ""}<div class="reviewer-links"><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.bundle_url))}">${icon("git-branch")}Prepared evaluation branch</a></div><div class="reviewer-command"><code data-copy-command>${escape(cloneCommand(job))}</code><button class="reviewer-icon" data-review-action="copy" title="Copy clone and checkout commands" aria-label="Copy clone and checkout commands">${icon("copy")}</button></div><dl class="reviewer-meta"><div><dt>Evaluation commit (set automatically)</dt><dd>${escape(job.bundle_commit)}</dd></div><div><dt>Detected evaluation entrypoints</dt><dd>${escape(job.policy_dirs.join(", "))}</dd></div></dl>${notice("The entire policy/ tree is preserved, including shared files and nested folders. The script detects evaluation entrypoints; no directory names or commit SHA need to be entered here.", true)}${instructions}${taskTable(job, true)}</div>`;
   }
   function preparationWarnings(job) {
     const warnings = job.code_selection?.preparation_warnings;
@@ -341,7 +345,7 @@
     const back = `<button type="button" class="button button-secondary" data-review-action="workspace">${icon("arrow-left")}Evaluation requests</button>`;
     if (state.view === "downloads") {
       const assigned = state.jobs.filter(job => !job.local_walkthrough && job.reviewer_email === state.credentials.email);
-      const ready = assigned.filter(job => job.bundle_commit && job.version_status === "final").length;
+      const ready = assigned.filter(job => job.bundle_commit && ["provisional", "final"].includes(job.version_status)).length;
       const setup = `git clone --single-branch --branch heldout/preliminary-2026 https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git "$HOME/RoboSynChallenge_eval_tools"\npython -m pip install huggingface_hub`;
       const run = `python "$HOME/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --api-url '${API}' --email '${state.credentials.email.replace(/'/g, "")}' --output /path/to/checkpoints`;
       const status = `python "$HOME/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --output /path/to/checkpoints --status`;

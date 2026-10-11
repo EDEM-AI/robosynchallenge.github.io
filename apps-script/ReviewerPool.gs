@@ -43,6 +43,31 @@ function reviewPool_(payload) {
   return reviewPoolReport_(reviewPoolSnapshot_(payload));
 }
 
+function reviewMoveEvaluatorEmail_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const previous = requiredEmail_(payload.previous_email);
+    const email = requiredEmail_(payload.email);
+    if (previous === email) throw new Error("Choose a different email.");
+    const accounts = reviewRows_("Reviewers");
+    const old = accounts.find(row => normalizeEmail_(row.email) === previous);
+    const target = accounts.find(row => normalizeEmail_(row.email) === email);
+    if (!old || old.role !== "evaluator" || (target && (target.role !== "evaluator" || target.token_sha256 !== old.token_sha256))) throw new Error("Evaluator identity conflicts with the target account.");
+    if (isTruthy_(old.active) || !target) reviewWrite_("Reviewers", target?._rowNumber, {
+      email, token_sha256: old.token_sha256, role: "evaluator", active: "true", created_at: target?.created_at || old.created_at });
+    // This is the same evaluator changing email, not reassignment of local work.
+    const runs = reviewRows_("ReviewRuns").filter(row => normalizeEmail_(row.reviewer_email) === previous);
+    runs.forEach(run => {
+      reviewWrite_("ReviewAssignments", null, { evaluation_id: run.evaluation_id, previous_reviewer: previous,
+        reviewer_email: email, reason: "Same evaluator changed login email; token and progress retained", changed_by: viewer.email, changed_at: now_() });
+      reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, reviewer_email: email, updated_at: now_() });
+    });
+    reviewWrite_("Reviewers", old._rowNumber, { email: previous, active: "false" });
+    return { ok: true, email, previous_email: previous, moved: runs.length, token_retained: true };
+  });
+}
+
 function reviewSetPool_(payload) {
   return withReviewLock_(() => {
     const snapshot = reviewPoolSnapshot_(payload);
