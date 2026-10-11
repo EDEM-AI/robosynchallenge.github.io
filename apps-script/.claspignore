@@ -1,8 +1,12 @@
 **/**
 !Code.gs
 !Reviewer.gs
+!ReviewerPool.gs
 !ReviewResponse.gs
 !ArchiveUpload.gs
+!CheckpointAccess.gs
 !SubmissionWindow.gs
 !Scoring.gs
+!SubmissionReceipts.gs
+!VersionPolicy.gs
 !appsscript.json

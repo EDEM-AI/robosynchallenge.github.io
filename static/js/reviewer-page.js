@@ -123,7 +123,8 @@
     if (action === "reviewer_mail_status") return { ok: true, messages: state.preview.jobs.flatMap(job => (job.messages || []).map(message => ({ ...message, evaluation_id: job.evaluation_id, team_name: job.team_name, recipient: job.email, gmail_url: "https://mail.google.com/mail/u/?authuser=robosynchallenge%40gmail.com#search/" + encodeURIComponent(`in:sent subject:"${message.subject}"`) }))) };
     if (action === "reviewer_login") return { ok: true, reviewer: { email: state.credentials.email, role: "admin" } };
     if (action === "reviewer_queue") return { ok: true, reviewer: { email: state.credentials.email, role: "admin" },
-      jobs: state.preview.jobs.filter((job) => job.reviewer_email === state.credentials.email).map((job) => ({ ...job, machines: state.preview.machines })) };
+      jobs: state.preview.jobs.filter((job) => job.reviewer_email === state.credentials.email).map((job) => ({ ...job, machines: state.preview.machines })),
+      ...(fields.include_mail_status ? { messages: (await previewAction("reviewer_mail_status", {})).messages } : {}) };
     if (action === "reviewer_submission_window") return { ok: true, status: fields.revoke ? "revoked" : "granted" };
     const job = state.preview.jobs.find((item) => item.evaluation_id === fields.evaluation_id && item.reviewer_email === state.credentials.email);
     if (!job) throw new Error("This request is not assigned to you.");
@@ -400,10 +401,13 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     return state.jobs.filter((job) => (job.team_name + " " + job.artifact_name + " " + job.evaluation_id).toLowerCase().includes(state.search.toLowerCase())).map((job) => `<button type="button" class="reviewer-job ${job.evaluation_id === state.selected ? "selected" : ""}" data-review-job="${escape(job.evaluation_id)}"><strong>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</strong><span>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)}</span><small><span>${doneCount(job) === 5 ? "Completed" : STAGES[firstOpen(job)].title}</span><span>${doneCount(job)} / 5</span></small><progress value="${doneCount(job)}" max="5" aria-label="Request progress"></progress></button>`).join("") || `<p class="reviewer-empty">No assigned requests match.</p>`;
   }
   async function refresh() {
-    const response = await request("reviewer_queue");
+    const credentials = state.credentials;
+    const includeMail = state.view === "email-status";
+    const response = await request("reviewer_queue", { include_mail_status: includeMail });
+    if (state.credentials !== credentials) return;
     state.role = response.reviewer?.role || "";
     state.jobs = response.jobs || [];
-    if (state.view === "email-status") state.mailStatus = (await request("reviewer_mail_status")).messages || [];
+    if (includeMail) state.mailStatus = response.messages || [];
     if (!selected()) { state.selected = state.jobs[0]?.evaluation_id || ""; state.stage = selected() ? firstOpen(selected()) : 0; }
   }
   async function perform(action) {
