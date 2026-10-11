@@ -60,7 +60,7 @@
     water_pouring: 500,
     handle_basket: 500,
     items_handover: 350,
-    item_assembly: 361,
+    item_assembly: 500,
     manipulate_pipette: 1000,
     sample_loading: 500,
   });
@@ -407,6 +407,10 @@
       answer: `
         <p>Yes. Teams may provide task-specific checkpoints, but <strong>each evaluation request must cover all 10 tasks</strong>. Please submit one GitHub repository containing the evaluation code for all tasks, and list the corresponding Hugging Face checkpoints and run commands in the submission notes or README. A shared checkpoint is also allowed if its task coverage is clearly stated. Requests covering only a subset of tasks are not valid; do not split the tasks across separate requests.</p>
       `,
+    },
+    {
+      question: "Can a team correct its code after an evaluation issue is reported?",
+      answer: `<p>One code correction is permitted within <strong>24 hours of the first issue notification</strong>. Use the response link in the organizer email to confirm the current submission or provide a corrected immutable GitHub commit and checkpoints covering all 10 tasks. Further emails do not extend the deadline. Registered team details cannot be changed through this form.</p>`,
     },
     {
       question: "How many times may a team submit, and what is the deadline?",
@@ -1739,6 +1743,18 @@
                 <span>Hugging Face checkpoint URL</span>
                 <input type="url" name="checkpoint_link" placeholder="https://huggingface.co/your-org/your-policy-ckpt" required>
               </label>
+              <details class="task-checkpoints field-span-2" open>
+                <summary>Checkpoints for all 10 tasks</summary>
+                <p class="helper-note">The link above applies to every task unless you set an override here. Describe the exact checkpoint path and run command for each task in your README or run notes.</p>
+                <div class="form-grid">
+                  ${LEADERBOARD_TASKS.map((task) => `
+                    <label class="field">
+                      <span>${escapeHtml(task.label)}</span>
+                      <input type="url" name="checkpoint_${task.id}" placeholder="Use the common checkpoint URL">
+                    </label>
+                  `).join("")}
+                </div>
+              </details>
               <label class="field field-span-2">
                 <span>Data source</span>
                 <textarea name="data_source_text" rows="4" placeholder="Data source" required></textarea>
@@ -1761,6 +1777,7 @@
           <div class="section-actions">
             <button type="submit" class="button button-primary">Submit Policy</button>
           </div>
+          <p data-evaluation-status role="status" aria-live="polite" hidden></p>
         </form>
       </section>
     `;
@@ -2690,6 +2707,11 @@
   }
 
   async function handleEvaluationSubmit(form) {
+    if (form.dataset.submitting === "true") return;
+    const status = form.querySelector("[data-evaluation-status]");
+    const showStatus = (message, error = false) => {
+      if (status) { status.hidden = false; status.textContent = message; status.style.color = error ? "#a33a1f" : ""; }
+    };
     const user = currentUser();
     if (!user) {
       pushFlash("error", "Sign in before submitting.");
@@ -2706,6 +2728,9 @@
     const shortDescription = String(formData.get("short_description") || "").trim();
     const codeLink = String(formData.get("code_link") || "").trim();
     const checkpointLink = String(formData.get("checkpoint_link") || "").trim();
+    const taskCheckpointLinks = Object.fromEntries(LEADERBOARD_TASKS.map((task) => [
+      task.id, String(formData.get(`checkpoint_${task.id}`) || "").trim() || checkpointLink,
+    ]));
     const dataSourceText = String(formData.get("data_source_text") || "").trim();
     const technicalNotes = String(formData.get("technical_notes") || "").trim();
     const isRanked = formData.has("is_ranked");
@@ -2722,6 +2747,10 @@
       pushFlash("error", "Checkpoint link must be a https://huggingface.co/... URL.");
       return;
     }
+    if (!formData.has("all_tasks_confirmed") || Object.values(taskCheckpointLinks).some((url) => !isHuggingFaceUrl(url))) {
+      pushFlash("error", "Confirm all 10 tasks and provide valid Hugging Face checkpoint URLs.");
+      return;
+    }
     if (!dataSourceText) {
       pushFlash("error", "Describe the data source used by this artifact.");
       return;
@@ -2730,6 +2759,10 @@
       pushFlash("error", "Run and dependency notes are required.");
       return;
     }
+    const submitButton = form.querySelector('[type="submit"]');
+    form.dataset.submitting = "true";
+    if (submitButton) { submitButton.disabled = true; submitButton.textContent = "Submitting..."; }
+    showStatus("Submitting your evaluation request. Please wait; do not submit again.");
     try {
       const data = await apiRequest("submit_policy", {
         session_id: state.session.session_id,
@@ -2739,6 +2772,8 @@
           short_description: shortDescription,
           code_link: codeLink,
           checkpoint_link: checkpointLink,
+          task_checkpoint_links: taskCheckpointLinks,
+          all_tasks_confirmed: true,
           data_source_text: dataSourceText,
           technical_notes: technicalNotes,
           is_ranked: isRanked,
@@ -2753,7 +2788,11 @@
       pushFlash("success", "Artifact submission recorded. The organizers can now schedule and publish it.");
       navigate(submission ? `submission/${submission.id}` : "dashboard");
     } catch (error) {
+      showStatus(error.message || "Policy submission failed.", true);
       pushFlash("error", error.message || "Policy submission failed.");
+    } finally {
+      delete form.dataset.submitting;
+      if (submitButton) { submitButton.disabled = false; submitButton.textContent = "Submit Policy"; }
     }
   }
 
@@ -2782,6 +2821,15 @@
   }
 
   function attachGlobalEvents() {
+    document.addEventListener("invalid", (event) => {
+      const form = event.target.closest('[data-form="evaluation"]');
+      const status = form?.querySelector("[data-evaluation-status]");
+      if (status) {
+        const name = event.target.closest("label")?.querySelector("span")?.textContent?.trim() || "Required field";
+        status.hidden = false; status.style.color = "#a33a1f";
+        status.textContent = `${name}: ${event.target.validationMessage}`;
+      }
+    }, true);
     if (navToggle && navMenu) {
       navToggle.addEventListener("click", () => {
         navMenu.classList.toggle("is-open");
