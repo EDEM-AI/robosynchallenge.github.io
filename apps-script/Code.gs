@@ -2904,8 +2904,16 @@ function requiredUrl_(value, label) {
 }
 
 function requiredHuggingFaceUrl_(value) {
-  const text = requiredUrl_(value, "Hugging Face checkpoint URL");
-  if (!/^https:\/\/huggingface\.co\//i.test(text)) throw new Error("Checkpoint link must be a https://huggingface.co/... URL.");
+  let text = requiredString_(value, "Hugging Face checkpoint URL or account/repository");
+  if (/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(text)) text = "https://huggingface.co/" + text;
+  const match = text.match(/^https:\/\/huggingface\.co\/([^?#\s\\]+)\/?$/i);
+  const parts = match ? match[1].replace(/\/$/, "").split("/").map(part => decodeURIComponent(part)) : [];
+  if (parts.length < 2 || parts.slice(0, 2).some(part => !/^[A-Za-z0-9_.-]+$/.test(part)) ||
+      parts.some(part => !part || part === "." || part === ".." || /[\s\\]/.test(part)) ||
+      (parts.length > 2 && (parts.length < 4 || !["tree", "blob", "resolve"].includes(parts[2])))) {
+    throw new Error("Checkpoint link must be a https://huggingface.co/... URL or account/repository, with the documented revision/subdirectory.");
+  }
+  text = "https://huggingface.co/" + match[1].replace(/\/$/, "");
   return text;
 }
 

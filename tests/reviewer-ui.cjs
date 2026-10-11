@@ -1,0 +1,234 @@
+const assert = require("node:assert/strict");
+const { spawn } = require("node:child_process");
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+async function main() {
+  const tokenFile = process.env.RSC_REVIEWER_PREVIEW_TOKEN_FILE;
+  assert(tokenFile, "RSC_REVIEWER_PREVIEW_TOKEN_FILE is required");
+  const token = fs.readFileSync(tokenFile, "utf8").trim();
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "rsc-review-chrome-"));
+  const chrome = spawn("google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--remote-allow-origins=*",
+    "--remote-debugging-port=0", `--user-data-dir=${profile}`, "--window-size=1440,900", "about:blank"], { stdio: "ignore" });
+  let socket;
+  try {
+    const portFile = path.join(profile, "DevToolsActivePort");
+    for (let index = 0; index < 100 && !fs.existsSync(portFile); index += 1) await sleep(100);
+    assert(fs.existsSync(portFile), "Chrome DevTools did not start");
+    const port = fs.readFileSync(portFile, "utf8").split("\n")[0];
+    const pages = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
+    socket = new WebSocket(pages.find((page) => page.type === "page").webSocketDebuggerUrl);
+    await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+    let id = 0;
+    const pending = new Map();
+    socket.onmessage = (event) => { const message = JSON.parse(event.data); if (pending.has(message.id)) {
+      const { resolve, reject } = pending.get(message.id); pending.delete(message.id);
+      if (message.error) reject(new Error(message.error.message)); else resolve(message.result);
+    } };
+    const rpc = (method, params = {}) => new Promise((resolve, reject) => { const current = ++id; pending.set(current, { resolve, reject }); socket.send(JSON.stringify({ id: current, method, params })); });
+    const evaluate = async (expression) => {
+      const result = await rpc("Runtime.evaluate", { expression, returnByValue: true, awaitPromise: true });
+      if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description || result.exceptionDetails.text);
+      return result.result.value;
+    };
+    const until = async (expression) => { for (let index = 0; index < 100; index += 1) {
+      if (await evaluate(expression)) return;
+      await sleep(100);
+    } throw new Error("Timed out waiting for " + expression + "; page error: " + await evaluate("document.querySelector('.reviewer-error')?.textContent || 'none'")); };
+    await rpc("Page.enable");
+    await rpc("Page.navigate", { url: "http://127.0.0.1:8032/eval_backend/?review_preview=1" });
+    await until("!!document.querySelector('[data-review-form=login]')");
+    assert.equal(await evaluate("document.querySelectorAll('[data-review-form=login] .reviewer-required').length"), 2);
+    assert.equal(await evaluate("[...document.querySelectorAll('[data-review-form=login] [required]')].every(input => input.getAttribute('aria-required') === 'true')"), true);
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-job').length"), 0);
+    assert.equal(await evaluate("document.querySelector('.reviewer-login-media') === null && !/local preview|local reviewer preview|Simulation tasks/i.test(document.body.innerText)"), true);
+    assert.equal(await evaluate("document.documentElement.lang"), "en");
+    await evaluate(`document.querySelector('[name=token]').value = ${JSON.stringify("act_" + "0".repeat(64))}`);
+    await evaluate("document.querySelector('[data-review-form=login]').requestSubmit()");
+    await until("!!document.querySelector('.reviewer-error')");
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-job').length"), 0);
+    await evaluate(`document.querySelector('[name=token]').value = ${JSON.stringify(token)}`);
+    await evaluate("document.querySelector('[data-review-form=login]').requestSubmit()");
+    await until("document.querySelectorAll('.reviewer-job').length > 0");
+    const count = await evaluate("document.querySelectorAll('.reviewer-job').length");
+    assert.equal(await evaluate("document.querySelector('[data-evaluation-id]').textContent"), "eval_LOCALWALKTHROUGH");
+    const queueProbe = await evaluate("(() => { const queue = document.querySelector('.reviewer-queue'); queue.scrollTop=queue.scrollHeight; const items=[...queue.querySelectorAll('[data-review-job]')]; const id=items.at(-1).dataset.reviewJob; const scroll=queue.scrollTop; items.at(-2).click(); document.querySelector('[data-review-job=\"'+id+'\"]').click(); return {id, scroll}; })()");
+    await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(queueProbe.id)}`);
+    assert.equal(await evaluate(`Math.abs(document.querySelector('.reviewer-queue').scrollTop - ${queueProbe.scroll}) < 2`), true, "Rapid clicks must select the last requested job without resetting the queue scroll");
+    await evaluate("document.querySelector('[data-review-job=eval_LOCALWALKTHROUGH]').click()");
+    await until("document.querySelector('[data-evaluation-id]').textContent === 'eval_LOCALWALKTHROUGH'");
+    for (let index = 0; index < 5; index += 1) {
+      assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), false);
+      await evaluate("document.querySelector('[data-review-action=next]').click()");
+      if (index < 4) await until(`document.querySelector('[data-review-stage="${index+1}"]')?.classList.contains('active')`);
+      else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
+    }
+    assert.equal(await evaluate("document.querySelector('.reviewer-progress progress').value"), 0, "Demo must not count toward real progress");
+    const codeJob = JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.find(job => job.code_bundle_commit && !job.bundle_commit);
+    if (codeJob) {
+      await evaluate(`document.querySelector('[data-review-job="${codeJob.evaluation_id}"]').click()`);
+      await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(codeJob.evaluation_id)}`);
+      assert.equal(await evaluate("document.querySelector('.reviewer-automatic-status .success')?.textContent.includes('Code composed automatically')"), true);
+      assert.equal(await evaluate("document.querySelector('.reviewer-automatic-status a')?.textContent"), "Open private validation branch");
+      assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') !== null"), true);
+      assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Validation code must not bypass the checkpoint gate");
+    }
+    const warningJobs = JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.filter(job => job.code_selection?.preparation_warnings?.length);
+    for (const job of warningJobs) {
+      await evaluate(`document.querySelector('[data-review-job="${job.evaluation_id}"]').click()`);
+      await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(job.evaluation_id)}`);
+      for (const warning of job.code_selection.preparation_warnings) {
+        assert.equal(await evaluate(`document.body.innerText.includes(${JSON.stringify(warning)})`), true, "Deferred dependency warnings must remain visible");
+      }
+      assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Code-only dependency warnings must not bypass formal checkpoint gates");
+    }
+    await evaluate("document.querySelector('[data-review-job=eval_3b7f6832eca94f]').click()");
+    await until("document.querySelector('[data-evaluation-id]').textContent === 'eval_3b7f6832eca94f'");
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-links a').length"), 20, "Each submitted repository and checkpoint must have its own readable link");
+    assert.equal(await evaluate("document.querySelectorAll('[data-review-form=verify] input[type=text]').length"), 10);
+    assert.equal(await evaluate("document.body.innerText.includes('local preview')"), false);
+    assert.equal(await evaluate("document.querySelector('[data-review-action=demo-code]') === null"), true, "Real requests must never show sample code preparation");
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 2, "Automatic preparation is status, not a reviewer step");
+    const flowJob = JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.find(job => !job.local_walkthrough && job.coverage_status === "legacy_unverified" && job.preparation_status !== "failed");
+    assert(flowJob, "Use a non-failing request for the simulated five-stage fixture");
+    await evaluate(`document.querySelector('[data-review-job="${flowJob.evaluation_id}"]').click()`);
+    await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(flowJob.evaluation_id)}`);
+    await evaluate("document.fonts.ready.then(() => true)");
+    const screenshot = async (name) => { const shot = await rpc("Page.captureScreenshot", { format: "png" }); fs.writeFileSync("/tmp/rsc-review-" + name + ".png", Buffer.from(shot.data, "base64")); };
+    await screenshot("queue-desktop");
+    for (const width of [1280, 1440, 1920]) {
+      await rpc("Emulation.setDeviceMetricsOverride", { width, height: 900, deviceScaleFactor: 1, mobile: false });
+      await sleep(150);
+      const geometry = await evaluate("(() => { const pane = document.querySelector('.reviewer-detail').getBoundingClientRect(); const footer = document.querySelector('.reviewer-footer').getBoundingClientRect(); const nav = document.querySelector('.reviewer-stage-nav').getBoundingClientRect(); const buttons = [...document.querySelectorAll('.reviewer-footer button')].map(b => b.getBoundingClientRect()); return { overflow: document.documentElement.scrollWidth > innerWidth, footerVisible: footer.bottom <= innerHeight, nonOverlap: nav.bottom < footer.top, aligned: buttons.every(b => Math.abs(b.top - buttons[0].top) < 1) }; })()");
+      assert.deepEqual(geometry, { overflow: false, footerVisible: true, nonOverlap: true, aligned: true });
+    }
+    assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-stage=\"1\"]').disabled"), true);
+    await evaluate("document.querySelector('[data-review-action=email]').click()");
+    await until("!!document.querySelector('[data-mail-composer]')");
+    assert.equal(await evaluate("document.querySelectorAll('[data-review-form=email] .reviewer-required').length"), 2);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=email] input[readonly]').closest('label').querySelector('.reviewer-required') === null"), true);
+    await sleep(700);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=email] input[readonly]').value.includes('@')"), true);
+    await screenshot("email-desktop");
+    await evaluate("document.querySelector('[data-email-template]').value = 'blank'; document.querySelector('[data-email-template]').dispatchEvent(new Event('change', {bubbles:true}))");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=email] [name=body]').value"), "");
+    await evaluate("document.querySelector('[data-review-form=email] [name=subject]').value='Local test'; document.querySelector('[data-review-form=email] [name=body]').value='A local preview message.'; document.querySelector('[data-review-form=email]').requestSubmit()");
+    await until("document.querySelector('.reviewer-toast')?.textContent.includes('No email was sent')");
+    assert.equal(await evaluate("document.querySelectorAll('[data-review-form=verify] input[type=text]').length"), 10);
+    assert.equal(await evaluate("[...document.querySelectorAll('[data-review-form=verify] input[type=text]')].every(input => input.value === '')"), true);
+    await evaluate("document.querySelectorAll('[data-review-form=verify] input[type=text]').forEach((input) => { input.value = 'test/ckpt'; }); document.querySelector('[data-review-form=verify] [name=coverage_confirmed]').checked = true; document.querySelector('[data-review-form=verify]').requestSubmit()");
+    await until("document.querySelector('.reviewer-meta')?.textContent.includes('Checkpoint URLs recorded for all 10 tasks')");
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-instruction > h4')].map(node=>node.lastChild.textContent).join('|')"), "Code preparation / GitHub access|Hugging Face checkpoint access");
+    assert.equal(await evaluate("document.body.textContent.includes('Automatic HF access check is queued')"), true);
+    await evaluate("document.querySelectorAll('.reviewer-instruction')[1].scrollIntoView({block:'start'})");
+    await screenshot("checkpoint-check-desktop");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') !== null && document.querySelector('[data-review-form=verify]').closest('details') !== null"), true, "Saved checkpoint mappings stay editable until a formal bundle is prepared");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null && document.querySelector('[data-review-form=reassign]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[data-stage-check=repository_access]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[name=bundle_commit]') === null && document.querySelector('[name=policy_dirs]') === null"), true);
+    const evaluationId = await evaluate("document.querySelector('[data-evaluation-id]').textContent.trim()");
+    const submissionId = await evaluate("document.querySelectorAll('.reviewer-meta dd')[1].textContent.trim()");
+    const finishStage = async (index) => {
+      await evaluate("document.querySelectorAll('[data-stage-check]').forEach(input => { input.checked=true; input.dispatchEvent(new Event('input',{bubbles:true})); })");
+      await until("!document.querySelector('[data-review-action=next]').disabled");
+      await evaluate("document.querySelector('[data-review-action=next]').click()");
+      if (index < 4) await until(`document.querySelector('[data-review-stage="${index+1}"]')?.classList.contains('active')`);
+      else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
+    };
+    const bundleCommit = "a".repeat(40);
+    await evaluate(`(() => { const key = 'rsc-reviewer-preview-workflow-v4'; const saved = JSON.parse(sessionStorage.getItem(key)); const job = saved.jobs.find(job => job.evaluation_id === ${JSON.stringify(evaluationId)}); job.bundle_commit = ${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; job.hf_check_status='passed'; job.hf_access=Object.fromEntries(Object.entries(job.task_checkpoint_links).map(([task,url])=>[task,{url,revision:'f'.repeat(40),accessible:true,files_checked:2}])); sessionStorage.setItem(key, JSON.stringify(saved)); })()`);
+    await rpc("Page.reload");
+    await until("!!document.querySelector('.reviewer-job')");
+    await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
+    await finishStage(0);
+    await evaluate(`(() => { const key = 'rsc-reviewer-preview-workflow-v4'; const saved = JSON.parse(sessionStorage.getItem(key)); const job = saved.jobs.find(job => job.evaluation_id === ${JSON.stringify(evaluationId)}); job.bundle_commit=''; job.bundle_url=''; job.preparation_status = 'failed'; job.preparation_error = 'No deploy_policy.py found under policy/'; sessionStorage.setItem(key, JSON.stringify(saved)); })()`);
+    await rpc("Page.reload");
+    await until("!!document.querySelector('.reviewer-job')");
+    await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
+    await until("!!document.querySelector('[data-review-action=retry-code]')");
+    assert.equal(await evaluate("document.querySelector('.reviewer-notice.error')?.textContent.trim().startsWith('ERROR:')"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') !== null && document.querySelector('[data-review-form=admission] [name=participant_email]').readOnly && document.querySelector('[data-review-form=reassign]') === null"), true);
+    await evaluate("document.querySelector('[data-review-form=admission] [name=revoke]').checked=true; document.querySelector('[data-review-form=admission] [name=revoke]').dispatchEvent(new Event('change',{bubbles:true}))");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission] [name=expires_at]').disabled"), true);
+    await evaluate("document.querySelector('[data-review-form=admission] [name=revoke]').checked=false; document.querySelector('[data-review-form=admission] [name=revoke]').dispatchEvent(new Event('change',{bubbles:true}))");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission] [name=expires_at]').required"), true);
+    await evaluate("document.querySelector('[data-review-action=email]').click()");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=email] [name=body]').value.includes('No deploy_policy.py')"), true);
+    await screenshot("preparation-failed-desktop");
+    await evaluate("document.querySelector('[data-review-action=close-email]').click(); document.querySelector('[data-review-action=retry-code]').click()");
+    await until("!document.querySelector('[data-review-action=retry-code]')");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=prepare]') === null && document.querySelector('[name=bundle_commit]') === null && document.querySelector('[name=policy_dirs]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
+    await evaluate(`(() => { const key='rsc-reviewer-preview-workflow-v4'; const saved=JSON.parse(sessionStorage.getItem(key)); const job=saved.jobs.find(job=>job.evaluation_id===${JSON.stringify(evaluationId)}); job.bundle_commit=${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; sessionStorage.setItem(key,JSON.stringify(saved)); })()`);
+    await rpc("Page.reload");
+    await until("!!document.querySelector('.reviewer-job')");
+    await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
+    await until("!!document.querySelector('.reviewer-code')");
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].find(code=>code.textContent.includes('download_checkpoints.py')).textContent.includes('--token-file')"), false);
+    await screenshot("code-desktop");
+    await finishStage(1);
+    const taskNames = ["click_bell", "drawer_open_place", "mixer_operating", "table_rearrangement", "water_pouring", "handle_basket", "items_handover", "item_assembly", "manipulate_pipette", "sample_loading"];
+    const report = { schema: 1, kind: "render_first_frame_comparison", reference_sha256: "c".repeat(64),
+      task_coverage: Object.fromEntries(taskNames.map(task => [task, true])), results: taskNames.flatMap(task =>
+        ["cam_high", "cam_left_wrist", "cam_right_wrist"].map(camera => ({ task, camera, ssim: 0.999, psnr_db: 50 }))) };
+    assert.equal(await evaluate("document.querySelector('[name=machine_id]') === null && document.querySelector('[name=preflight_file]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('.reviewer-command code').textContent.includes('python tools/check_environment.py')"), true);
+    assert.equal(await evaluate("document.body.textContent.includes('Participant setup instructions')"), false);
+    await screenshot("environment-desktop");
+    await finishStage(2);
+    assert.equal(await evaluate("document.querySelectorAll('input[type=file]').length"), 0, "ZIP and JSON uploads must be CLI-only");
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 4);
+    assert.equal(await evaluate("document.querySelectorAll('[data-review-form=commands]').length"),1);
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].some(el=>el.textContent.includes('run_task_evaluation.py'))"),true);
+    await evaluate("navigator.clipboard.writeText=async text=>{window.copiedCommand=text}; [...document.querySelectorAll('.reviewer-command')].find(el=>el.textContent.includes('check_upload.py')).querySelector('button').click()");
+    await until("window.copiedCommand?.includes('check_upload.py')");
+    assert.equal(await evaluate("window.copiedCommand.includes('run_task_evaluation.py')"),false);
+    await screenshot("upload-desktop");
+    await evaluate("document.querySelector('[data-review-form=commands]').closest('details').open=true");
+    await evaluate("document.querySelectorAll('[data-review-form=commands] textarea').forEach(input => input.value='python run.py --task '+input.name.replace('command_', '')); document.querySelector('[data-review-form=commands]').requestSubmit()");
+    await until("document.querySelector('.reviewer-toast')?.textContent.includes('commands saved')");
+    const seeds = Array.from({ length: 100 }, (_, index) => index);
+    for (const task of taskNames) {
+      const manifest = { schema: 1, evaluation_id: evaluationId, submission_id: submissionId,
+        bundle_commit: bundleCommit, task, policy_dir: "policy/test", eval_command: "python run.py --task " + task,
+        seed_list_sha256: crypto.createHash("sha256").update(JSON.stringify(seeds)).digest("hex"),
+        episodes: seeds.map((seed, index) => ({ index, seed, success: index < 30, action_steps: 100, inference_ms: 4 })),
+        artifacts: { url: "https://tenant.sharepoint.com/test-evidence.zip", sha256: "b".repeat(64) } };
+      // Emulate results arriving from terminal uploads; the real CLI and backend have separate regression tests.
+      await evaluate(`(() => { const key='rsc-reviewer-preview-workflow-v4'; const saved=JSON.parse(sessionStorage.getItem(key)); const job=saved.jobs.find(job=>job.evaluation_id===${JSON.stringify(evaluationId)}); job.results ||= []; job.results.push({...${JSON.stringify(manifest)}, status:'submitted', summary:{episodes:100,success_rate:30,average_steps:100,inference_per_episode_ms:4,weighted_score:0.5}}); sessionStorage.setItem(key,JSON.stringify(saved)); })()`);
+    }
+    await rpc("Page.reload");
+    await until("!!document.querySelector('.reviewer-job')");
+    await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
+    await until("document.querySelectorAll('.reviewer-task-table tbody tr').length===10");
+    await finishStage(3);
+    for (const task of taskNames) {
+      await evaluate(`(() => { const picker = document.querySelector('[data-task-picker]'); picker.value=${JSON.stringify(task)}; picker.dispatchEvent(new Event('change',{bubbles:true})); })()`);
+      await evaluate("document.querySelectorAll('[data-review-form=accept] input[type=checkbox]').forEach(input => input.checked=true); document.querySelector('[data-review-form=accept]').requestSubmit()");
+      await until("document.querySelector('.reviewer-notice.success')?.textContent.includes('accepted')");
+    }
+    await finishStage(4);
+    await screenshot("completed-desktop");
+    await rpc("Page.reload");
+    await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
+    await evaluate("document.querySelector('[data-review-action=logout]').click()");
+    await until("!!document.querySelector('[data-review-form=login]')");
+    await screenshot("login-desktop");
+    assert.equal(await evaluate("document.querySelector('.reviewer-login-media') === null"), true);
+    console.log(JSON.stringify({ jobs: count, desktop_viewports: [1280,1440,1920], local_flow: "five stages completed; gates, queue scroll, rapid request switches, CLI-only uploads, ten results, and reload persistence verified", screenshots: "/tmp/rsc-review-*-desktop.png" }));
+
+  } finally {
+    if (socket) socket.close();
+    chrome.kill("SIGTERM");
+    await new Promise((resolve) => { if (chrome.exitCode !== null) resolve(); else chrome.once("exit", resolve); });
+    await sleep(250);
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+  }
+}
+main().catch((error) => { console.error(error); process.exitCode = 1; });

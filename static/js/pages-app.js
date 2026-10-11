@@ -395,7 +395,7 @@
           <li><strong>Artifact name and experiment name.</strong> Use names that clearly identify the policy checkpoint being evaluated.</li>
           <li><strong>Short description.</strong> Summarize the method, training setup, or intended run in a few sentences.</li>
           <li><strong>Code URL.</strong> Use a GitHub repository for the evaluation code. Teams should register a GitHub account if they do not already have one. Private repositories are allowed if <a href="https://github.com/robosynchallenge" target="_blank" rel="noreferrer">robosynchallenge</a> is invited as a collaborator.</li>
-          <li><strong>Hugging Face checkpoint URL.</strong> Provide checkpoints covering all 10 tasks, with a clear task-to-checkpoint mapping in the run notes or README. Public checkpoints are preferred. For gated models, approve the individual <strong>RoboSynChallenge</strong> Hugging Face user. For private organization repositories, grant that user read access. A URL alone does not grant access; do not put access tokens in submission notes or public code.</li>
+          <li><strong>Hugging Face checkpoints.</strong> Provide a URL or <code>account/repository</code> for each of all 10 tasks, with the documented revision/subdirectory and run command. Public checkpoints are accepted. If you restrict access, use a gated model and grant access to the individual <strong>RoboSynChallenge</strong> user. Private-repository invitations and participant-provided tokens are not supported.</li>
           <li><strong>Data source.</strong> Describe the data used for training, including official released data and any additional allowed data.</li>
           <li><strong>Run and dependency notes.</strong> Include the commands, environment details, and dependencies needed by the organizers. The repository should expose the RoboSynChallenge policy adapter entrypoints and include <code>eval.sh</code>, <code>deploy_policy.yml</code>, and <code>deploy_policy.py</code>.</li>
           <li><strong>Leaderboard option.</strong> Choose whether the run should count on the public leaderboard once the result is published.</li>
@@ -403,10 +403,17 @@
       `,
     },
     {
+      question: "How should restricted Hugging Face checkpoints be shared?",
+      answer: `
+        <p>Use a gated model; this is the only supported restricted-access method. Keep the model repository visible, then open <strong>Settings</strong>, enable <strong>Access requests</strong>, and choose <strong>Manual approval</strong>. Use <strong>Add access</strong> to grant the individual user <strong>RoboSynChallenge</strong> access and confirm it appears in the accepted list. Apply this to every checkpoint repository used by your submission.</p>
+        <p>Do not use a private repository, an organization invitation, or a personal access token as a substitute. Browser visibility alone is insufficient: the organizers must be able to download the submitted revision and all required files. Teams are responsible for keeping this access available; evaluation pauses if automatic checks fail. After fixing access, use the latest issue email's response form. See <a href="https://huggingface.co/docs/hub/models-gated" target="_blank" rel="noreferrer">Hugging Face's gated-model instructions</a>.</p>
+      `,
+    },
+    {
       question: "Which code and checkpoint versions will be evaluated?",
       answer: `
         <p>For preliminary evaluation, we use the latest reachable GitHub commit and Hugging Face checkpoint revision dated before October 11, 2026 at 23:59 AoE. Version selection is finalized after the deadline; earlier preparation is validation only. Keep the submitted branch and checkpoint history accessible. A specified commit or revision limits selection to its reachable history.</p>
-        <p>If no eligible version is available, evaluation pauses at the first stage. Reply to the issue email with your explanation and evidence; rebuilding requires an evaluator's explicit, recorded approval. Approved one-time corrections and individual submission extensions use their recorded cutoffs. Git commit timestamps alone do not prove when code was uploaded; rewritten or disputed history may require organizer review.</p>
+        <p>If no eligible version is available, evaluation pauses at the first stage. Reply to the issue email with your explanation and evidence; rebuilding requires an evaluator's explicit, recorded approval. Corrections requested by issue email and individual submission extensions use their recorded cutoffs. Git commit timestamps alone do not prove when code was uploaded; rewritten or disputed history may require organizer review.</p>
       `,
     },
     {
@@ -417,7 +424,7 @@
     },
     {
       question: "Can a team correct its code after an evaluation issue is reported?",
-      answer: `<p>One code correction is permitted within <strong>24 hours of the first issue notification</strong>. Use the response link in the organizer email to confirm the current submission or provide a corrected immutable GitHub commit and checkpoints covering all 10 tasks. Further emails do not extend the deadline. Registered team details cannot be changed through this form.</p>`,
+      answer: `<p>Each new issue email opens a response round, with <strong>no 24-hour deadline or overall correction limit</strong>. Use the latest email's form to confirm the submission or provide a corrected immutable GitHub commit and checkpoints for all 10 tasks. Corrections remain under the same eval request and trigger automatic code and checkpoint checks. Registered team details cannot be changed.</p>`,
     },
     {
       question: "How many times may a team submit, and what is the deadline?",
@@ -759,8 +766,8 @@
 
   function isHuggingFaceUrl(value) {
     try {
-      const url = new URL(value);
-      return url.protocol === "https:" && url.hostname === "huggingface.co";
+      window.normalizeHfLocation(value);
+      return true;
     } catch {
       return false;
     }
@@ -1799,12 +1806,12 @@
               </label>
               <details class="task-checkpoints field-span-2" open>
                 <summary>Checkpoints for all 10 tasks</summary>
-                <p class="helper-note">Provide a checkpoint URL for each task. If several tasks share a checkpoint, repeat the same URL. Describe the exact checkpoint path and run command for each task in your README or run notes.</p>
+                <p class="helper-note">Provide a Hugging Face URL or account/repository for each task. If several tasks share a checkpoint, repeat it. Include the documented revision/subdirectory in the URL and describe each task's run command in your README or run notes.</p>
                 <div class="form-grid">
                   ${LEADERBOARD_TASKS.map((task) => `
                     <label class="field">
                       <span>${escapeHtml(task.label)}</span>
-                      <input type="url" name="checkpoint_${task.id}" placeholder="https://huggingface.co/your-org/your-policy-ckpt" required>
+                      <input type="text" name="checkpoint_${task.id}" placeholder="https://huggingface.co/account/repository or account/repository" required>
                     </label>
                   `).join("")}
                 </div>
@@ -2809,9 +2816,10 @@
       return;
     }
     if (!formData.has("all_tasks_confirmed") || Object.values(taskCheckpointLinks).some((url) => !isHuggingFaceUrl(url))) {
-      pushFlash("error", "Confirm all 10 tasks and provide valid Hugging Face checkpoint URLs.");
+      pushFlash("error", "Confirm all 10 tasks and provide Hugging Face URLs or account/repository names.");
       return;
     }
+    Object.keys(taskCheckpointLinks).forEach(task => { taskCheckpointLinks[task] = window.normalizeHfLocation(taskCheckpointLinks[task]); });
     if (!dataSourceText) {
       pushFlash("error", "Describe the data source used by this artifact.");
       return;

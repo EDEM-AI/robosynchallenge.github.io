@@ -16,12 +16,13 @@ const REVIEW_TABLES = {
   ReviewTaskCommands: ["evaluation_id", "task", "bundle_commit", "command", "reviewer_email", "updated_at"],
   ReviewAccessChecks: ["evaluation_id", "report_json", "checked_at"],
   ReviewCheckpointChecks: ["evaluation_id", "context_json", "status", "message", "cutoff_at", "updated_at"],
-  ReviewResponseLinks: ["evaluation_id", "message_id", "token_hash", "status", "created_at"],
-  ReviewCorrections: ["evaluation_id", "participant_email", "deadline_at", "status", "code_link", "task_checkpoint_links_json", "notes", "responded_at", "previous_bundle_commit", "updated_at"],
+  ReviewResponseLinks: ["evaluation_id", "message_id", "token_hash", "status", "created_at", "response_kind", "response_json", "responded_at"],
+  ReviewCorrections: ["evaluation_id", "participant_email", "deadline_at", "status", "code_link", "task_checkpoint_links_json", "notes", "responded_at", "previous_bundle_commit", "updated_at", "correction_count", "response_status", "response_at"],
   ReviewSubmissionWindows: ["window_id", "email", "token_hash", "status", "expires_at", "reason", "granted_by", "created_at"],
   ReviewVersionChecks: ["evaluation_id", "status", "report_json", "checked_at"],
   ReviewVersionDecisions: ["evaluation_id", "cutoff_at", "reason", "approved_by", "approved_at", "generation"],
   ReviewAssignments: ["evaluation_id", "previous_reviewer", "reviewer_email", "reason", "changed_by", "changed_at"],
+  ReviewProgressBackups: ["backup_id", "evaluation_id", "table_name", "row_key", "part", "snapshot_json", "reason", "created_at"],
 };
 const REVIEW_TASK_STEPS = {
   click_bell: 361, drawer_open_place: 900, mixer_operating: 500, table_rearrangement: 361,
@@ -332,9 +333,10 @@ function reviewAccessCheck_(payload) {
 function reviewTaskLinks_(links) {
   if (!links || typeof links !== "object" || Array.isArray(links) ||
       Object.keys(links).length !== Object.keys(REVIEW_TASK_STEPS).length ||
-      Object.keys(REVIEW_TASK_STEPS).some((task) => !Object.prototype.hasOwnProperty.call(links, task) ||
-        !/^https:\/\/huggingface\.co\/\S+$/i.test(String(links[task])))) return null;
-  return links;
+      Object.keys(REVIEW_TASK_STEPS).some((task) => !Object.prototype.hasOwnProperty.call(links, task))) return null;
+  try {
+    return Object.fromEntries(Object.keys(REVIEW_TASK_STEPS).map(task => [task, requiredHuggingFaceUrl_(links[task])]));
+  } catch (error) { return null; }
 }
 
 function reviewQueue_(payload, organizer) {
@@ -368,6 +370,7 @@ function reviewQueue_(payload, organizer) {
   }).map(({ submission, evaluation, user }) => {
     const run = runs.get(String(evaluation.evaluation_id));
     const correction = corrections.get(String(evaluation.evaluation_id));
+    const attempt = reviewCorrectionAttempt_(correction);
     const decision = versionDecisions.get(String(evaluation.evaluation_id));
     const versionCheck = versionChecks.get(String(evaluation.evaluation_id));
     const declaredLinks = reviewTaskLinks_(parseJson_(submission.task_checkpoint_links_json, {}));
@@ -377,7 +380,7 @@ function reviewQueue_(payload, organizer) {
     const cutoff = correction?.status === "corrected" && (!decision || Date.parse(decision.approved_at) <= Date.parse(correction.responded_at)) ? correction.responded_at : decision?.cutoff_at ||
       submissionWindows.get(submission.submission_window_id)?.expires_at || POLICY_SUBMISSION_CLOSE_AT;
     const checkpointContext = reviewCheckpointContext_({ submission_id: submission.submission_id,
-      preparation_attempt: correction?.status === "corrected" ? 1 : 0, version_generation: Number(decision?.generation || 0),
+      preparation_attempt: attempt, version_generation: Number(decision?.generation || 0),
       version_cutoff_at: cutoff, task_checkpoint_links: taskLinks });
     const checkpointRow = checkpointChecks.get(String(evaluation.evaluation_id));
     const checkpointCheck = checkpointRow?.context_json === checkpointContext ? checkpointRow : null;
@@ -388,7 +391,7 @@ function reviewQueue_(payload, organizer) {
     const codeLink = correction?.status === "corrected" ? correction.code_link : submission.code_link;
     const savedCode = codePreparations.get(String(evaluation.evaluation_id));
     const code = savedCode?.submission_id === submission.submission_id && savedCode?.code_link === codeLink &&
-      Number(savedCode.attempt) === (correction?.status === "corrected" ? 1 : 0) && Number(savedCode.generation) === Number(decision?.generation || 0) ? savedCode : null;
+      Number(savedCode.attempt) === attempt && Number(savedCode.generation) === Number(decision?.generation || 0) ? savedCode : null;
     const results = tasks.filter(row => String(row.evaluation_id) === String(evaluation.evaluation_id) && row.status !== "superseded")
       .map(row => ({ task: row.task, status: row.status, note: row.review_note,
         artifacts: parseJson_(row.result_json, {}).artifacts || {}, command: parseJson_(row.result_json, {}).eval_command || "",
@@ -397,8 +400,8 @@ function reviewQueue_(payload, organizer) {
       email: normalizeEmail_(submission.email), team_name: user.team_name || user.full_name,
       artifact_name: submission.artifact_name, created_at: submission.created_at,
       code_link: correction?.status === "corrected" ? correction.code_link : submission.code_link, checkpoint_link: submission.checkpoint_link,
-      correction: correction ? { status: correction.status, deadline_at: correction.deadline_at, responded_at: correction.responded_at, notes: correction.notes } : null,
-      preparation_attempt: correction?.status === "corrected" ? 1 : 0,
+      correction: correction ? { status: correction.response_status || correction.status, responded_at: correction.response_at || correction.responded_at, notes: correction.notes, round: attempt } : null,
+      preparation_attempt: attempt,
       version_cutoff_at: cutoff,
       version_exception: decision ? { reason: decision.reason, approved_by: decision.approved_by, approved_at: decision.approved_at } : null,
       version_generation: Number(decision?.generation || 0), version_status: versionCheck?.status || "pending",
@@ -519,9 +522,11 @@ function reviewPrepare_(payload) {
         !url.startsWith("https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/") ||
         !Array.isArray(dirs) || !dirs.length || dirs.length > 30 ||
         dirs.some((dir) => !/^policy(?:\/[A-Za-z0-9_.-]+)*$/.test(dir) || dir.split("/").some((part) => [".", ".."].includes(part)))) throw new Error("Prepared code metadata is invalid.");
-    const corrected = reviewRows_("ReviewCorrections").some((row) => row.evaluation_id === run.evaluation_id && row.status === "corrected");
+    const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === run.evaluation_id);
+    const attempt = reviewCorrectionAttempt_(correction);
     const decision = reviewRows_("ReviewVersionDecisions").find(row => row.evaluation_id === run.evaluation_id);
-    if (url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (corrected ? "-correction1" : "") + (decision ? "-exception" + decision.generation : "")) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
+    if (url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (attempt ? "-correction" + attempt : "") + (decision ? "-exception" + decision.generation : "")) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
+    if (payload.context_json && payload.context_json !== reviewCheckpointContext_(reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id))) throw new Error("Participant inputs changed during preparation. Retry with the latest correction.");
     reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_url: url,
       bundle_commit: commit, policy_dirs_json: JSON.stringify([...new Set(dirs)]),
       state: "ready", updated_at: now_() });
@@ -537,6 +542,7 @@ function reviewPrepareCode_(payload) {
     if (run.bundle_commit || reviewWorkflow_(run.evaluation_id).stages[1].done) throw new Error("Formal code has already been handed off.");
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     const selection = payload.selection || {};
+    if (payload.context_json && payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Participant inputs changed during code preparation.");
     const dirs = payload.policy_dirs;
     if (![payload.bundle_commit, payload.participant_commit, payload.private_base_commit].every(value => /^[a-f0-9]{40}$/.test(String(value || ""))) ||
         selection.revision !== payload.participant_commit || JSON.stringify(selection).length > 4000 ||
@@ -547,7 +553,7 @@ function reviewPrepareCode_(payload) {
         !Array.isArray(dirs) || !dirs.length || dirs.length > 30 || dirs.some(dir => !/^policy(?:\/[A-Za-z0-9_.-]+)*$/.test(dir) || dir.split("/").some(part => [".", ".."].includes(part)))) {
       throw new Error("Validation code metadata or selected version is invalid.");
     }
-    const suffix = (job.preparation_attempt ? "-correction1" : "") + (job.version_generation ? "-exception" + job.version_generation : "");
+    const suffix = (job.preparation_attempt ? "-correction" + job.preparation_attempt : "") + (job.version_generation ? "-exception" + job.version_generation : "");
     const branch = "validation/" + run.evaluation_id + suffix + "-" + payload.participant_commit.slice(0, 12) + "-" + payload.private_base_commit.slice(0, 12);
     if (payload.bundle_url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/" + branch) throw new Error("Validation branch does not match this request and selected code.");
     const old = reviewRows_("ReviewCodePreparations").find(row => row.evaluation_id === run.evaluation_id);
@@ -570,6 +576,7 @@ function reviewPreparationFailed_(payload) {
     const { viewer, run } = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Only the organizer preparer can report code preparation failures.");
     if (run.bundle_commit) throw new Error("Prepared code already exists.");
+    if (payload.context_json && payload.context_json !== reviewCheckpointContext_(reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id))) throw new Error("Participant inputs changed during code preparation.");
     reviewPreparationStatus_(run.evaluation_id, "failed", requiredString_(payload.message, "Preparation failure").slice(0, 1000));
     return { ok: true };
   });
@@ -577,7 +584,7 @@ function reviewPreparationFailed_(payload) {
 
 function reviewRetryPreparation_(payload) {
   return withReviewLock_(() => {
-    const { run } = reviewOwnedRun_(payload);
+    const { run } = reviewOwnedRun_(payload, true);
     if (run.bundle_commit) throw new Error("Prepared code already exists.");
     reviewPreparationStatus_(run.evaluation_id, "pending", "");
     const checkpoint = reviewRows_("ReviewCheckpointChecks").find(row => row.evaluation_id === run.evaluation_id);
@@ -797,12 +804,12 @@ function reviewSendIssue_(payload) {
     const checkpointError = reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_error || "";
     const needsArgument = stage === 0 && String((preparation?.message || "") + checkpointError).includes("NO_LEGAL_VERSION");
     const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId);
-    const responseText = response ? `\n\nConfirm or submit your single code correction: ${response.url}\nDeadline (UTC): ${response.deadline}\nOne code correction is allowed within 24 hours of the first issue notification. The original team and submission identity cannot be changed.` : "";
+    const responseText = response ? `\n\nConfirm or submit a correction: ${response.url}\nThere is no 24-hour deadline or overall correction limit. Each new issue email opens a new response round. Use the latest email's form; team and submission identity cannot be changed.` : "";
     try {
       const argumentText = needsArgument ? "\n\nNo eligible pre-deadline code or checkpoint version was found. Reply to this email with your explanation and evidence. Rebuilding requires manual reviewer approval; this message does not grant a code-correction exception." : "";
       MailApp.sendEmail({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText + argumentText,
-        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${response ? `<p><a href="${escapeHtml_(response.url)}">Confirm or submit a correction</a></p><p>Deadline (UTC): <strong>${escapeHtml_(response.deadline)}</strong>. Only one code correction is permitted, within 24 hours of the first issue notification.</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
-      if (response) reviewActivateResponseLink_(run, messageId, response.deadline);
+        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${response ? `<p><a href="${escapeHtml_(response.url)}">Confirm or submit a correction</a></p><p>Each new issue email opens a new response round, without a 24-hour deadline or overall correction limit. Use the latest email's form.</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
+      if (response) reviewActivateResponseLink_(run, messageId);
       reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "sent", sent_at: now_() });
       return { ok: true, status: "sent" };
     } catch (error) {
@@ -815,6 +822,8 @@ function reviewSendIssue_(payload) {
 function handleReviewerAction_(action, payload) {
   if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).role === "observer") throw new Error("Read-only access: observers cannot modify evaluations.");
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
+  if (action === "reviewer_migrate_response_schema") return reviewMigrateResponseSchema_(payload);
+  if (action === "reviewer_reconcile_final_progress") return reviewReconcileFinalProgress_(payload);
   if (action === "reviewer_pool") return reviewPool_(payload);
   if (action === "reviewer_set_pool") return reviewSetPool_(payload);
   if (action === "reviewer_balance_pool") return reviewBalancePool_(payload);

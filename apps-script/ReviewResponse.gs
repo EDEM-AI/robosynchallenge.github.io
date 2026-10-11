@@ -1,20 +1,40 @@
-/** Single-use correction links never change registered identities or original submissions. */
+/** Each issue email authorizes a response round, without changing team identity. */
+function reviewCorrectionAttempt_(correction) {
+  return correction?.status === "corrected" ? Math.max(1, Number(correction.correction_count || 1)) : 0;
+}
+
+function reviewMigrateResponseSchema_(payload) {
+  if (reviewerIdentity_(payload).role !== "admin") throw new Error("Organizer access required.");
+  return withReviewLock_(() => {
+    const ss = spreadsheet_();
+    ["ReviewResponseLinks", "ReviewCorrections"].forEach(name => {
+      const sheet = ss.getSheetByName(name);
+      if (!sheet) { reviewTable_(name, ss); return; }
+      const headers = REVIEW_TABLES[name];
+      const oldLength = name === "ReviewResponseLinks" ? 5 : 10;
+      const actual = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+      if (actual.some((value, index) => index < oldLength ? value !== headers[index] : value !== "" && value !== headers[index])) throw new Error(name + " unexpected headers; migration stopped.");
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    });
+    return { ok: true };
+  });
+}
+
 function reviewCreateResponseLink_(run, messageId) {
-  const row = reviewRows_("ReviewCorrections").find((item) => item.evaluation_id === run.evaluation_id);
-  const deadline = row?.deadline_at || new Date(Date.now() + 86400000).toISOString();
   const token = "rsp_" + Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
   reviewWrite_("ReviewResponseLinks", null, { evaluation_id: run.evaluation_id, message_id: messageId,
     token_hash: reviewerHash_(token), status: "sending", created_at: now_() });
-  return { deadline, url: `${getWebAppUrl_()}?rsc_action=review_response&evaluation_id=${encodeURIComponent(run.evaluation_id)}&token=${encodeURIComponent(token)}` };
+  return { url: `${getWebAppUrl_()}?rsc_action=review_response&evaluation_id=${encodeURIComponent(run.evaluation_id)}&token=${encodeURIComponent(token)}` };
 }
 
-function reviewActivateResponseLink_(run, messageId, deadline) {
+function reviewActivateResponseLink_(run, messageId) {
+  reviewRows_("ReviewResponseLinks").filter(row => row.evaluation_id === run.evaluation_id && row.status === "active" && row.message_id !== messageId)
+    .forEach(row => reviewWrite_("ReviewResponseLinks", row._rowNumber, { evaluation_id: run.evaluation_id, status: "superseded" }));
   const link = reviewRows_("ReviewResponseLinks").find((row) => row.message_id === messageId);
   reviewWrite_("ReviewResponseLinks", link._rowNumber, { evaluation_id: run.evaluation_id, status: "active" });
-  if (!reviewRows_("ReviewCorrections").some((row) => row.evaluation_id === run.evaluation_id)) {
-    reviewWrite_("ReviewCorrections", null, { evaluation_id: run.evaluation_id, participant_email: run.participant_email,
-      deadline_at: deadline, status: "awaiting", updated_at: now_() });
-  }
+  const correction = reviewRows_("ReviewCorrections").find(row => row.evaluation_id === run.evaluation_id);
+  reviewWrite_("ReviewCorrections", correction?._rowNumber, { evaluation_id: run.evaluation_id, participant_email: run.participant_email,
+    deadline_at: "", status: correction?.status || "awaiting", response_status: "awaiting", updated_at: now_() });
 }
 
 function requireReviewResponse_(params) {
@@ -24,26 +44,27 @@ function requireReviewResponse_(params) {
     row.status === "active" && row.token_hash === reviewerHash_(token));
   const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === params.evaluation_id);
   if (!link || !correction) throw new Error("This response link is not active. Contact the organizers.");
-  if (!Number.isFinite(Date.parse(correction.deadline_at)) || Date.parse(correction.deadline_at) <= Date.now()) throw new Error("The 24-hour response window has expired.");
-  if (correction.status === "corrected") throw new Error("Your one permitted code correction has already been submitted.");
+  // Old sent links remain valid after their historical deadline; answered links do not.
+  if (!correction.response_status && ["confirmed", "corrected"].includes(correction.status)) throw new Error("This response has already been recorded. Use the next issue email's form.");
   const job = reviewJob_(params.evaluation_id), run = reviewRun_(params.evaluation_id);
   if (!run || normalizeEmail_(job.submission.email) !== normalizeEmail_(correction.participant_email)) throw new Error("The response does not match the registered participant.");
-  return { correction, job, run };
+  return { correction, job, run, link };
 }
 
 function handleReviewResponsePage_(params) {
   const { correction, job } = requireReviewResponse_(params);
-  const links = reviewTaskLinks_(parseJson_(job.submission.task_checkpoint_links_json, {})) || {};
+  const links = reviewTaskLinks_(parseJson_(correction.status === "corrected" ? correction.task_checkpoint_links_json : job.submission.task_checkpoint_links_json, {})) || {};
   return html_("Evaluation response", `<p><strong>${escapeHtml_(job.user.team_name || job.user.full_name)}</strong></p>
-    <p>One code correction is permitted within 24 hours of the first issue notification. Deadline (UTC): <strong>${escapeHtml_(correction.deadline_at)}</strong>.</p>
+    <p>Use this issue email's form to confirm your submission or provide corrected code and checkpoints for all 10 tasks. There is no 24-hour deadline or overall correction limit. A further issue email opens another response round. Team details cannot be changed.</p>
+    <p>Checkpoint fields accept Hugging Face URLs or account/repository names. Preserve any documented revision/subdirectory. For restricted access, use gated models and grant the individual RoboSynChallenge user access; private-repository invitations and participant tokens are not supported.</p>
     <form method="post" action="${escapeHtml_(getWebAppUrl_())}">
       <input type="hidden" name="action" value="review_response_submit">
       <input type="hidden" name="evaluation_id" value="${escapeHtml_(params.evaluation_id)}">
       <input type="hidden" name="token" value="${escapeHtml_(params.token)}">
       <label><input style="width:auto" type="radio" name="response_kind" value="confirm" checked> Confirm the current submission is correct</label>
-      <label><input style="width:auto" type="radio" name="response_kind" value="correct"> Submit the one permitted correction</label>
+      <label><input style="width:auto" type="radio" name="response_kind" value="correct"> Submit corrected code and checkpoints</label>
       <label>Corrected immutable GitHub commit URL (required for a correction)</label>
-      <input name="code_link" placeholder="https://github.com/OWNER/REPO/tree/FULL_COMMIT_SHA">
+      <input name="code_link" value="${escapeHtml_(correction.code_link || "")}" placeholder="https://github.com/OWNER/REPO/tree/FULL_COMMIT_SHA">
       ${Object.keys(REVIEW_TASK_STEPS).map((task) => `<label>${escapeHtml_(task)} checkpoint (required for a correction)</label><input name="checkpoint_${task}" value="${escapeHtml_(links[task] || job.submission.checkpoint_link || "")}">`).join("")}
       <label>Response notes <span style="color:#a33a1f">*</span></label><textarea name="notes" maxlength="6000" required></textarea>
       <button type="submit">Submit response</button>
@@ -52,37 +73,35 @@ function handleReviewResponsePage_(params) {
 
 function handleReviewResponseSubmit_(params) {
   return withReviewLock_(() => {
-    const { correction, run } = requireReviewResponse_(params);
+    const { correction, run, link } = requireReviewResponse_(params);
     const notes = requiredString_(params.notes, "Response notes");
     if (params.response_kind === "confirm") {
-      if (correction.status === "confirmed") throw new Error("Your confirmation has already been recorded.");
       reviewWrite_("ReviewCorrections", correction._rowNumber, { evaluation_id: run.evaluation_id,
-        status: "confirmed", notes, responded_at: now_(), updated_at: now_() });
+        status: correction.status === "corrected" ? "corrected" : "confirmed", response_status: "confirmed", notes,
+        response_at: now_(), updated_at: now_() });
+      if (!run.bundle_commit) {
+        reviewPreparationStatus_(run.evaluation_id, "pending", "");
+        const checkpoint = reviewRows_("ReviewCheckpointChecks").find(row => row.evaluation_id === run.evaluation_id);
+        if (checkpoint?.status === "failed") reviewWrite_("ReviewCheckpointChecks", checkpoint._rowNumber,
+          { evaluation_id: run.evaluation_id, status: "pending", message: "", updated_at: now_() });
+      }
     } else if (params.response_kind === "correct") {
       const code = requiredString_(params.code_link, "Immutable GitHub commit URL");
       if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/tree\/[a-f0-9]{40}\/?$/i.test(code)) throw new Error("Use a GitHub tree URL with a full 40-character commit SHA.");
       const links = Object.fromEntries(Object.keys(REVIEW_TASK_STEPS).map((task) => [task, requiredHuggingFaceUrl_(params["checkpoint_" + task])]));
-      if (reviewWorkflow_(run.evaluation_id).stages[4].done) throw new Error("Completed evaluation is locked. Contact the organizers.");
       const uploads = reviewRows_("ReviewArchiveUploads").filter((row) => row.evaluation_id === run.evaluation_id);
       if (uploads.some((row) => row.status === "uploading" && Date.parse(row.expires_at) > Date.now())) throw new Error("An evidence upload is in progress. Ask the evaluator to finish it before submitting a correction.");
+      reviewBackupProgress_(run, "Participant correction round " + (reviewCorrectionAttempt_(correction) + 1));
       reviewWrite_("ReviewCorrections", correction._rowNumber, { evaluation_id: run.evaluation_id,
         status: "corrected", code_link: code, task_checkpoint_links_json: JSON.stringify(links), notes,
+        correction_count: reviewCorrectionAttempt_(correction) + 1, response_status: "corrected", response_at: now_(), deadline_at: "",
         responded_at: now_(), previous_bundle_commit: run.bundle_commit, updated_at: now_() });
-      reviewTaskRows_(run.evaluation_id).forEach((row) => reviewWrite_("ReviewTaskResults", row._rowNumber,
-        { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() }));
-      uploads.forEach((row) => {
-        PropertiesService.getScriptProperties().deleteProperty(archiveSessionKey_(row.upload_id));
-        reviewWrite_("ReviewArchiveUploads", row._rowNumber, { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() });
-      });
-      const access = reviewRows_("ReviewUploadAccess").find((row) => row.evaluation_id === run.evaluation_id);
-      if (access) reviewWrite_("ReviewUploadAccess", access._rowNumber, { evaluation_id: run.evaluation_id, revoked: "true" });
-      reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_commit: "", bundle_url: "",
-        policy_dirs_json: "[]", task_checkpoint_links_json: JSON.stringify(links), state: "assigned", updated_at: now_() });
-      reviewStoreWorkflow_(run, { machine_id: "", stages: REVIEW_STAGES.map(() => ({ done: false, checks: {}, completed_at: "" })) });
-      const check = reviewRows_("ReviewAccessChecks").find((row) => row.evaluation_id === run.evaluation_id);
-      if (check) reviewWrite_("ReviewAccessChecks", check._rowNumber, { evaluation_id: run.evaluation_id, report_json: "", checked_at: "" });
-      reviewPreparationStatus_(run.evaluation_id, "pending", "Participant submitted the single permitted correction.");
+      reviewResetParticipantProgress_(run, links, "Participant supplied corrected code/checkpoints. Automatic preparation will rerun; clone the new branch and use its pinned checkpoints before evaluation.");
     } else throw new Error("Choose confirmation or correction.");
+    reviewWrite_("ReviewResponseLinks", link._rowNumber, { evaluation_id: run.evaluation_id, status: "used",
+      response_kind: params.response_kind, responded_at: now_(), response_json: JSON.stringify({ notes,
+        code_link: params.response_kind === "correct" ? params.code_link : "", task_checkpoint_links: params.response_kind === "correct" ? Object.fromEntries(Object.keys(REVIEW_TASK_STEPS).map(task => [task, params["checkpoint_" + task]])) : {},
+        previous_bundle_commit: run.bundle_commit, correction_count: reviewCorrectionAttempt_(correction) + (params.response_kind === "correct" ? 1 : 0) }) });
     return html_("Response recorded", "<p>Your response has been recorded. Your registered team details and original submission are unchanged.</p>");
   });
 }

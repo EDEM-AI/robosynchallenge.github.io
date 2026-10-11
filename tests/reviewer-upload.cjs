@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 const path = require("node:path");
 
-async function test(corrupt = false, rejected = false) {
+async function test(corrupt = false, rejected = false, phase = "upload", offset = 0) {
   const bytes = Buffer.alloc(10 * 320 * 1024 + 19, 42);
   const file = new Blob([bytes]);
   const sha = crypto.createHash("sha256").update(bytes).digest("hex");
@@ -27,7 +27,7 @@ async function test(corrupt = false, rejected = false) {
     actions.push(action);
     assert.equal(fields.evaluation_id, record.evaluation_id);
     if (rejected) throw new Error("Accepted results are locked");
-    if (action === "reviewer_start_evidence_upload") return {upload_id:"arc_test",upload_url:"https://upload.example/session"};
+    if (action === "reviewer_start_evidence_upload") return {phase,next_offset:offset,upload_id:"arc_test",upload_url:"https://upload.example/session",result:{...record,artifacts:{...record.artifacts,url:"https://tenant.sharepoint.com/latest/evidence.zip"}}};
     if (action === "reviewer_verify_evidence_upload") return {download_url:"https://download.example/zip"};
     assert.equal(action, "reviewer_finish_evidence_upload");
     assert.equal(fields.verified_sha256, sha);
@@ -42,8 +42,9 @@ async function test(corrupt = false, rejected = false) {
     assert.equal(ranges.length, 0);
   } else {
     assert((await run()).artifacts.url.startsWith("https://tenant.sharepoint.com/"));
-    assert.equal(ranges.length, 2);
-    assert.equal(ranges[0], `bytes 0-${10*320*1024-1}/${file.size}`);
+    assert.equal(ranges.length, phase === "upload" ? offset ? 1 : 2 : 0);
+    if (phase === "upload") assert.equal(ranges[0], `bytes ${offset}-${Math.min(file.size,offset+10*320*1024)-1}/${file.size}`);
+    if (phase === "register") assert.deepEqual(actions, ["reviewer_start_evidence_upload"]);
   }
 }
-(async () => { await test(); await test(true); await test(false, true); console.log("Browser upload: bounded chunks, no forwarded credentials, remote SHA256 and locked-task gates passed."); })().catch(error => {console.error(error); process.exitCode=1;});
+(async () => { await test(); await test(true); await test(false, true); await test(false, false, "upload", 10*320*1024); await test(false, false, "verify"); await test(false, false, "register"); console.log("Browser upload: bounded chunks, resumable offsets, completed-ZIP recovery, no forwarded credentials, remote SHA256 and locked-task gates passed."); })().catch(error => {console.error(error); process.exitCode=1;});

@@ -11,6 +11,7 @@ function reviewVersionCheck_(payload) {
     if (![report.code.committed_at, report.code.authored_at].every(value => Number.isFinite(Date.parse(value)) && Date.parse(value) < limit) ||
         Object.values(report.hf).some(row => !/^[a-f0-9]{40}$/.test(row.revision || "") || row.cutoff_at !== report.code.cutoff_at || !Number.isFinite(Date.parse(row.committed_at)) || Date.parse(row.committed_at) >= limit)) throw new Error("Selected code and checkpoint timestamps must precede the recorded cutoff.");
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    if (payload.context_json && payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Participant inputs changed during version selection.");
     if (payload.status === "final" && report.code.cutoff_at !== job.version_cutoff_at) throw new Error("Final version cutoff does not match the approved submission window.");
     if (payload.status === "final" && Date.now() < Date.parse(job.version_cutoff_at)) throw new Error("Final version selection must wait until the submission window closes.");
     const row = reviewRows_("ReviewVersionChecks").find(item => item.evaluation_id === run.evaluation_id);
