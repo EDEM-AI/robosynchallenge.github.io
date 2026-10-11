@@ -1052,22 +1052,36 @@
     if (!backendConfigured()) {
       throw new Error("The RoboSynChallenge backend API is not configured yet.");
     }
-    const response = await fetch(API_BASE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({ action, ...payload }),
-    });
-    const text = await response.text();
-    let data = {};
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
     try {
-      data = text ? JSON.parse(text) : {};
-    } catch {
-      throw new Error("The backend returned a non-JSON response.");
+      const response = await fetch(API_BASE_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action, ...payload }),
+        signal: controller.signal,
+      });
+      const text = await response.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error("The backend returned a non-JSON response.");
+      }
+      if (!response.ok || data.ok === false) {
+        throw new Error(data.error || data.message || `Backend request failed: ${action}`);
+      }
+      return data;
+    } catch (error) {
+      if (error.name === "AbortError") {
+        throw new Error(action === "submit_policy"
+          ? "The request timed out and its outcome is unknown. Check My Submissions before retrying to avoid a duplicate submission."
+          : "The backend request timed out. Reload to retry.");
+      }
+      throw error;
+    } finally {
+      clearTimeout(timer);
     }
-    if (!response.ok || data.ok === false) {
-      throw new Error(data.error || data.message || `Backend request failed: ${action}`);
-    }
-    return data;
   }
 
   async function loadMySubmissions(force = false) {

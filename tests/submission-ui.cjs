@@ -48,6 +48,10 @@ async function main() {
       window.submissionCalls=[];
       window.submissionGate={allowed:true,deadline_at:"2099-10-12T12:00:00Z",exception:false};
       const testGate=new URLSearchParams(location.search).get("test_gate");
+      if(testGate==="timeout") {
+        const originalTimeout=window.setTimeout;
+        window.setTimeout=(callback,ms,...args)=>originalTimeout(callback,ms===90000?30:ms,...args);
+      }
       if(testGate==="closed") window.submissionGate={allowed:false,deadline_at:"2026-10-12T12:00:00Z",exception:false,contact_email:"robosynchallenge@gmail.com"};
       if(testGate==="extension") window.submissionGate={allowed:true,deadline_at:"2026-10-12T12:00:00Z",exception:true,exception_expires_at:"2099-01-01T00:00:00Z"};
       const originalFetch=window.fetch;
@@ -57,6 +61,7 @@ async function main() {
         if(payload.action==="submission_status") return new Response(JSON.stringify({ok:true,...window.submissionGate}));
         if(payload.action==="submit_policy") {
           window.submissionCalls.push(payload);
+          if(testGate==="timeout") return new Promise((resolve,reject)=>options.signal.addEventListener("abort",()=>reject(new DOMException("Synthetic timeout","AbortError")),{once:true}));
           await new Promise(resolve=>setTimeout(resolve,100));
           return new Response(JSON.stringify({ok:false,error:"Synthetic backend refusal; no real request sent"}));
         }
@@ -94,7 +99,19 @@ async function main() {
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/?test_gate=extension#/submit-policy" });
     await until("!!document.querySelector('[data-form=evaluation]') && !document.querySelector('[data-form=evaluation] [type=submit]').disabled");
     assert.equal(await evaluate("document.body.textContent.includes('organizer-approved extension')"),true);
-    console.log("Submission UI: ten-task mapping, shared checkpoint, override, required confirmation, visible errors and double-submit guard passed; no real API calls.");
+    await rpc("Page.navigate", { url: "http://127.0.0.1:8032/?test_gate=timeout#/submit-policy" });
+    await until("!!document.querySelector('[data-form=evaluation]') && !document.querySelector('[data-form=evaluation] [type=submit]').disabled");
+    await evaluate(`(() => {
+      const form=document.querySelector('[data-form=evaluation]');
+      const values={artifact_name:"Synthetic",title:"Test",short_description:"Test",code_link:"https://github.com/example/test",checkpoint_link:"https://huggingface.co/example/common",data_source_text:"Test",technical_notes:"All tasks"};
+      Object.entries(values).forEach(([name,value])=>form.elements[name].value=value);
+      form.elements.all_tasks_confirmed.checked=true;
+      form.requestSubmit();
+    })()`);
+    await until("document.querySelector('[data-evaluation-status]')?.textContent.includes('outcome is unknown')");
+    assert.equal(await evaluate("window.submissionCalls.length"),1,"Timeout must not automatically retry a submission");
+    assert.equal(await evaluate("document.querySelector('[data-form=evaluation] [type=submit]').disabled"),false);
+    console.log("Submission UI: ten-task mapping, confirmation, visible errors, cutoff, extension, timeout and double-submit guard passed; no real API calls.");
   } finally {
     socket?.close();
     const stopped = new Promise(resolve => chrome.once("exit", resolve));
