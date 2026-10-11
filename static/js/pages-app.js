@@ -1828,10 +1828,6 @@
                 <input type="checkbox" name="all_tasks_confirmed" required>
                 <span>I confirm that this evaluation request includes all 10 tasks and their checkpoint mapping.</span>
               </label>
-              <label class="choice-inline">
-                <input type="checkbox" name="is_ranked" checked>
-                <span>Count this run on the public leaderboard once published</span>
-              </label>
             </div>
           </article>
 
@@ -2805,7 +2801,6 @@
     const checkpointLink = taskCheckpointLinks[LEADERBOARD_TASKS[0].id];
     const dataSourceText = String(formData.get("data_source_text") || "").trim();
     const technicalNotes = String(formData.get("technical_notes") || "").trim();
-    const isRanked = formData.has("is_ranked");
 
     if (!artifactName || !title || !shortDescription) {
       pushFlash("error", "Artifact name, experiment name, and short description are required.");
@@ -2853,7 +2848,7 @@
           all_tasks_confirmed: true,
           data_source_text: dataSourceText,
           technical_notes: technicalNotes,
-          is_ranked: isRanked,
+          is_ranked: true,
         },
       });
       sessionStorage.removeItem("rsc-policy-pending");

@@ -426,8 +426,9 @@ code_link
 checkpoint_link
 data_source_text
 technical_notes
-is_ranked
 ```
+
+新提交统一写入 `is_ranked=true`，选手不能选择退出排名。该字段保留兼容历史主办方测试记录；只有测评结果经主办方发布后才会显示在公开榜单。
 
 6. 每次提交会写入：
 

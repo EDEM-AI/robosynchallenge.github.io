@@ -650,7 +650,8 @@ function handleSubmitPolicyLocked_(payload) {
   const dataSourceText = requiredString_(submission.data_source_text, "Data source");
   const technicalNotes = requiredString_(submission.technical_notes, "Run and dependency notes");
   const checkedTaskLinks = submissionTaskLinks_(submission);
-  const isRanked = isTruthy_(submission.is_ranked);
+  // Participant submissions are competitive; historical organizer tests stay unchanged.
+  const isRanked = true;
   const fingerprint = reviewerHash_(JSON.stringify([session.email, artifactName, title, shortDescription, codeLink,
     checkpointLink, Object.keys(checkedTaskLinks).sort().map(key => [key, checkedTaskLinks[key]]), dataSourceText, technicalNotes, isRanked]));
   const suppliedKey = String(payload.submission_key || "");

@@ -299,9 +299,16 @@ assert.equal(call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legac
 assert.equal(JSON.stringify(sheet("Submissions").cells), legacySnapshot);
 vm.runInContext("sendEvaluationRequestNotification_ = () => {}; sendAdminDigest_ = () => {};", context);
 context.MailApp = { sendEmail() {} };
+insert("Users", {email: "submit-test@example.com", token_status: "active"});
+vm.runInContext("requireSession_ = () => ({email: 'submit-test@example.com'});", context);
+insert("Submissions", { submission_id: "sub_smoke", evaluation_id: "eval_smoke", email: "one@example.com",
+  is_ranked: "false", short_description: "Organizer pipeline validation" });
+insert("Evaluations", {submission_id: "sub_smoke", evaluation_id: "eval_smoke", email: "one@example.com"});
 const created = call("handleSubmitPolicy_", { session_id: "x", submission: {
-  ...submission, all_tasks_confirmed: true,
+  ...submission, all_tasks_confirmed: true, is_ranked: false,
 } });
+assert.equal(created.submission.is_ranked, true, "Clients cannot opt out of competitive evaluation");
+assert.equal(vm.runInContext('findRow_("Submissions", "submission_id", "sub_smoke").is_ranked', context), "false", "Historical test submissions remain untouched");
 assert.equal(Object.keys(created.submission.task_checkpoint_links).length, 10);
 assert.equal(created.submission.task_checkpoint_links.item_assembly, taskLinks.item_assembly);
 const stablePayload = { session_id: "x", submission_key: "stable_retry_00000001", submission: { ...submission, title: "Retry test", all_tasks_confirmed: true } };
@@ -336,6 +343,7 @@ assert.equal(queuedMail, 1);
 assert.equal(call("handleSubmitPolicy_", quotaPayload).notification_status, "sent");
 call("processPendingPolicyNotifications_");
 assert.equal(queuedMail, 1, "Scheduled notification retry does not send twice");
+vm.runInContext("requireSession_ = () => ({email: 'one@example.com'});", context);
 const sent = [];
 context.MailApp = { getRemainingDailyQuota: () => 10, sendEmail: (message) => sent.push(message) };
 const issue = { ...credentials, evaluation_id: "eval_new", stage: 0, message_id: "msg_" + "d".repeat(32), subject: "Review question", body: "Please clarify the task mapping.", recipient: "attacker@example.com" };
@@ -453,9 +461,11 @@ call("reviewSubmissionWindow_", { ...credentials, participant_email: "one@exampl
 assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing + 1000}).allowed`, context), false);
 vm.runInContext(`savedClock = Date.now; Date.now = () => ${closing + 1000}`, context);
 const countBeforeClosed = sheet("Submissions").cells.length;
+vm.runInContext("requireSession_ = () => ({email: 'submit-test@example.com'});", context);
 assert.throws(() => call("handleSubmitPolicy_", { session_id: "x", submission_key: "new_after_cutoff_key", submission: { ...submission, all_tasks_confirmed: true } }), /closed/i);
 assert.equal(call("handleSubmitPolicy_", { session_id: "x", submission: { ...submission, all_tasks_confirmed: true } }).submission.id, created.submission.id, "Accepted retry remains idempotent after cutoff");
 assert.equal(sheet("Submissions").cells.length, countBeforeClosed);
+vm.runInContext("requireSession_ = () => ({email: 'one@example.com'});", context);
 vm.runInContext("Date.now = savedClock", context);
 
 const measured = { schema:1, gpu:"RTX 5090", official_commit:"a".repeat(40), report_sha256:"b".repeat(64),

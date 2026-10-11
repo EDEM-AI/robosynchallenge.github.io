@@ -73,6 +73,7 @@ async function main() {
     await until("!document.querySelector('[data-form=evaluation] [type=submit]').disabled");
     assert.equal(await evaluate("document.querySelectorAll('[name^=checkpoint_]').length"), 10);
     assert.equal(await evaluate("document.querySelector('[name=checkpoint_link]')"), null);
+    assert.equal(await evaluate("document.querySelector('[name=is_ranked]')"), null);
     assert.equal(await evaluate("[...document.querySelectorAll('[name^=checkpoint_]')].every(input=>input.required)"), true);
     assert.equal(await evaluate("document.querySelector('.task-checkpoints').open"), true);
     await evaluate(`(() => {
@@ -93,6 +94,7 @@ async function main() {
     assert.equal(payload.task_checkpoint_links.water_pouring, "https://huggingface.co/example/common");
     assert.equal(payload.checkpoint_link, await evaluate("document.querySelector('[name^=checkpoint_]').value"));
     assert.equal(payload.all_tasks_confirmed, true);
+    assert.equal(payload.is_ranked, true);
     assert.equal(await evaluate("document.querySelector('[data-evaluation-status]').textContent.includes('Synthetic backend refusal')"), true);
     await rpc("Page.captureScreenshot", { format: "png", captureBeyondViewport: true }).then(result =>
       fs.writeFileSync("/tmp/rsc-submission-desktop.png", Buffer.from(result.data, "base64")));
