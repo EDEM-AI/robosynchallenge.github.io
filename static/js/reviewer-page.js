@@ -47,7 +47,7 @@
       ["task_mapping", "Task or checkpoint mismatch", "We found a mismatch between the documented task entrypoint/checkpoint and the evaluated policy. Please confirm the intended mapping and clarify the affected task."]
     ]
   ];
-  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "" };
+  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "", view: ["#downloads", "#email-status"].includes(location.hash) ? location.hash.slice(1) : "workspace", mailStatus: [] };
   try { state.credentials = JSON.parse(sessionStorage.getItem(STORAGE) || "null"); } catch { /* Require sign-in. */ }
   const escape = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const label = (value) => String(value || "").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -62,6 +62,7 @@
   const button = (action, name, symbol, extra = "") => `<button type="button" class="button button-secondary" data-review-action="${action}" ${extra}>${icon(symbol)}${name}</button>`;
   const root = () => document.querySelector("[data-reviewer-root]");
   const selected = () => state.jobs.find((job) => job.evaluation_id === state.selected);
+  const canEdit = (job) => Boolean(job && (LOCAL || state.role !== "observer" && job.reviewer_email === state.credentials?.email));
   const flow = (job) => job.workflow || { stages: STAGES.map(() => ({ done: false, checks: {} })), machine_id: "" };
   const doneCount = (job) => flow(job).stages.filter((stage) => stage.done).length;
   const firstOpen = (job) => { const index = flow(job).stages.findIndex((stage) => !stage.done); return index < 0 ? 4 : index; };
@@ -117,6 +118,7 @@
       state.preview.jobs.forEach((job) => { job.workflow ||= { stages: STAGES.map(() => ({ done: false, checks: {} })), machine_id: "" }; });
     }
     if (state.credentials.email !== state.preview.reviewer_email || await hash(state.credentials.token) !== state.preview.reviewer_token_sha256) throw new Error("Invalid reviewer credentials.");
+    if (action === "reviewer_mail_status") return { ok: true, messages: state.preview.jobs.flatMap(job => (job.messages || []).map(message => ({ ...message, evaluation_id: job.evaluation_id, team_name: job.team_name, recipient: job.email, gmail_url: "https://mail.google.com/mail/u/?authuser=robosynchallenge%40gmail.com#search/" + encodeURIComponent(`in:sent subject:"${message.subject}"`) }))) };
     if (action === "reviewer_login") return { ok: true, reviewer: { email: state.credentials.email, role: "admin" } };
     if (action === "reviewer_queue") return { ok: true, reviewer: { email: state.credentials.email, role: "admin" },
       jobs: state.preview.jobs.filter((job) => job.reviewer_email === state.credentials.email).map((job) => ({ ...job, machines: state.preview.machines })) };
@@ -315,10 +317,31 @@
     const email = state.emailDraft;
     return `<section class="reviewer-composer" data-mail-composer><div class="reviewer-composer-head"><h3>Participant email</h3><button class="reviewer-icon" data-review-action="close-email" title="Close email draft" aria-label="Close email draft">${icon("x")}</button></div><form class="reviewer-form" data-review-form="email"><div class="reviewer-verify-grid"><label>Recipient<input value="${escape(job.email)}" readonly></label><label>Template<select data-email-template><option value="stage" ${email.template === "stage" ? "selected" : ""}>General stage issue</option>${ISSUE_TEMPLATES[email.stage].map(([key, title]) => `<option value="${key}" ${email.template === key ? "selected" : ""}>${title}</option>`).join("")}<option value="blank" ${email.template === "blank" ? "selected" : ""}>Blank email</option></select></label></div><label>Subject<input name="subject" value="${escape(email.subject)}" maxlength="200" required></label><label>Message<textarea name="body" rows="9" required>${escape(email.body)}</textarea></label><div class="reviewer-mail-actions"><button class="button button-primary">${icon("send")}${LOCAL ? "Record demo email" : "Send email"}</button><span>${LOCAL ? "Demo only; no email is sent." : "Recipient is fixed to the registered participant."}</span></div></form></section>`;
   }
+  function participantResponse(job) {
+    if (!job.correction) return "";
+    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Deadline (UTC): ${escape(job.correction.deadline_at)}${job.correction.notes ? `<p>${escape(job.correction.notes)}</p>` : ""}</div>`;
+  }
+  function commandBlock(command) {
+    return `<div class="reviewer-command"><code data-copy-command>${escape(command)}</code><button type="button" class="reviewer-icon" data-review-action="copy" title="Copy command" aria-label="Copy command">${icon("copy")}</button></div>`;
+  }
+  function overviewPage() {
+    const back = `<button type="button" class="button button-secondary" data-review-action="workspace">${icon("arrow-left")}Evaluation requests</button>`;
+    if (state.view === "downloads") {
+      const assigned = state.jobs.filter(job => !job.local_walkthrough && job.reviewer_email === state.credentials.email);
+      const ready = assigned.filter(job => job.bundle_commit && job.version_status === "final").length;
+      const setup = `git clone --single-branch --branch heldout/preliminary-2026 https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git "$HOME/RoboSynChallenge_eval_tools"\npython -m pip install huggingface_hub`;
+      const run = `python "$HOME/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --api-url '${API}' --email '${state.credentials.email.replace(/'/g, "")}' --output /path/to/checkpoints`;
+      const status = `python "$HOME/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --output /path/to/checkpoints --status`;
+      return `<section class="reviewer-overview">${back}<h2>Download assigned checkpoints</h2><p class="reviewer-description">${assigned.length} assigned requests · ${ready} frozen requests ready for download</p>${!assigned.length ? notice("No evaluation requests are assigned to this account.") : ""}<h3>1. Prepare the private download tools</h3>${commandBlock(setup)}<p>Run this setup once. If the tools directory already exists, use <code>git -C "$HOME/RoboSynChallenge_eval_tools" pull --ff-only</code> instead.</p><h3>2. Download to your checkpoint directory</h3>${commandBlock(run)}<p>Replace <code>/path/to/checkpoints</code> with your destination. Enter your evaluation token when prompted. Your own HF token is not needed. Repeat the same command after interruption; completed files and partial downloads are retained. Identical repositories and frozen revisions share one copy; each task uses a symbolic link to its checkpoint.</p><h3>3. Check progress</h3>${commandBlock(status)}<pre class="reviewer-directory">checkpoints/\n  download-progress.json\n  models/OWNER/MODEL/FROZEN_REVISION/\n  evaluations/EVAL_ID/EVALUATION_COMMIT/\n    checkpoint-index.json\n    code/\n    tasks/TASK/\n      checkpoint -> shared model directory\n      checkpoint.json</pre></section>`;
+    }
+    const sent = state.mailStatus.filter(message => message.status === "sent");
+    const uncertain = state.mailStatus.filter(message => message.status !== "sent");
+    return `<section class="reviewer-overview">${back}<h2>Email status</h2><p class="reviewer-description">${sent.length} sent · ${uncertain.length} awaiting delivery verification</p>${uncertain.length ? notice("Some email deliveries need organizer verification. Do not resend before checking Gmail.", false, "warning") : ""}${state.error ? notice(escape(state.error), false, "error") : ""}<div class="reviewer-mail-table"><table><thead><tr><th>Team / Evaluation</th><th>Recipient</th><th>Email / Stage</th><th>Sent at (UTC)</th><th>Status</th><th>Gmail</th></tr></thead><tbody>${state.mailStatus.map(message => `<tr><td><strong>${escape(message.team_name)}</strong><br><button type="button" class="reviewer-inline-link" data-review-mail-job="${escape(message.evaluation_id)}" ${state.jobs.some(job => job.evaluation_id === message.evaluation_id) ? "" : "disabled"}>${escape(message.evaluation_id)}</button></td><td>${escape(message.recipient)}</td><td>${escape(message.subject)}<br><small>${escape(STAGES[message.stage]?.title || "")}</small></td><td>${escape(message.sent_at || "Not confirmed")}</td><td>${message.status !== "sent" ? "WARNING: " : ""}${escape(label(message.status))}</td><td><a class="reviewer-icon" href="${escape(safeHref(message.gmail_url))}" target="_blank" rel="noreferrer" title="Open in organizer Gmail" aria-label="Open email in organizer Gmail">${icon("external-link")}</a></td></tr>`).join("") || '<tr><td colspan="6">No evaluation emails have been recorded.</td></tr>'}</tbody></table></div></section>`;
+  }
   function jobDetail(job) {
     if (!job) return `<div class="reviewer-empty">No requests are currently assigned to you.</div>`;
     const workflow = flow(job);
-return `<article class="reviewer-detail"><header class="reviewer-detail-head"><div><span class="reviewer-id" data-evaluation-id>${escape(job.evaluation_id)}</span><h2>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</h2><p>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)} · ${escape(job.email)}</p></div><span class="reviewer-state ${doneCount(job) === 5 ? "completed" : ""}">${doneCount(job) === 5 ? "Completed" : doneCount(job) + " / 5 stages complete"}</span></header><nav class="reviewer-stage-nav" aria-label="Evaluation stages">${STAGES.map((stage, index) => `<button type="button" data-review-stage="${index}" aria-current="${state.stage === index ? "step" : "false"}" class="${state.stage === index ? "active" : ""} ${workflow.stages[index].done ? "done" : ""}" ${index > firstOpen(job) ? "disabled" : ""}><span class="reviewer-step-number">${workflow.stages[index].done ? icon("check") : index + 1}</span><span>${stage.title}</span></button>`).join("")}</nav><div class="reviewer-stage-body"><div class="reviewer-stage-title"><h3>${STAGES[state.stage].title}</h3><span>Step ${state.stage + 1} of 5</span></div><p class="reviewer-description">${STAGES[state.stage].description}</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}${state.toast ? `<p class="reviewer-toast" role="status">${escape(state.toast)}</p>` : ""}${job.correction ? notice("Participant response: " + escape(job.correction.status) + " · Deadline (UTC): " + escape(job.correction.deadline_at) + "<br>" + escape(job.correction.notes || "")) : ""}${stageContent(job)}${checks(job)}${composer(job)}${job.messages?.length ? `<div class="reviewer-mail-log"><h4>Email history</h4>${job.messages.map((message) => `<p>${escape(STAGES[message.stage]?.title)} · ${escape(label(message.status))} · ${escape(message.sent_at || "")}<br>${escape(message.subject)}</p>`).join("")}</div>` : ""}</div><footer class="reviewer-footer">${button("previous", "Previous stage", "arrow-left", state.stage === 0 ? "disabled" : "")}${button("email", "Issue / Send email", "mail")}<button type="button" class="button button-primary" data-review-action="next" ${state.busy || (!workflow.stages[state.stage].done && nextBlocker(job)) ? "disabled" : ""} title="${escape(workflow.stages[state.stage].done ? "Stage already completed" : nextBlocker(job))}">${state.stage === 4 ? "Complete review" : "Complete / Next stage"}${icon(state.stage === 4 ? "check" : "arrow-right")}</button></footer></article>`;
+return `<article class="reviewer-detail"><header class="reviewer-detail-head"><div><span class="reviewer-id" data-evaluation-id>${escape(job.evaluation_id)}</span><h2>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</h2><p>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)} · ${escape(job.email)}</p>${participantResponse(job)}</div><span class="reviewer-state ${doneCount(job) === 5 ? "completed" : ""}">${doneCount(job) === 5 ? "Completed" : doneCount(job) + " / 5 stages complete"}</span></header><nav class="reviewer-stage-nav" aria-label="Evaluation stages">${STAGES.map((stage, index) => `<button type="button" data-review-stage="${index}" aria-current="${state.stage === index ? "step" : "false"}" class="${state.stage === index ? "active" : ""} ${workflow.stages[index].done ? "done" : ""}" ${canEdit(job) && index > firstOpen(job) ? "disabled" : ""}><span class="reviewer-step-number">${workflow.stages[index].done ? icon("check") : index + 1}</span><span>${stage.title}</span></button>`).join("")}</nav><div class="reviewer-stage-body"><div class="reviewer-stage-title"><h3>${STAGES[state.stage].title}</h3><span>Step ${state.stage + 1} of 5</span></div><p class="reviewer-description">${STAGES[state.stage].description}</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}${state.toast ? `<p class="reviewer-toast" role="status">${escape(state.toast)}</p>` : ""}${!canEdit(job) ? notice("Read-only overview · Assigned reviewer: " + escape(job.reviewer_email || "Unassigned")) : ""}<fieldset class="reviewer-readonly" ${canEdit(job) ? "" : "disabled"}>${stageContent(job)}${checks(job)}${composer(job)}</fieldset>${job.messages?.length ? `<div class="reviewer-mail-log"><h4>Email history</h4>${job.messages.map((message) => `<p>${escape(STAGES[message.stage]?.title)} · ${escape(label(message.status))} · ${escape(message.sent_at || "")}<br>${escape(message.subject)}</p>`).join("")}</div>` : ""}</div><footer class="reviewer-footer">${button("previous", "Previous stage", "arrow-left", state.stage === 0 ? "disabled" : "")}${button("email", "Issue / Send email", "mail", canEdit(job) ? "" : "disabled")}<button type="button" class="button button-primary" data-review-action="next" ${!canEdit(job) || state.busy || (!workflow.stages[state.stage].done && nextBlocker(job)) ? "disabled" : ""} title="${escape(workflow.stages[state.stage].done ? "Stage already completed" : nextBlocker(job))}">${state.stage === 4 ? "Complete review" : "Complete / Next stage"}${icon(state.stage === 4 ? "check" : "arrow-right")}</button></footer></article>`;
   }
   function paint() {
     const content = root()?.querySelector("[data-reviewer-content]");
@@ -333,8 +356,8 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       const realJobs = state.jobs.filter((job) => !job.local_walkthrough);
       const complete = realJobs.filter((job) => doneCount(job) === 5).length;
       const units = realJobs.reduce((sum, job) => sum + doneCount(job), 0);
-      content.innerHTML = `${heading(true)}<div class="reviewer-progress"><strong>My evaluation progress</strong><progress max="${Math.max(1, realJobs.length * 5)}" value="${units}" aria-label="Overall evaluation progress"></progress><span>${complete} / ${realJobs.length} requests completed · ${units} / ${realJobs.length * 5} stages</span></div><div class="reviewer-layout"><aside class="reviewer-sidebar"><div class="reviewer-sidebar-head"><h2>Assigned requests</h2><span>${realJobs.length}${LOCAL ? " + demo" : ""}</span></div><input class="reviewer-search" type="search" placeholder="Search team or request" aria-label="Search assigned requests" value="${escape(state.search)}"><div class="reviewer-queue">${queueHtml()}</div></aside>${jobDetail(selected())}</div>`;
-      if (LOCAL && selected()?.local_walkthrough) {
+      content.innerHTML = `${heading(true)}<div class="reviewer-progress"><strong>${["admin", "observer"].includes(state.role) ? "Global evaluation progress" : "My evaluation progress"}</strong><progress max="${Math.max(1, realJobs.length * 5)}" value="${units}" aria-label="Overall evaluation progress"></progress><span>${complete} / ${realJobs.length} requests completed · ${units} / ${realJobs.length * 5} stages</span></div><nav class="reviewer-overview-tools" aria-label="Evaluation overview">${button("downloads", "Download checkpoints", "download")}${button("email-status", "Email status", "mail")}</nav>${state.view !== "workspace" ? overviewPage() : `<div class="reviewer-layout"><aside class="reviewer-sidebar"><div class="reviewer-sidebar-head"><h2>${["admin", "observer"].includes(state.role) ? "All requests" : "Assigned requests"}</h2><span>${realJobs.length}${LOCAL ? " + demo" : ""}</span></div><input class="reviewer-search" type="search" placeholder="Search team or request" aria-label="Search requests" value="${escape(state.search)}"><div class="reviewer-queue">${queueHtml()}</div></aside>${jobDetail(selected())}</div>`}`;
+      if (LOCAL && selected()?.local_walkthrough && state.view === "workspace") {
         const message = document.createElement("div");
         message.className = "reviewer-notice";
         message.classList.add("warning");
@@ -378,6 +401,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const response = await request("reviewer_queue");
     state.role = response.reviewer?.role || "";
     state.jobs = response.jobs || [];
+    if (state.view === "email-status") state.mailStatus = (await request("reviewer_mail_status")).messages || [];
     if (!selected()) { state.selected = state.jobs[0]?.evaluation_id || ""; state.stage = selected() ? firstOpen(selected()) : 0; }
   }
   async function perform(action) {
@@ -398,7 +422,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   function saveStage() {
     const job = selected();
-    if (!job || flow(job).stages[state.stage].done || state.stage > firstOpen(job)) return Promise.resolve();
+    if (!canEdit(job) || flow(job).stages[state.stage].done || state.stage > firstOpen(job)) return Promise.resolve();
     const values = draft(job);
     return request("reviewer_save_checks", { evaluation_id: job.evaluation_id, stage: state.stage, checks: values, machine_id: values.machine_id || "" });
   }
@@ -410,6 +434,11 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   function mount() {
     const element = root();
     element.addEventListener("click", (event) => {
+      const mailJob = event.target.closest("[data-review-mail-job]");
+      if (mailJob && !mailJob.disabled) {
+        state.selected = mailJob.dataset.reviewMailJob;
+        state.stage = firstOpen(selected()); state.view = "workspace"; history.replaceState(null, "", location.pathname + location.search); paint(); return;
+      }
       const jobButton = event.target.closest("[data-review-job]");
       if (jobButton) {
         state.pendingSelection = jobButton.dataset.reviewJob;
@@ -420,6 +449,10 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       if (stageButton && !stageButton.disabled) { perform(async () => { await saveStage(); state.stage = Number(stageButton.dataset.reviewStage); state.emailDraft = null; state.toast = ""; }); return; }
       const action = event.target.closest("[data-review-action]")?.dataset.reviewAction;
       if (!action || state.busy) return;
+      if (!["logout", "refresh", "copy", "previous", "close-email", "downloads", "email-status", "workspace"].includes(action) && !canEdit(selected())) return;
+      if (["downloads", "email-status", "workspace"].includes(action)) {
+        perform(async () => { await saveStage(); state.view = action; history.replaceState(null, "", location.pathname + location.search + (action === "workspace" ? "" : "#" + action)); }); return;
+      }
       if (action === "logout") { sessionStorage.removeItem(STORAGE); state.credentials = null; state.jobs = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
       if (action === "refresh") perform(async () => { await saveStage(); });
       if (action === "copy") {
@@ -472,6 +505,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       event.preventDefault();
       const data = new FormData(form);
       const type = form.dataset.reviewForm;
+      if (type !== "login" && !canEdit(selected())) return;
       if (type === "version-exception") perform(async () => {
         await request("reviewer_approve_version_exception", { evaluation_id: selected().evaluation_id,
           reason: String(data.get("reason") || ""), argument_reviewed: data.has("argument_reviewed") });

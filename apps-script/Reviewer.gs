@@ -99,7 +99,7 @@ function provisionReviewer(email, role) {
 function provisionReviewerToken_(email, role, token) {
   const normalized = requiredEmail_(email);
   const assignedRole = String(role || "evaluator");
-  if (!["evaluator", "admin"].includes(assignedRole)) throw new Error("Invalid reviewer role.");
+  if (!["evaluator", "admin", "observer"].includes(assignedRole)) throw new Error("Invalid reviewer role.");
   if (!/^act_[0-9a-f]{64}$/i.test(token)) throw new Error("Invalid reviewer token format.");
   const row = reviewRows_("Reviewers").find((item) => normalizeEmail_(item.email) === normalized);
   reviewWrite_("Reviewers", row?._rowNumber, { email: normalized, token_sha256: reviewerHash_(token),
@@ -126,7 +126,63 @@ function reviewerIdentity_(payload) {
   let mismatch = expected.length !== actual.length ? 1 : 0;
   for (let index = 0; index < actual.length; index += 1) mismatch |= actual.charCodeAt(index) ^ (expected.charCodeAt(index) || 0);
   if (mismatch || !isTruthy_(row?.active)) throw new Error("Invalid reviewer credentials.");
-  return { email, role: row.role === "admin" ? "admin" : "evaluator" };
+  if (!["admin", "evaluator", "observer"].includes(row.role)) throw new Error("Invalid reviewer role.");
+  return { email, role: row.role };
+}
+
+function reviewProvisionAccount_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const email = requiredEmail_(payload.email);
+    const role = String(payload.role || "evaluator");
+    if (role === "observer" && reviewRows_("ReviewRuns").some(row => normalizeEmail_(row.reviewer_email) === email)) {
+      throw new Error("Release this account's assignments before making it an observer.");
+    }
+    if (role !== "admin" && reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) === email && row.role === "admin" && isTruthy_(row.active)) &&
+        !reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) !== email && row.role === "admin" && isTruthy_(row.active))) {
+      throw new Error("Keep at least one active organizer account.");
+    }
+    const account = provisionReviewerToken_(email, role, String(payload.eval_token || ""));
+    return { ok: true, email: account.email, role: account.role };
+  });
+}
+
+function reviewSendInvitation_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const email = requiredEmail_(payload.email);
+    const token = String(payload.eval_token || "");
+    const account = reviewerIdentity_({ reviewer_email: email, reviewer_token: token });
+    if (account.role === "admin") throw new Error("Automation credentials must not be emailed.");
+    const id = String(payload.invitation_id || "");
+    if (!/^invite_[a-f0-9]{32}$/.test(id)) throw new Error("Invalid invitation ID.");
+    const properties = PropertiesService.getScriptProperties();
+    const key = "REVIEW_INVITATION_" + id;
+    const fingerprint = reviewerHash_(email + ":" + token + ":" + account.role);
+    const previous = parseJson_(properties.getProperty(key), null);
+    if (previous) {
+      if (previous.fingerprint !== fingerprint) throw new Error("Invitation ID belongs to different credentials.");
+      if (previous.status === "sent") return { ok: true, status: "sent", duplicate: true };
+      throw new Error("Invitation delivery needs organizer verification before retrying.");
+    }
+    if (MailApp.getRemainingDailyQuota() < 1) throw new Error("Daily email quota exhausted. No email was sent.");
+    const receipt = { email, role: account.role, fingerprint, status: "sending", created_at: now_() };
+    properties.setProperty(key, JSON.stringify(receipt));
+    const url = "https://robosyn-bench.net/eval_backend/";
+    const access = account.role === "observer" ? "You can view all evaluation requests and progress. This is read-only access; no evaluation tasks are assigned to you." : "You can view and work on evaluation requests assigned to you.";
+    try {
+      MailApp.sendEmail({ to: email, subject: "RoboSynChallenge evaluation workspace access",
+        body: `Evaluation workspace: ${url}\nEmail: ${email}\nEvaluation token: ${token}\n\n${access}\n\nKeep this token private. It is separate from participant access tokens.`,
+        htmlBody: htmlEmailShell_("Evaluation workspace access", `<p>${escapeHtml_(access)}</p><table><tr><th>Sign in</th><td><a href="${url}">Open evaluation workspace</a></td></tr><tr><th>Email</th><td>${escapeHtml_(email)}</td></tr><tr><th>Evaluation token</th><td><code style="overflow-wrap:anywhere">${escapeHtml_(token)}</code></td></tr></table><p>Keep this token private. It is separate from participant access tokens.</p>`) });
+      properties.setProperty(key, JSON.stringify({ ...receipt, status: "sent", sent_at: now_() }));
+      return { ok: true, status: "sent", email, role: account.role };
+    } catch (error) {
+      properties.setProperty(key, JSON.stringify({ ...receipt, status: "delivery_unknown" }));
+      throw new Error("Invitation delivery could not be confirmed. Check sent mail before retrying.");
+    }
+  });
 }
 
 function latestReviewSubmissions_() {
@@ -270,7 +326,7 @@ function reviewQueue_(payload, organizer) {
   const submissionWindows = new Map(reviewRows_("ReviewSubmissionWindows").map(row => [row.window_id, row]));
   return { ok: true, reviewer: viewer, jobs: latestReviewSubmissions_().filter(({ evaluation }) => {
     const owner = runs.get(String(evaluation.evaluation_id))?.reviewer_email;
-    return organizer || normalizeEmail_(owner) === viewer.email;
+    return organizer || ["admin", "observer"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {
     const run = runs.get(String(evaluation.evaluation_id));
     const correction = corrections.get(String(evaluation.evaluation_id));
@@ -382,13 +438,14 @@ function reviewAssign_(payload) {
     if (existing?.reviewer_email) throw new Error("This request is already assigned.");
     let owner = reviewer.email;
     if (reviewer.role === "admin") {
-      const active = reviewRows_("Reviewers").filter((row) => isTruthy_(row.active));
+      const active = reviewRows_("Reviewers").filter((row) => isTruthy_(row.active) && row.role === "evaluator");
       const runs = reviewRows_("ReviewRuns");
       active.sort((a, b) => runs.filter((row) => normalizeEmail_(row.reviewer_email) === normalizeEmail_(a.email) && row.state !== "checked").length -
         runs.filter((row) => normalizeEmail_(row.reviewer_email) === normalizeEmail_(b.email) && row.state !== "checked").length || String(a.email).localeCompare(String(b.email)));
+      if (!payload.assign_to && !active.length) throw new Error("No active evaluators. Request remains unassigned.");
       owner = requiredEmail_(payload.assign_to || active[0]?.email);
     }
-    if (!reviewRows_("Reviewers").some((row) => normalizeEmail_(row.email) === owner && isTruthy_(row.active))) throw new Error("Reviewer is not active.");
+    if (!reviewRows_("Reviewers").some((row) => normalizeEmail_(row.email) === owner && isTruthy_(row.active) && row.role !== "observer")) throw new Error("Reviewer is not active or is read-only.");
     reviewWrite_("ReviewRuns", existing?._rowNumber, { evaluation_id: job.evaluation.evaluation_id,
       submission_id: job.submission.submission_id, participant_email: normalizeEmail_(job.submission.email),
       reviewer_email: owner, state: "assigned", assigned_at: now_(), updated_at: now_() });
@@ -715,6 +772,12 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).role === "observer") throw new Error("Read-only access: observers cannot modify evaluations.");
+  if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
+  if (action === "reviewer_provision_account") return reviewProvisionAccount_(payload);
+  if (action === "reviewer_send_invitation") return reviewSendInvitation_(payload);
+  if (action === "reviewer_release_assignments") return reviewReleaseAssignments_(payload);
+  if (action === "reviewer_ensure_run") return reviewEnsureRun_(payload);
   if (action === "reviewer_prepare_code") return reviewPrepareCode_(payload);
   if (action === "reviewer_configure_checkpoint_access") return reviewConfigureCheckpointAccess_(payload);
   if (action === "reviewer_checkpoint_credential") return reviewCheckpointCredential_(payload);
@@ -761,4 +824,22 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_submit_result") return reviewSubmitResult_(payload);
   if (action === "reviewer_check_result") return reviewCheckResult_(payload);
   throw new Error("Unknown reviewer action.");
+}
+
+function reviewMailStatus_(payload) {
+  const viewer = reviewerIdentity_(payload);
+  const global = ["admin", "observer"].includes(viewer.role);
+  const assigned = new Set(reviewRows_("ReviewRuns").filter(row => normalizeEmail_(row.reviewer_email) === viewer.email).map(row => row.evaluation_id));
+  const users = new Map(rows_("Users").map(row => [normalizeEmail_(row.email), row]));
+  const mailbox = config_("CONTACT_EMAIL", "robosynchallenge@gmail.com");
+  const messages = reviewRows_("ReviewMessages").filter(row => global || assigned.has(row.evaluation_id)).map(row => {
+    const email = normalizeEmail_(row.recipient);
+    const query = `in:sent to:${email} subject:"${String(row.subject || "").replace(/["\\]/g, " ")}"`;
+    return { evaluation_id: row.evaluation_id, message_id: row.message_id,
+      team_name: users.get(email)?.team_name || users.get(email)?.full_name || email,
+      recipient: email, stage: row.stage, subject: row.subject, status: row.status,
+      created_at: row.created_at, sent_at: row.sent_at,
+      gmail_url: `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#search/${encodeURIComponent(query)}` };
+  }).sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
+  return { ok: true, reviewer: viewer, messages };
 }

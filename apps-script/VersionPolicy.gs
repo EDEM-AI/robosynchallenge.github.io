@@ -44,10 +44,42 @@ function reviewReassign_(payload) {
     if (reviewWorkflow_(run.evaluation_id).stages[1].done || reviewTaskRows_(run.evaluation_id).some(row => row.status !== "superseded")) throw new Error("Local code handoff or evaluation has started; reassignment is locked.");
     const owner = requiredEmail_(payload.assign_to);
     const reason = requiredString_(payload.reason, "Reassignment reason");
-    if (!reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) === owner && isTruthy_(row.active))) throw new Error("Reviewer is not active.");
+    if (!reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) === owner && isTruthy_(row.active) && row.role !== "observer")) throw new Error("Reviewer is not active or is read-only.");
     reviewWrite_("ReviewAssignments", null, { evaluation_id: run.evaluation_id, previous_reviewer: run.reviewer_email,
       reviewer_email: owner, reason, changed_by: viewer.email, changed_at: now_() });
     reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, reviewer_email: owner, updated_at: now_() });
     return { ok: true };
+  });
+}
+
+function reviewEnsureRun_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const job = reviewJob_(payload.evaluation_id);
+    const run = reviewRun_(job.evaluation.evaluation_id);
+    if (!run) reviewWrite_("ReviewRuns", null, { evaluation_id: job.evaluation.evaluation_id,
+      submission_id: job.submission.submission_id, participant_email: normalizeEmail_(job.submission.email),
+      reviewer_email: "", state: "unassigned", updated_at: now_() });
+    return { ok: true, evaluation_id: job.evaluation.evaluation_id, reviewer_email: run?.reviewer_email || "" };
+  });
+}
+
+function reviewReleaseAssignments_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const email = requiredEmail_(payload.email);
+    const reason = requiredString_(payload.reason, "Unassignment reason");
+    const runs = reviewRows_("ReviewRuns").filter(row => normalizeEmail_(row.reviewer_email) === email);
+    if (runs.some(run => reviewWorkflow_(run.evaluation_id).stages[1].done || reviewTaskRows_(run.evaluation_id).some(row => row.status !== "superseded"))) {
+      throw new Error("Local code handoff or evaluation has started; unassignment is locked.");
+    }
+    runs.forEach(run => {
+      reviewWrite_("ReviewAssignments", null, { evaluation_id: run.evaluation_id, previous_reviewer: email,
+        reviewer_email: "", reason, changed_by: viewer.email, changed_at: now_() });
+      reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, reviewer_email: "", state: "unassigned", updated_at: now_() });
+    });
+    return { ok: true, released: runs.length, email };
   });
 }

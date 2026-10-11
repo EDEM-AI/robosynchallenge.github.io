@@ -16,12 +16,28 @@ body { background: #fff; font-size: 16px; }
 .reviewer-heading > div { display: flex; align-items: baseline; gap: 20px; }
 .reviewer-toolbar { gap: 10px; color: var(--ink-soft); font-size: 14px; }
 .reviewer-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border: 1px solid var(--line); border-radius: 6px; color: var(--ink-soft); background: white; cursor: pointer; }
-.reviewer-progress { display: grid; grid-template-columns: auto minmax(100px, 1fr) auto; align-items: center; gap: 20px; padding: 16px 20px; background: var(--powder); border-top: 1px solid #c7d9e8; border-bottom: 1px solid #c7d9e8; margin-bottom: 22px; font-size: 15px; }
+.reviewer-progress { display: grid; grid-template-columns: auto minmax(100px, 1fr) auto; align-items: center; gap: 20px; padding: 16px 20px; background: var(--powder); border-top: 1px solid #c7d9e8; border-bottom: 1px solid #c7d9e8; margin-bottom: 10px; font-size: 15px; }
 .reviewer-progress > span { color: var(--ink-soft); }
 .reviewer-progress progress { width: 100%; height: 8px; border: 0; border-radius: 4px; overflow: hidden; background: white; }
 .reviewer-progress progress::-webkit-progress-bar { background: white; }
 .reviewer-progress progress::-webkit-progress-value { background: var(--accent); }
-.reviewer-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; height: calc(100vh - 170px); min-height: 580px; }
+.reviewer-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; height: calc(100vh - 216px); min-height: 580px; }
+.reviewer-overview-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.reviewer-overview-tools .button { min-height: 38px; padding: 8px 14px; font-size: 14px; }
+.reviewer-overview { min-width: 0; padding: 20px 0; border-top: 1px solid var(--line); }
+.reviewer-overview > .button { margin-bottom: 20px; }
+.reviewer-overview h2 { margin-bottom: 12px; }
+.reviewer-overview h3 { margin: 24px 0 12px; font-size: 17px; }
+.reviewer-overview > p { max-width: 1000px; color: var(--ink-soft); font-size: 15px; line-height: 1.6; overflow-wrap: anywhere; }
+.reviewer-directory { margin: 20px 0; padding: 18px; background: #f3f6f8; font: 14px/1.7 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reviewer-mail-table { width: 100%; overflow-x: auto; }
+.reviewer-mail-table table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 14px; }
+.reviewer-mail-table th, .reviewer-mail-table td { padding: 14px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; line-height: 1.5; }
+.reviewer-mail-table th { background: #f3f6f8; color: var(--ink-soft); font-weight: 600; }
+.reviewer-mail-table th:nth-child(3) { width: 30%; }
+.reviewer-mail-table th:last-child { width: 66px; }
+.reviewer-mail-table small { color: var(--ink-soft); }
+.reviewer-inline-link { padding: 0; border: 0; background: transparent; color: #247181; cursor: pointer; font: inherit; text-align: left; text-decoration: underline; overflow-wrap: anywhere; }
 .reviewer-sidebar { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); padding-right: 22px; }
 .reviewer-sidebar-head { display: flex; justify-content: space-between; align-items: center; margin: 0 0 14px; }
 .reviewer-sidebar-head h2 { font-size: 17px; }
@@ -39,6 +55,9 @@ body { background: #fff; font-size: 16px; }
 .reviewer-detail-head { padding: 22px 26px; align-items: flex-start; border-bottom: 1px solid var(--line); }
 .reviewer-detail-head h2 { margin: 5px 0 6px; overflow-wrap: anywhere; }
 .reviewer-detail-head p { color: var(--ink-soft); font-size: 15px; overflow-wrap: anywhere; }
+.reviewer-participant-response { margin-top: 9px; color: var(--ink-soft); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.reviewer-participant-response p { margin: 4px 0 0; font-size: 13px; }
+.reviewer-readonly { min-width: 0; margin: 0; padding: 0; border: 0; }
 .reviewer-id { color: var(--ink-soft); font-size: 13px; }
 .reviewer-state { white-space: nowrap; padding: 6px 9px; background: #eaf2f7; border-radius: 4px; font-size: 13px; color: #344c61; }
 .reviewer-state.completed { color: var(--success); background: #eef5ef; }
