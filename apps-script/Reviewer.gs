@@ -805,10 +805,18 @@ function reviewSendIssue_(payload) {
     const needsArgument = stage === 0 && String((preparation?.message || "") + checkpointError).includes("NO_LEGAL_VERSION");
     const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId);
     const responseText = response ? `\n\nConfirm or submit a correction: ${response.url}\nThere is no 24-hour deadline or overall correction limit. Each new issue email opens a new response round. Use the latest email's form; team and submission identity cannot be changed.` : "";
+    const responseButton = response ? `
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;width:auto;margin:20px 0 8px">
+        <tr>
+          <td bgcolor="#e9673f" style="border:0 !important;padding:0;border-radius:999px;background:#e9673f;box-shadow:0 12px 26px rgba(233,103,63,.22)">
+            <a href="${escapeHtml_(response.url)}" style="display:inline-block;padding:14px 26px;border-radius:999px;font-family:Arial,sans-serif;font-size:15px;line-height:1.15;font-weight:800;text-decoration:none !important;color:#ffffff !important;background:#e9673f;">Confirm or submit a correction</a>
+          </td>
+        </tr>
+      </table>` : "";
     try {
       const argumentText = needsArgument ? "\n\nNo eligible pre-deadline code or checkpoint version was found. Reply to this email with your explanation and evidence. Rebuilding requires manual reviewer approval; this message does not grant a code-correction exception." : "";
       MailApp.sendEmail({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText + argumentText,
-        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${response ? `<p><a href="${escapeHtml_(response.url)}">Confirm or submit a correction</a></p><p>Each new issue email opens a new response round, without a 24-hour deadline or overall correction limit. Use the latest email's form.</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
+        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${responseButton}${response ? `<p>Each new issue email opens a new response round, without a 24-hour deadline or overall correction limit. Use the latest email's form.</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
       if (response) reviewActivateResponseLink_(run, messageId);
       reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "sent", sent_at: now_() });
       return { ok: true, status: "sent" };
