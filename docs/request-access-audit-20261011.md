@@ -4,6 +4,28 @@ Date: October 11, 2026. This report checks actual submitted URLs using the autho
 GitHub `robosynchallenge` and HF `RoboSynChallenge` accounts. It does not execute
 participant code or certify GPU evaluation results. No participant mail was sent.
 
+## Persisted Preparation Results
+
+After actual retries, the existing Sheet queue and refreshed local preview show
+29 latest requests: 21 code-only validation branches ready, eight blocked, and
+zero formal evaluation branches. The helper-entrypoint false positives for
+IAII-CAS, SZU and DHU were fixed and their new private branches were pushed and
+registered. Sny was successfully retried too. The persistent preparation service
+is running with private tooling commit `41e749f`; 51 offline Python tests and the
+existing backend/upload tests passed. The evaluator website branch was not
+published publicly.
+
+| Evaluation ID | Team | Remaining code-preparation blocker |
+| --- | --- | --- |
+| `eval_43db939c249046` | 115 | Submitted upstream OpenPI commit has no `policy/` tree. |
+| `eval_1e815230feb54b` | Kaelio | Exact submitted repository still returns HTTP 404 with the official account; clone also fails. |
+| `eval_21a30779b1b445` | Team Turbo | Exact submitted repository still returns HTTP 404 with the official account; clone also fails. |
+| `eval_6a78fd0ef86b40` | RobotQQ | Documentation symlinks point to uncommitted `docs/source/` targets. |
+| `eval_770795218d0441` | luminbot | HF cache `model.safetensors` points to an uncommitted weight blob. |
+| `eval_3b7f6832eca94f` | Robo | Selected request still contains ten repository URLs, not the now-accessible consolidated repository URL. |
+| `eval_ed0b18afd0d445` | SEU MAI | No `eval.sh` launcher inside the submitted policy tree. |
+| `eval_1745e4e6bb874a` | Vulcan Dynamics | Root-level release package has no `policy/` tree. |
+
 ## Entrypoints
 
 | Team | Verified entrypoint | Finding |
@@ -34,6 +56,10 @@ remain visible in the submitted instructions:
   copy those non-policy files over the official environment. A reviewer must
   verify the adapter with the supplied runtime dependencies in the policy worker;
   merely producing a branch does not prove that its shell launcher can run.
+- Sny's inspected README reports an `item_assembly` process exit of 139 during
+  simulator teardown. That is the participant's own statement, not an organizer
+  measurement. Successful access and composition do not certify that this has
+  been fixed; the controlled runtime check must verify it.
 
 ## Symbolic Links
 
@@ -67,9 +93,11 @@ GitHub 404 alone cannot distinguish a deleted/incorrect URL from a private
 repository hidden by account or token permissions. Team Turbo's invitation email
 exists, dated September 30. No Kaelio repository invitation was found in the
 connected mailbox searches. Neither repository has a pending invitation in the
-official account's current API list. Confirm repository collaborators and, if
-using a fine-grained token, its repository selection; accepting an email is not
-an API read-access test.
+official account's current API list. The installed credential is not fine-grained
+and its GitHub response includes the `repo` scope, so this is not a missing
+fine-grained repository-selection checkbox. Confirm the exact URL and repository
+collaborator membership for `robosynchallenge`; accepting an email is not an API
+read-access test.
 
 Sny's exact submitted repository currently returns HTTP 200. Its earlier raw
 HTTP 404 is not evidence that this repository is currently inaccessible. The
@@ -77,7 +105,8 @@ invitation handler now handles a concurrent acceptance by verifying actual
 repository access before proceeding; an inaccessible repository is never treated
 as accepted.
 
-Robo has a new invitation to `learn-more-1/robosyn-submission`, while the selected
+Robo has a new invitation to `learn-more-1/robosyn-submission`, and API read access
+to that consolidated repository now succeeds (HTTP 200), while the selected
 Sheet request still lists ten separate repositories. The script must not replace
 the registered source URL based on an invitation email; the participant must
 submit the consolidated URL or the organizer must explicitly correct the request.
