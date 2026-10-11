@@ -406,7 +406,7 @@
       question: "Which code and checkpoint versions will be evaluated?",
       answer: `
         <p>For preliminary evaluation, we use the latest reachable GitHub commit and Hugging Face checkpoint revision dated before October 11, 2026 at 23:59 AoE. Version selection is finalized after the deadline; earlier preparation is validation only. Keep the submitted branch and checkpoint history accessible. A specified commit or revision limits selection to its reachable history.</p>
-        <p>If no eligible version is available, evaluation pauses at the first stage. Reply to the issue email with your explanation and evidence; rebuilding requires an evaluator's explicit, recorded approval. Approved one-time corrections and individual submission extensions use their recorded cutoffs. Git commit timestamps alone do not prove when code was uploaded; rewritten or disputed history may require organizer review.</p>
+        <p>If no eligible version is available, evaluation pauses at the first stage. Reply to the issue email with your explanation and evidence; rebuilding requires an evaluator's explicit, recorded approval. Corrections requested by issue email and individual submission extensions use their recorded cutoffs. Git commit timestamps alone do not prove when code was uploaded; rewritten or disputed history may require organizer review.</p>
       `,
     },
     {
@@ -417,7 +417,7 @@
     },
     {
       question: "Can a team correct its code after an evaluation issue is reported?",
-      answer: `<p>One code correction is permitted within <strong>24 hours of the first issue notification</strong>. Use the response link in the organizer email to confirm the current submission or provide a corrected immutable GitHub commit and checkpoints covering all 10 tasks. Further emails do not extend the deadline. Registered team details cannot be changed through this form.</p>`,
+      answer: `<p>Each new issue email opens a response round, with <strong>no 24-hour deadline or overall correction limit</strong>. Use the latest email's form to confirm the submission or provide a corrected immutable GitHub commit and checkpoints for all 10 tasks. Corrections remain under the same eval request and trigger automatic code and checkpoint checks. Registered team details cannot be changed.</p>`,
     },
     {
       question: "How many times may a team submit, and what is the deadline?",

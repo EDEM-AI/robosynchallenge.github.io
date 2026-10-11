@@ -12,13 +12,13 @@
       issue: "We could not complete the submission access check. Please confirm repository access and provide the checkpoint URL and policy entrypoint used for each of the 10 tasks." },
     { title: "Evaluation code", description: "Clone the prepared private branch into its evaluation-specific directory. Follow the repository README and the policy entrypoint documentation.",
       checks: { commit_verified: "My checkout matches the pinned evaluation commit.", policy_entrypoints: "I have identified the correct policy directory and entrypoint for each task.", dependencies: "The policy dependencies are installed in an isolated environment." },
-      issue: "We could not prepare or start your policy. Please check the complete policy/ tree, documented entrypoints and dependencies. Use the response form below for confirmation or the single permitted correction, including an immutable GitHub commit and checkpoint URLs for all 10 tasks." },
+      issue: "We could not prepare or start your policy. Please check the complete policy/ tree, documented entrypoints and dependencies. Use the response form below for confirmation or the correction requested in the latest issue email, including an immutable GitHub commit and checkpoint URLs for all 10 tasks." },
     { title: "Environment check", description: "Run the built-in environment check. Continue only when the command prints ENVIRONMENT CHECK PASSED and exits successfully.",
       checks: { machine_checked: "The built-in environment check printed ENVIRONMENT CHECK PASSED with exit code 0.", reference_checked: "The official expert planning, rendering comparison and action/state smoke check passed." },
       issue: "Evaluation is paused while we investigate an environment or runtime issue. No participant-side changes are requested unless the details below identify a policy issue." },
     { title: "Evaluation and upload", description: "Run each task from the terminal. The official collector generates JSON + ZIP, uploads the ZIP to OneDrive and registers the verified JSON automatically. No browser file upload is needed.",
       checks: { all_runs: "All ten tasks were evaluated with the pinned code and frozen seed packet.", archives_uploaded: "All evidence archives are uploaded and accessible to the organizers." },
-      issue: "Evaluation could not finish with the submitted policy. Please review the affected task and error below. Use the response form to confirm the current code or submit your single permitted code correction, including checkpoint URLs for all 10 tasks." },
+      issue: "Evaluation could not finish with the submitted policy. Please review the affected task and error below. Use the response form to confirm the current code or submit your corrected code and checkpoints, including checkpoint URLs for all 10 tasks." },
     { title: "Result review", description: "Review each task's evidence and checksum before accepting it. This records the reviewer decision; it does not publish anything on the public leaderboard.",
       checks: { videos_checked: "I reviewed the videos and task outcomes for all ten tasks.", trajectories_checked: "I checked the saved state/action trajectories and episode coverage.", hashes_checked: "The downloaded archives match their recorded SHA256 checksums." },
       issue: "We found an issue while reviewing the evaluation evidence. Please check the affected task and details below, and reply with clarification or a corrected immutable submission." },
@@ -76,7 +76,7 @@
     if (state.stage === 0) values.repository_access = Boolean(job.bundle_commit && job.bundle_url);
     return values;
   };
-  const versionSuffix = (job) => `${job.preparation_attempt ? "-correction1" : ""}${job.version_generation ? "-exception" + job.version_generation : ""}`;
+  const versionSuffix = (job) => `${job.preparation_attempt ? "-correction" + job.preparation_attempt : ""}${job.version_generation ? "-exception" + job.version_generation : ""}`;
   const cloneCommand = (job) => `git clone --single-branch --branch submissions/${job.evaluation_id}${versionSuffix(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} checkout --detach ${job.bundle_commit}`;
   const cloneDirectory = (job) => `"$HOME/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}"`;
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
@@ -240,7 +240,7 @@
     const target = `results/${state.task}`;
     const command = `cd ${cloneDirectory(job)}\npython tools/run_task_evaluation.py --task ${state.task} --submission-id ${job.submission_id} --policy-dir ${dir || "SELECT_POLICY_DIRECTORY"} --seeds "\${RSC_SEED_PACKET:?Set the organizer seed packet path}" --checkpoints "\${RSC_CHECKPOINTS:?Set the downloaded checkpoint directory}" --policy-image "\${RSC_POLICY_IMAGE:?Set the approved image@sha256 digest}" --output ${target}`;
     const retry = `cd ${cloneDirectory(job)}\npython tools/upload_evidence.py --manifest ${target}/package/${job.evaluation_id}-${state.task}-result.json --archive ${target}/package/${job.evaluation_id}-${state.task}-evidence.zip`;
-    return step(1, "Check OneDrive access", commandBox(`cd ${cloneDirectory(job)}\npython tools/check_upload.py`, "Copy storage check command") + "<p>Run once before evaluation. The private clone already contains its evaluation-scoped authorization; no Microsoft sign-in is needed.</p>") +
+    return (job.preparation_attempt ? notice(`Participant correction round ${Number(job.preparation_attempt)}: use the new clone directory and its frozen checkpoint index. Do not reuse checkpoints, commands or results from a previous round. Check that each task loads the matching checkpoint revision.`, false, "warning") : "") + step(1, "Check OneDrive access", commandBox(`cd ${cloneDirectory(job)}\npython tools/check_upload.py`, "Copy storage check command") + "<p>Run once before evaluation. The private clone already contains its evaluation-scoped authorization; no Microsoft sign-in is needed.</p>") +
       step(2, "Select a task and run the official collector", `<div class="reviewer-task-picker"><label>Task<select data-task-picker>${TASKS.map(task => `<option value="${task}" ${task === state.task ? "selected" : ""}>${label(task)}</option>`).join("")}</select></label><label>Detected policy entrypoint<select data-policy-picker required><option value="">Select entrypoint</option>${dirs.map(value => `<option value="${escape(value)}" ${value === dir ? "selected" : ""}>${escape(value)}</option>`).join("")}</select></label></div>${!dir ? notice("Choose the documented entrypoint for this task before copying the run command.", false, "warning") : commandBox(command, "Copy task evaluation command")}<p>The collector runs 100 frozen episodes and records the actual command. Set the checkpoint directory, seed packet and approved dependency image on the machine. Add --model-config and --checkpoint-relative when required by the participant's adapter.</p>`) +
       step(3, "Wait for automatic upload; retry only if it fails", "<p>Each task produces JSON + ZIP. The ZIP is uploaded directly to OneDrive under evaluation_id/task/latest. The script verifies SHA256 and registers the JSON and actual command in the backend. Retrying does not rerun the policy.</p>" + commandBox(retry, "Copy upload retry command") + notice("If the uploaded ZIP fails checksum verification, add --restart to the retry command. Do not rerun evaluation or register unfinished JSON. Accepted task results are locked.", false, "warning"));
   }
@@ -249,7 +249,7 @@
       job?.results?.some(result => result.status === "needs_correction") ||
       (job?.correction?.status !== "corrected" && job?.messages?.some(message => message.stage !== 2 && message.status === "sent"));
     if (state.role !== "admin" || !job || job.local_walkthrough || doneCount(job) === 5 || !hasIssue) return "";
-    return `<details class="reviewer-notes"><summary>Organizer only: allow this participant to submit after the deadline</summary><p>Use only after approving an exception for this participant. This reopens Submit policy for their current access token until the time below. A new eval request can replace the one being reviewed. This does not extend the 24-hour, one-correction response form and is not needed for ordinary error replies.</p><form class="reviewer-form" data-review-form="admission"><label>Participant account<input name="participant_email" type="email" value="${escape(job.email)}" readonly></label><label>Allow new eval requests until (your browser local time)<input name="expires_at" type="datetime-local" required></label><label>Reason for the organizer-approved exception<input name="reason" maxlength="500" required></label><label class="reviewer-confirm"><input type="checkbox" name="revoke">Revoke an existing exception instead of reopening submissions</label><button class="button button-secondary">${icon("save")}Save submission exception</button></form></details>`;
+    return `<details class="reviewer-notes"><summary>Organizer only: allow this participant to submit after the deadline</summary><p>Use only after approving an exception for this participant. This reopens Submit policy for their current access token until the time below. A new eval request can replace the one being reviewed. Issue-email forms allow corrections without a 24-hour deadline; this separate exception is only for a new eval request.</p><form class="reviewer-form" data-review-form="admission"><label>Participant account<input name="participant_email" type="email" value="${escape(job.email)}" readonly></label><label>Allow new eval requests until (your browser local time)<input name="expires_at" type="datetime-local" required></label><label>Reason for the organizer-approved exception<input name="reason" maxlength="500" required></label><label class="reviewer-confirm"><input type="checkbox" name="revoke">Revoke an existing exception instead of reopening submissions</label><button class="button button-secondary">${icon("save")}Save submission exception</button></form></details>`;
   }
   function versionControls(job) {
     if (job.local_walkthrough) return "";
@@ -271,9 +271,10 @@
   function stageContentDetails(job) {
     if (state.stage === 0) {
       const identity = `<dl class="reviewer-meta"><div><dt>Participant</dt><dd>${escape(job.email)}</dd></div><div><dt>Submission ID</dt><dd>${escape(job.submission_id)}</dd></div><div><dt>Submitted</dt><dd>${escape(job.created_at)}</dd></div><div><dt>Task checkpoints</dt><dd>${job.coverage_status === "legacy_unverified" ? "10 task checkpoint URLs required" : "Checkpoint URLs recorded for all 10 tasks"}</dd></div></dl><div class="reviewer-links">${sourceLinks(job.code_link, "Code repository", "github")}${sourceLinks(job.checkpoint_link, "Checkpoint", "external-link")}</div>${job.technical_notes ? `<details class="reviewer-notes"><summary>Participant run commands and dependencies</summary><p>${escape(job.technical_notes)}</p></details>` : ""}`;
-      const checkpoints = job.coverage_status !== "legacy_unverified" ? taskTable(job, true) :
-        notice("This legacy request did not specify each task's checkpoint. Use the participant's documentation; do not guess. Multiple tasks may share a URL only when documented. Ten different models are not required. Unclear documentation: use Issue / Send email.", false, "warning") +
-        `<form class="reviewer-form" data-review-form="verify"><p>Enter the Hugging Face URL for each task, including the documented revision or checkpoint subdirectory. Saving starts checkpoint access checks; code preparation does not wait for this form.</p><div class="reviewer-verify-grid">${TASKS.map(task => `<label>${label(task)}<input type="url" name="${task}" value="${escape(job.task_checkpoint_links?.[task] || "")}" required></label>`).join("")}</div><label class="reviewer-confirm"><input type="checkbox" name="coverage_confirmed" required>I verified every task's checkpoint from the participant's documentation; shared checkpoints are explicitly documented.</label><button class="button button-secondary">${icon("check")}Save task checkpoints</button></form>`;
+      const mappingForm = `<form class="reviewer-form" data-review-form="verify"><p>Enter each task's documented Hugging Face URL, including its pinned revision or checkpoint subdirectory. Saving queues a fresh access check. Do not substitute another model to bypass an access error.</p><div class="reviewer-verify-grid">${TASKS.map(task => `<label>${label(task)}<input type="url" name="${task}" value="${escape(job.task_checkpoint_links?.[task] || "")}" required></label>`).join("")}</div><label class="reviewer-confirm"><input type="checkbox" name="coverage_confirmed" required>I verified every task's checkpoint from the participant's documentation; shared checkpoints are explicitly documented.</label><button class="button button-secondary">${icon("check")}Save task checkpoints</button></form>`;
+      const checkpoints = job.coverage_status !== "legacy_unverified" ? taskTable(job, true) +
+        (!job.bundle_commit && canEdit(job) ? `<details class="reviewer-notes"><summary>Correct documented task checkpoint URLs</summary>${mappingForm}</details>` : "") :
+        notice("This legacy request did not specify each task's checkpoint. Use the participant's documentation; do not guess. Multiple tasks may share a URL only when documented. Ten different models are not required. Unclear documentation: use Issue / Send email.", false, "warning") + mappingForm;
       const preparation = job.bundle_commit ? notice("Code prepared automatically. Evaluation commit: <code>" + escape(job.bundle_commit) + "</code>. Participant policy/ is retained; environment code comes from the private official base.", true) + preparationWarnings(job) : codeStage(job);
       return step(1, "Code preparation / GitHub access", identity + `<div class="reviewer-automatic-status"><h4>Automatic code preparation status</h4>${preparation}</div>`) +
         step(2, "Hugging Face checkpoint access", checkpoints + checkpointStatus(job));
@@ -313,7 +314,7 @@
     const issue = ISSUE_TEMPLATES[state.stage].find((item) => item[0] === template)?.[2] || STAGES[state.stage].issue;
     return { stage: state.stage, template, message_id: "msg_" + crypto.randomUUID().replace(/-/g, ""),
       subject: blank ? "" : "RoboSynChallenge evaluation update: " + job.evaluation_id,
-      body: blank ? "" : `Dear ${job.team_name},\n\n${issue}\n\nEvaluation ID: ${job.evaluation_id}\nTask / issue details:\n${state.stage <= 1 ? [job.preparation_error, job.hf_check_error].filter(Boolean).join("\n") : ""}\n\n${state.stage === 2 ? "No participant action is required unless separately requested." : "Use the response link to confirm or submit your single code correction within 24 hours of the first issue notification. Corrections must include an immutable GitHub commit URL and checkpoint URLs for all 10 tasks."}\n\nRoboSynChallenge organizers` };
+      body: blank ? "" : `Dear ${job.team_name},\n\n${issue}\n\nEvaluation ID: ${job.evaluation_id}\nTask / issue details:\n${state.stage <= 1 ? [job.preparation_error, job.hf_check_error].filter(Boolean).join("\n") : ""}\n\n${state.stage === 2 ? "No participant action is required unless separately requested." : "Use the response link to confirm or submit your correction requested in the latest issue email. Corrections must include an immutable GitHub commit URL and checkpoint URLs for all 10 tasks."}\n\nRoboSynChallenge organizers` };
   }
   function composer(job) {
     if (!state.emailDraft) return "";
@@ -322,7 +323,7 @@
   }
   function participantResponse(job) {
     if (!job.correction) return "";
-    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Deadline (UTC): ${escape(job.correction.deadline_at)}${job.correction.notes ? `<p>${escape(job.correction.notes)}</p>` : ""}</div>`;
+    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Correction round: ${escape(job.correction.round || 0)}${job.correction.notes ? `<p>${escape(job.correction.notes)}</p>` : ""}</div>`;
   }
   function commandBlock(command) {
     return `<div class="reviewer-command"><code data-copy-command>${escape(command)}</code><button type="button" class="reviewer-icon" data-review-action="copy" title="Copy command" aria-label="Copy command">${icon("copy")}</button></div>`;
@@ -402,11 +403,20 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   async function refresh() {
     const credentials = state.credentials;
+    const previous = new Map(state.jobs.map(job => [job.evaluation_id, job]));
     const includeMail = state.view === "email-status";
     const response = await request("reviewer_queue", { include_mail_status: includeMail });
     if (state.credentials !== credentials) return;
     state.role = response.reviewer?.role || "";
     state.jobs = response.jobs || [];
+    for (const job of state.jobs) {
+      const old = previous.get(job.evaluation_id);
+      if (old && (old.preparation_attempt !== job.preparation_attempt || old.bundle_commit !== job.bundle_commit || old.hf_check_context !== job.hf_check_context ||
+          old.workflow?.stages.some((stage, index) => stage.done && !job.workflow?.stages[index]?.done))) {
+        for (let index = 0; index < STAGES.length; index += 1) state.drafts.delete(job.evaluation_id + ":" + index);
+        if (state.selected === job.evaluation_id) { state.stage = firstOpen(job); state.emailDraft = null; }
+      }
+    }
     if (includeMail) state.mailStatus = response.messages || [];
     if (!selected()) { state.selected = state.jobs[0]?.evaluation_id || ""; state.stage = selected() ? firstOpen(selected()) : 0; }
   }
@@ -496,7 +506,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         return;
       }
       if (action === "logout") { sessionStorage.removeItem(STORAGE); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
-      if (action === "refresh") perform(async () => { await saveStage(); });
+      if (action === "refresh") perform(async () => { await saveStage(); if (LOCAL) state.preview = null; });
       if (action === "copy") {
         const text = event.target.closest(".reviewer-command")?.querySelector("code")?.textContent || "";
         navigator.clipboard.writeText(text).then(() => { state.toast = "Command copied."; paint(); }).catch(() => { state.error = "Clipboard access unavailable. Select and copy the command."; paint(); });
@@ -583,6 +593,16 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     });
     paint();
     if (state.credentials) perform(async () => {});
+    if (!LOCAL) window.setInterval(async () => {
+      if (!state.credentials || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
+          root()?.contains(document.activeElement) && document.activeElement.matches("input,textarea,select")) return;
+      const waiting = state.jobs.some(job => ["pending", "checking"].includes(job.hf_check_status) ||
+        ["pending", "code_ready"].includes(job.preparation_status) || job.correction?.status === "awaiting");
+      if (!waiting) return;
+      state.busy = true;
+      try { await refresh(); paint(); } catch { /* Manual refresh exposes persistent network failures. */ }
+      finally { state.busy = false; }
+    }, 45000);
   }
   window.RSCReviewer = { render, mount };
 })();

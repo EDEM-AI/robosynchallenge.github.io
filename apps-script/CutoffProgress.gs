@@ -1,0 +1,64 @@
+/** Back up selected inputs and progress before invalidating evidence. */
+function reviewBackupProgress_(run, reason) {
+  const backupId = "backup_" + Utilities.getUuid().replace(/-/g, "");
+  const tables = ["ReviewRuns", "ReviewProgress", "ReviewTaskResults", "ReviewTaskCommands", "ReviewCodePreparations",
+    "ReviewVersionChecks", "ReviewCorrections", "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewPreparation",
+    "ReviewUploadAccess", "ReviewArchiveUploads"];
+  tables.forEach(name => reviewRows_(name).filter(row => row.evaluation_id === run.evaluation_id).forEach(row => {
+    const data = JSON.stringify(row);
+    for (let offset = 0; offset < data.length; offset += 20000) {
+      reviewWrite_("ReviewProgressBackups", null, { backup_id: backupId, evaluation_id: run.evaluation_id,
+        table_name: name, row_key: String(row._rowNumber), part: offset / 20000,
+        snapshot_json: data.slice(offset, offset + 20000), reason, created_at: now_() });
+    }
+  }));
+  SpreadsheetApp.flush();
+  return backupId;
+}
+
+function reviewResetParticipantProgress_(run, links, reason) {
+  const previous = reviewWorkflow_(run.evaluation_id);
+  reviewTaskRows_(run.evaluation_id).forEach(row => reviewWrite_("ReviewTaskResults", row._rowNumber,
+    { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() }));
+  reviewRows_("ReviewArchiveUploads").filter(row => row.evaluation_id === run.evaluation_id).forEach(row => {
+    PropertiesService.getScriptProperties().deleteProperty(archiveSessionKey_(row.upload_id));
+    reviewWrite_("ReviewArchiveUploads", row._rowNumber, { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() });
+  });
+  const access = reviewRows_("ReviewUploadAccess").find(row => row.evaluation_id === run.evaluation_id);
+  if (access) reviewWrite_("ReviewUploadAccess", access._rowNumber, { evaluation_id: run.evaluation_id, revoked: "true" });
+  reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_commit: "", bundle_url: "",
+    policy_dirs_json: "[]", task_checkpoint_links_json: JSON.stringify(links), state: run.reviewer_email ? "assigned" : "unassigned", updated_at: now_() });
+  reviewStoreWorkflow_(run, { machine_id: previous.machine_id,
+    stages: REVIEW_STAGES.map((_, index) => index === 2 ? previous.stages[2] : ({ done: false, checks: {}, completed_at: "" })) });
+  reviewRows_("ReviewTaskCommands").filter(row => row.evaluation_id === run.evaluation_id).forEach(row =>
+    reviewWrite_("ReviewTaskCommands", row._rowNumber, { evaluation_id: run.evaluation_id, bundle_commit: "", command: "", updated_at: now_() }));
+  const check = reviewRows_("ReviewAccessChecks").find(row => row.evaluation_id === run.evaluation_id);
+  if (check) reviewWrite_("ReviewAccessChecks", check._rowNumber, { evaluation_id: run.evaluation_id, report_json: "", checked_at: "" });
+  const version = reviewRows_("ReviewVersionChecks").find(row => row.evaluation_id === run.evaluation_id);
+  if (version) reviewWrite_("ReviewVersionChecks", version._rowNumber, { evaluation_id: run.evaluation_id, status: "pending", report_json: "", checked_at: "" });
+  reviewPreparationStatus_(run.evaluation_id, "pending", reason);
+}
+
+function reviewReconcileFinalProgress_(payload) {
+  return withReviewLock_(() => {
+    const { viewer, run } = reviewOwnedRun_(payload, true);
+    if (viewer.role !== "admin") throw new Error("Organizer preparation access required.");
+    const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    if (payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Participant inputs changed during final progress check.");
+    if (Date.now() < Date.parse(job.version_cutoff_at)) throw new Error("Wait until the version cutoff.");
+    const selected = payload.report;
+    if (!selected || !/^[a-f0-9]{40}$/.test(selected.code?.revision || "") || selected.code.cutoff_at !== job.version_cutoff_at ||
+        Object.keys(selected.hf || {}).length !== 10 || Object.keys(REVIEW_TASK_STEPS).some(task => !selected.hf[task]?.accessible ||
+        selected.hf[task].url !== job.task_checkpoint_links[task] || !/^[a-f0-9]{40}$/.test(selected.hf[task].revision || "") || selected.hf[task].cutoff_at !== job.version_cutoff_at)) throw new Error("Final progress check requires the current code and all ten checkpoint receipts.");
+    const old = reviewRows_("ReviewVersionChecks").find(row => row.evaluation_id === run.evaluation_id);
+    if (!old || old.status !== "provisional") return { ok: true, state: "no_provisional_progress", reset: false };
+    const prior = parseJson_(old.report_json, {});
+    const unchanged = prior.code?.revision === selected.code.revision && Object.keys(REVIEW_TASK_STEPS).every(task =>
+      prior.hf?.[task]?.url === selected.hf[task].url && prior.hf[task].revision === selected.hf[task].revision);
+    if (unchanged) return { ok: true, state: "unchanged", reset: false };
+    const reason = "Deadline freeze selected different code/checkpoint revisions. Prior progress was backed up; use the new clone and pinned checkpoints.";
+    const backupId = reviewBackupProgress_(run, reason);
+    reviewResetParticipantProgress_(run, job.task_checkpoint_links, reason);
+    return { ok: true, state: "reset", reset: true, backup_id: backupId };
+  });
+}

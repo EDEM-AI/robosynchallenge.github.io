@@ -25,7 +25,7 @@ The read-only 2026-10-11 audit found 220 submissions, 221 evaluation rows, 218 r
 
 The top progress, request list, stage controls and three bottom actions remain stable on desktop. Required fields/checklists have red stars. Stage-specific, generic and blank issue mail templates are editable inline; the participant recipient is server-fixed. Delivery IDs, quota checks and uncertain-send locks prevent blind duplicate retries.
 
-Issue mail includes a response form: confirm the original code or submit one immutable correction with all ten checkpoints within 24 hours of the first notice. Subsequent emails do not extend the deadline. Corrections use a separate correction1 branch and revoke old upload permissions without changing team identities.
+Each new participant issue email opens a response round: confirm the current code or submit an immutable correction with checkpoints for all ten tasks. There is no 24-hour deadline or overall correction limit. Use the latest email's form; an answered link cannot be replayed. Corrections use separate correction1, correction2 and later branches, revoke old upload permissions and supersede previous results without changing team identities or assignments. Code/HF and downstream progress reset; the machine environment test is retained. Evaluators must use the new clone and its frozen checkpoint index.
 
 ## Outstanding Acceptance
 

@@ -27,7 +27,7 @@ let workbookOpens = 0;
 const context = vm.createContext({
   console,
   ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/macros/s/test/exec" }) },
-  SpreadsheetApp: { getActive: () => { workbookOpens += 1; return workbook; } },
+  SpreadsheetApp: { getActive: () => { workbookOpens += 1; return workbook; }, flush() {} },
   PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || "", setProperty: (key, value) => { properties[key] = value; }, deleteProperty: key => { delete properties[key]; } }) },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value), remove: key => cache.delete(key) }) },
@@ -38,7 +38,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 function insert(name, row) {
   const headers = vm.runInContext(`SHEETS.${name}`, context);
@@ -348,9 +348,14 @@ const originalSnapshot = JSON.stringify(sheet("Submissions").cells);
 context.HtmlService = { createHtmlOutput: text => text };
 call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "The original code is correct." });
 assert.equal(JSON.stringify(sheet("Submissions").cells), originalSnapshot);
-assert.throws(() => call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "Second reply" }), /already been recorded/);
+assert.throws(() => call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "Second reply" }), /not active/);
 vm.runInContext('reviewWrite_("ReviewCorrections", 2, {evaluation_id:"eval_new", deadline_at:"2020-01-01T00:00:00Z"})', context);
-assert.throws(() => call("requireReviewResponse_", responseParams), /expired/);
+context.MailApp.getRemainingDailyQuota = () => 10;
+call("reviewSendIssue_", { ...issue, message_id: "msg_" + "2".repeat(32) });
+const reopenedParams = Object.fromEntries(new URL(sent.at(-1).body.match(/https:\/\/\S+rsc_action=review_response\S+/)[0]).searchParams);
+vm.runInContext('reviewWrite_("ReviewCorrections", 2, {evaluation_id:"eval_new", deadline_at:"2020-01-01T00:00:00Z"})', context);
+assert(call("requireReviewResponse_", reopenedParams), "An old 24-hour deadline no longer blocks the latest issue link");
+assert.throws(() => call("requireReviewResponse_", responseParams), /not active/);
 context.MailApp.getRemainingDailyQuota = () => 10;
 const legacyIssue = { ...issue, evaluation_id: "eval_legacy", message_id: "msg_" + "f".repeat(32) };
 call("reviewSendIssue_", legacyIssue);
@@ -361,7 +366,7 @@ const correctionFields = { ...legacyParams, response_kind: "correct", code_link:
   ...Object.fromEntries(taskNames.map(task => ["checkpoint_" + task, taskLinks[task]])) };
 call("handleReviewResponseSubmit_", correctionFields);
 assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), beforeCorrection);
-assert.throws(() => call("handleReviewResponseSubmit_", correctionFields), /already been submitted/);
+assert.throws(() => call("handleReviewResponseSubmit_", correctionFields), /not active/);
 assert.throws(() => call("reviewUploadContext_", { evaluation_id: "eval_legacy", upload_token: legacyAccess.upload_token }), /Invalid or expired/);
 const correctedJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
 assert.equal(correctedJob.code_bundle_commit, "", "A correction must not display the old validation branch");
@@ -374,6 +379,34 @@ assert.throws(() => call("reviewAccessCheck_", { ...credentials, evaluation_id: 
 call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: hfReport });
 call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legacy", bundle_commit: "8".repeat(40),
   bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_legacy-correction1", policy_dirs: ["policy/act"] });
+call("reviewSendIssue_", { ...legacyIssue, message_id: "msg_" + "3".repeat(32) });
+const secondParams = Object.fromEntries(new URL(sent.at(-1).body.match(/https:\/\/\S+rsc_action=review_response\S+/)[0]).searchParams);
+const awaitingCorrection = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(awaitingCorrection.code_link, correctedLink, "Sending follow-up mail must not revert the effective code");
+assert.equal(awaitingCorrection.preparation_attempt, 1);
+const previousResponseAt = awaitingCorrection.version_cutoff_at;
+call("handleReviewResponseSubmit_", { ...secondParams, response_kind: "confirm", notes: "Please check the corrected code again" });
+const confirmedCorrection = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(confirmedCorrection.preparation_attempt, 1);
+assert.equal(confirmedCorrection.version_cutoff_at, previousResponseAt, "Confirmation must not change frozen checkpoint cutoff");
+call("reviewSendIssue_", { ...legacyIssue, message_id: "msg_" + "4".repeat(32) });
+const thirdParams = Object.fromEntries(new URL(sent.at(-1).body.match(/https:\/\/\S+rsc_action=review_response\S+/)[0]).searchParams);
+vm.runInContext('reviewStoreWorkflow_(reviewRun_("eval_legacy"), {machine_id:"verified-machine",stages:REVIEW_STAGES.map((_,i)=>({done:true,checks:{},completed_at:"2026-10-11T00:00:00Z"}))})', context);
+call("handleReviewResponseSubmit_", { ...correctionFields, ...thirdParams, code_link: "https://github.com/example/policy/tree/" + "7".repeat(40), notes: "Second complete correction" });
+const roundTwo = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(roundTwo.preparation_attempt, 2);
+assert.equal(roundTwo.bundle_commit, "");
+assert.equal(roundTwo.workflow.stages[2].done, true, "Keep the machine environment test, but reset participant-dependent progress");
+assert(roundTwo.workflow.stages.filter((_, i) => i !== 2).every(stage => !stage.done));
+assert.equal(roundTwo.workflow.machine_id, "verified-machine");
+assert.equal(roundTwo.reviewer_email, correctedJob.reviewer_email);
+assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), beforeCorrection);
+call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: hfReport });
+assert.throws(() => call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legacy", bundle_commit: "6".repeat(40),
+  bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_legacy-correction1", policy_dirs: ["policy/act"] }), /does not match/);
+call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legacy", bundle_commit: "6".repeat(40),
+  bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_legacy-correction2", policy_dirs: ["policy/act"] });
+assert.equal(call("reviewRows_", "ReviewResponseLinks").filter(row => row.evaluation_id === "eval_legacy" && row.status === "used").length, 3, "Each response round retains its own audit record");
 insert("Users", { email: "assigned-legacy@example.com", team_name: "Assigned legacy team" });
 insert("Submissions", { submission_id: "sub_assigned", evaluation_id: "eval_assigned", email: "assigned-legacy@example.com",
   checkpoint_link: "https://huggingface.co/test/legacy", is_ranked: "true", created_at: "2026-10-10T00:00:00Z" });
@@ -568,8 +601,45 @@ const lockedRun = call("reviewQueue_", credentials).jobs.find(job => job.evaluat
 vm.runInContext(`reviewWrite_("ReviewProgress", null, {evaluation_id:"eval_pool0",stages_json:JSON.stringify([{},{checks:{commit_verified:true}}])})`, context);
 call("reviewSetPool_", { ...credentials, email: lockedRun.reviewer_email, active: false, minimum_evaluators: 1 });
 const rebalanced = call("reviewBalancePool_", credentials);
-assert.equal(rebalanced.locked_outside_pool, 1);
+assert(rebalanced.locked_outside_pool >= 1, "Keep all started work, including retained environment checks, with its evaluator");
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_pool0").reviewer_email, lockedRun.reviewer_email);
 assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), participantData);
 assert(!JSON.stringify(balanced).includes("token_sha256"));
+insert("Users", {email:"cutoff@example.com",team_name:"Cutoff fixture"});
+insert("Submissions", {submission_id:"sub_cutoff",evaluation_id:"eval_cutoff",email:"cutoff@example.com",is_ranked:"true",created_at:"2026-10-10T00:00:00Z",task_checkpoint_links_json:JSON.stringify(taskLinks)});
+insert("Evaluations", {submission_id:"sub_cutoff",evaluation_id:"eval_cutoff",email:"cutoff@example.com"});
+call("reviewEnsureRun_", {...credentials,evaluation_id:"eval_cutoff"});
+const frozenHF = Object.fromEntries(taskNames.map(task => [task,{...hfReport[task],cutoff_at:"2026-10-12T12:00:00.000Z"}]));
+const previousVersion = {code:{revision:"4".repeat(40),cutoff_at:"2026-10-11T00:00:00Z"},hf:frozenHF};
+vm.runInContext(`reviewWrite_("ReviewVersionChecks", null, {evaluation_id:"eval_cutoff",status:"provisional",report_json:${JSON.stringify(JSON.stringify(previousVersion))}}); reviewStoreWorkflow_(reviewRun_("eval_cutoff"),{machine_id:"keep-machine",stages:REVIEW_STAGES.map((_,i)=>({done:i===0||i===2,checks:{},completed_at:"previous"}))})`, context);
+const cutoffJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_cutoff");
+const progressBeforeFreeze = JSON.stringify(cutoffJob.workflow);
+const finalReport = {code:{revision:"4".repeat(40),cutoff_at:"2026-10-12T12:00:00.000Z"},hf:frozenHF};
+vm.runInContext(`savedClock=Date.now; Date.now=()=>${closing+1000}`, context);
+const reconcileFields = {...credentials,evaluation_id:"eval_cutoff",context_json:cutoffJob.hf_check_context,report:finalReport};
+assert.equal(call("reviewReconcileFinalProgress_", reconcileFields).state,"unchanged");
+assert.equal(JSON.stringify(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_cutoff").workflow),progressBeforeFreeze);
+const changedReport = {...finalReport,hf:{...frozenHF,click_bell:{...frozenHF.click_bell,revision:"5".repeat(40)}}};
+const realWrite = context.reviewWrite_;
+context.reviewWrite_ = (name, row, values) => { if(name==="ReviewProgressBackups") throw new Error("Backup write failed"); return realWrite(name,row,values); };
+assert.throws(()=>call("reviewReconcileFinalProgress_",{...reconcileFields,report:changedReport}),/Backup write failed/);
+assert.equal(JSON.stringify(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_cutoff").workflow),progressBeforeFreeze,"Never reset if the backup cannot be written");
+context.reviewWrite_ = realWrite;
+const resetAtFreeze = call("reviewReconcileFinalProgress_",{...reconcileFields,report:changedReport});
+assert.equal(resetAtFreeze.reset,true);
+const backup = call("reviewRows_","ReviewProgressBackups").filter(row=>row.backup_id===resetAtFreeze.backup_id);
+assert(backup.some(row=>row.table_name==="ReviewProgress" && row.snapshot_json.includes("keep-machine")));
+assert(backup.some(row=>row.table_name==="ReviewVersionChecks" && row.snapshot_json.includes("provisional")));
+const resetWorkflow = call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_cutoff").workflow;
+assert.equal(resetWorkflow.stages[0].done,false);
+assert.equal(resetWorkflow.stages[2].done,true);
+assert.equal(call("reviewReconcileFinalProgress_",{...reconcileFields,report:changedReport}).reset,false,"A retry does not back up/reset the same progress again");
+vm.runInContext("Date.now=savedClock",context);
+const responseRowsBeforeMigration = JSON.stringify(sheet("ReviewCorrections").cells.slice(1));
+sheet("ReviewCorrections").cells[0] = sheet("ReviewCorrections").cells[0].slice(0, 10);
+sheet("ReviewResponseLinks").cells[0] = sheet("ReviewResponseLinks").cells[0].slice(0, 5);
+assert.throws(() => call("reviewMigrateResponseSchema_", {reviewer_email:observer.email,reviewer_token:observer.token}), /Organizer/);
+assert.equal(call("reviewMigrateResponseSchema_", credentials).ok, true);
+assert.equal(call("reviewMigrateResponseSchema_", credentials).ok, true);
+assert.equal(JSON.stringify(sheet("ReviewCorrections").cells.slice(1)), responseRowsBeforeMigration, "Schema migration only appends headers, never rewrites existing participant responses");
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");

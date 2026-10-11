@@ -3,6 +3,7 @@
 !Reviewer.gs
 !ReviewerPool.gs
 !ReviewResponse.gs
+!CutoffProgress.gs
 !ArchiveUpload.gs
 !CheckpointAccess.gs
 !SubmissionWindow.gs
