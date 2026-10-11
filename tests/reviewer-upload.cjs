@@ -35,7 +35,7 @@ async function test(corrupt = false, rejected = false, phase = "upload", offset 
   }
   const run = () => context.window.RSCOneDrive.upload({file,record,request});
   if (corrupt) {
-    await assert.rejects(run, /SHA256 mismatch/);
+    await assert.rejects(run, /SHA256 不一致/);
     assert(!actions.includes("reviewer_finish_evidence_upload"));
   } else if (rejected) {
     await assert.rejects(run, /locked/);
