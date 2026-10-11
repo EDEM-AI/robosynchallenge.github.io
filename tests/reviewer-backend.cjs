@@ -260,6 +260,29 @@ call("reviewVerifyCoverage_", { ...credentials, evaluation_id: "eval_legacy", co
 const verified = call("reviewQueue_", credentials).jobs.find((job) => job.evaluation_id === "eval_legacy");
 assert.equal(verified.coverage_status, "verified_all_10");
 assert.equal(verified.coverage_verified_by, credentials.reviewer_email);
+assert.equal(verified.hf_check_status, "pending");
+call("reviewCheckpointCheck_", { ...credentials, evaluation_id: "eval_legacy", task_checkpoint_links: taskLinks,
+  status: "failed", message: "click_bell: HTTP 403", cutoff_at: "2026-10-10T00:00:00Z" });
+let hfJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(hfJob.hf_check_status, "failed");
+assert.equal(hfJob.code_bundle_commit, validation.bundle_commit, "HF failure must not hide the composed code");
+assert.equal(hfJob.preparation_status, "code_ready");
+call("reviewRetryPreparation_", { ...credentials, evaluation_id: "eval_legacy" });
+assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").hf_check_status, "pending");
+const accessReport = Object.fromEntries(taskNames.map(task => [task, { url: taskLinks[task], revision: "f".repeat(40), accessible: true, files_checked: 2 }]));
+call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: accessReport });
+assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").hf_check_status, "passed");
+const changedLinks = { ...taskLinks, click_bell: "https://huggingface.co/test/changed" };
+const oldContext = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").hf_check_context;
+call("reviewVerifyCoverage_", { ...credentials, evaluation_id: "eval_legacy", coverage_confirmed: true, task_checkpoint_links: changedLinks });
+hfJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(hfJob.hf_check_status, "pending");
+assert.equal(Object.keys(hfJob.hf_access).length, 0, "Changing task URLs must invalidate the previous success receipt");
+assert.throws(() => call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: accessReport, context_json: oldContext }), /changed while/);
+assert.throws(() => call("reviewCheckpointCheck_", { ...credentials, evaluation_id: "eval_legacy", task_checkpoint_links: taskLinks, status: "checking" }), /current ten-task/);
+assert.throws(() => call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: accessReport }), /matching/);
+call("reviewVerifyCoverage_", { ...credentials, evaluation_id: "eval_legacy", coverage_confirmed: true, task_checkpoint_links: taskLinks });
+call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: accessReport });
 const legacyAccess = call("reviewIssueUploadAccess_", { ...credentials, evaluation_id: "eval_legacy" });
 assert.equal(call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legacy",
   bundle_commit: bundleCommit, bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_legacy",

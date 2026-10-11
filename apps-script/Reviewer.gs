@@ -15,6 +15,7 @@ const REVIEW_TABLES = {
   ReviewArchiveUploads: ["evaluation_id", "task", "upload_id", "expected_sha256", "size", "status", "expires_at", "updated_at", "record_hash"],
   ReviewTaskCommands: ["evaluation_id", "task", "bundle_commit", "command", "reviewer_email", "updated_at"],
   ReviewAccessChecks: ["evaluation_id", "report_json", "checked_at"],
+  ReviewCheckpointChecks: ["evaluation_id", "context_json", "status", "message", "cutoff_at", "updated_at"],
   ReviewResponseLinks: ["evaluation_id", "message_id", "token_hash", "status", "created_at"],
   ReviewCorrections: ["evaluation_id", "participant_email", "deadline_at", "status", "code_link", "task_checkpoint_links_json", "notes", "responded_at", "previous_bundle_commit", "updated_at"],
   ReviewSubmissionWindows: ["window_id", "email", "token_hash", "status", "expires_at", "reason", "granted_by", "created_at"],
@@ -193,23 +194,50 @@ function reviewSaveCommand_(payload) {
   });
 }
 
+function reviewCheckpointContext_(job) {
+  return JSON.stringify([job.submission_id, Number(job.preparation_attempt || 0), Number(job.version_generation || 0),
+    job.version_cutoff_at, Object.keys(REVIEW_TASK_STEPS).map(task => job.task_checkpoint_links?.[task] || "")]);
+}
+
+function reviewCheckpointStatus_(job, status, message, cutoff) {
+  const row = reviewRows_("ReviewCheckpointChecks").find(item => item.evaluation_id === job.evaluation_id);
+  reviewWrite_("ReviewCheckpointChecks", row?._rowNumber, { evaluation_id: job.evaluation_id,
+    context_json: reviewCheckpointContext_(job), status, message, cutoff_at: cutoff || "", updated_at: now_() });
+}
+
+function reviewCheckpointCheck_(payload) {
+  return withReviewLock_(() => {
+    const { viewer, run } = reviewOwnedRun_(payload, true);
+    if (viewer.role !== "admin" || run.bundle_commit) throw new Error("Only the preparer can record checkpoint checks before handoff.");
+    const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    if (payload.context_json && payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Checkpoint inputs changed while the check was running.");
+    if (!job || !reviewTaskLinks_(job.task_checkpoint_links) || !reviewTaskLinks_(payload.task_checkpoint_links) ||
+        Object.keys(REVIEW_TASK_STEPS).some(task => payload.task_checkpoint_links[task] !== job.task_checkpoint_links[task]) ||
+        !["checking", "failed"].includes(payload.status)) throw new Error("Checkpoint check must match the current ten-task URLs.");
+    reviewCheckpointStatus_(job, payload.status, payload.status === "failed" ? requiredString_(payload.message, "Checkpoint failure").slice(0, 1000) : "", payload.cutoff_at);
+    return { ok: true };
+  });
+}
+
 function reviewAccessCheck_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin" || run.bundle_commit) throw new Error("Only the preparer can record an access check before code handoff.");
     const report = payload.report;
-    const submission = reviewJob_(run.evaluation_id).submission;
-    const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === run.evaluation_id && row.status === "corrected");
-    const links = reviewTaskLinks_(parseJson_(correction?.task_checkpoint_links_json || submission.task_checkpoint_links_json || run.task_checkpoint_links_json, {}));
+    const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    if (payload.context_json && payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Checkpoint inputs changed while the check was running.");
+    const links = reviewTaskLinks_(job?.task_checkpoint_links);
     if (!report || JSON.stringify(report).length > 20000 || Object.keys(report).length !== 10 || Object.keys(REVIEW_TASK_STEPS).some((task) =>
       !report[task] || !links || report[task].url !== links[task] || !/^[a-f0-9]{40}$/.test(report[task].revision || "") || report[task].accessible !== true ||
       !Number.isInteger(report[task].files_checked) || report[task].files_checked < 1 || report[task].files_checked > 10000)) throw new Error("Successful Hugging Face access receipts matching all 10 submitted task URLs are required.");
     const safe = Object.fromEntries(Object.keys(REVIEW_TASK_STEPS).map((task) => [task, {
       url: report[task].url, revision: report[task].revision, accessible: true,
       files_checked: Number(report[task].files_checked || 0), gated: Boolean(report[task].gated), private: Boolean(report[task].private),
+      cutoff_at: report[task].cutoff_at || "", committed_at: report[task].committed_at || "",
     }]));
     const row = reviewRows_("ReviewAccessChecks").find((item) => item.evaluation_id === run.evaluation_id);
     reviewWrite_("ReviewAccessChecks", row?._rowNumber, { evaluation_id: run.evaluation_id, report_json: JSON.stringify(safe), checked_at: now_() });
+    reviewCheckpointStatus_(job, "passed", "", report[Object.keys(REVIEW_TASK_STEPS)[0]].cutoff_at);
     return { ok: true };
   });
 }
@@ -235,6 +263,7 @@ function reviewQueue_(payload, organizer) {
   const codePreparations = new Map(reviewRows_("ReviewCodePreparations").map(row => [String(row.evaluation_id), row]));
   const corrections = new Map(reviewRows_("ReviewCorrections").map((row) => [String(row.evaluation_id), row]));
   const accessChecks = new Map(reviewRows_("ReviewAccessChecks").map((row) => [String(row.evaluation_id), row]));
+  const checkpointChecks = new Map(reviewRows_("ReviewCheckpointChecks").map(row => [String(row.evaluation_id), row]));
   const commands = reviewRows_("ReviewTaskCommands");
   const versionChecks = new Map(reviewRows_("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
   const versionDecisions = new Map(reviewRows_("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
@@ -251,6 +280,17 @@ function reviewQueue_(payload, organizer) {
     const verifiedLinks = reviewTaskLinks_(parseJson_(run?.task_checkpoint_links_json, {}));
     const correctedLinks = correction?.status === "corrected" ? reviewTaskLinks_(parseJson_(correction.task_checkpoint_links_json, {})) : null;
     const taskLinks = correctedLinks || declaredLinks || verifiedLinks || {};
+    const cutoff = correction?.status === "corrected" && (!decision || Date.parse(decision.approved_at) <= Date.parse(correction.responded_at)) ? correction.responded_at : decision?.cutoff_at ||
+      submissionWindows.get(submission.submission_window_id)?.expires_at || POLICY_SUBMISSION_CLOSE_AT;
+    const checkpointContext = reviewCheckpointContext_({ submission_id: submission.submission_id,
+      preparation_attempt: correction?.status === "corrected" ? 1 : 0, version_generation: Number(decision?.generation || 0),
+      version_cutoff_at: cutoff, task_checkpoint_links: taskLinks });
+    const checkpointRow = checkpointChecks.get(String(evaluation.evaluation_id));
+    const checkpointCheck = checkpointRow?.context_json === checkpointContext ? checkpointRow : null;
+    const savedAccess = parseJson_(accessChecks.get(String(evaluation.evaluation_id))?.report_json, {});
+    const accessCurrent = Object.keys(savedAccess).length === 10 && Object.keys(REVIEW_TASK_STEPS).every(task =>
+      savedAccess[task]?.accessible === true && savedAccess[task]?.url === taskLinks[task]) &&
+      (!checkpointRow || (checkpointCheck && checkpointCheck.status === "passed"));
     const codeLink = correction?.status === "corrected" ? correction.code_link : submission.code_link;
     const savedCode = codePreparations.get(String(evaluation.evaluation_id));
     const code = savedCode?.submission_id === submission.submission_id && savedCode?.code_link === codeLink &&
@@ -265,13 +305,17 @@ function reviewQueue_(payload, organizer) {
       code_link: correction?.status === "corrected" ? correction.code_link : submission.code_link, checkpoint_link: submission.checkpoint_link,
       correction: correction ? { status: correction.status, deadline_at: correction.deadline_at, responded_at: correction.responded_at, notes: correction.notes } : null,
       preparation_attempt: correction?.status === "corrected" ? 1 : 0,
-      version_cutoff_at: correction?.status === "corrected" && (!decision || Date.parse(decision.approved_at) <= Date.parse(correction.responded_at)) ? correction.responded_at : decision?.cutoff_at ||
-        submissionWindows.get(submission.submission_window_id)?.expires_at || POLICY_SUBMISSION_CLOSE_AT,
+      version_cutoff_at: cutoff,
       version_exception: decision ? { reason: decision.reason, approved_by: decision.approved_by, approved_at: decision.approved_at } : null,
       version_generation: Number(decision?.generation || 0), version_status: versionCheck?.status || "pending",
       version_report: parseJson_(versionCheck?.report_json, {}),
       task_commands: run ? Object.fromEntries(commands.filter((row) => row.evaluation_id === run.evaluation_id && row.bundle_commit === run.bundle_commit).map((row) => [row.task, row.command])) : {},
-      hf_access: parseJson_(accessChecks.get(String(evaluation.evaluation_id))?.report_json, {}),
+      hf_access: accessCurrent ? savedAccess : {},
+      hf_check_status: checkpointCheck?.status === "passed" ? (accessCurrent ? "passed" : "pending") :
+        checkpointCheck?.status || (accessCurrent ? "passed" : reviewTaskLinks_(taskLinks) ? "pending" : "awaiting_mapping"),
+      hf_check_error: checkpointCheck?.message || "", hf_check_updated_at: checkpointCheck?.updated_at || "",
+      hf_check_cutoff_at: checkpointCheck?.cutoff_at || "",
+      hf_check_context: checkpointContext,
       task_checkpoint_links: taskLinks,
       coverage_status: correctedLinks || declaredLinks ? "declared_all_10" : verifiedLinks ? "verified_all_10" : "legacy_unverified",
       coverage_verified_by: run?.coverage_verified_by || "",
@@ -438,6 +482,9 @@ function reviewRetryPreparation_(payload) {
     const { run } = reviewOwnedRun_(payload);
     if (run.bundle_commit) throw new Error("Prepared code already exists.");
     reviewPreparationStatus_(run.evaluation_id, "pending", "");
+    const checkpoint = reviewRows_("ReviewCheckpointChecks").find(row => row.evaluation_id === run.evaluation_id);
+    if (checkpoint?.status === "failed") reviewWrite_("ReviewCheckpointChecks", checkpoint._rowNumber,
+      { evaluation_id: run.evaluation_id, status: "pending", message: "", updated_at: now_() });
     return { ok: true };
   });
 }
@@ -570,7 +617,7 @@ function reviewUpdateStage_(payload, complete) {
     if (complete) {
       if (Object.values(checks).some((value) => !value)) throw new Error("Complete every required checklist item.");
       if (index === 0 && (!run.bundle_commit || !run.bundle_url)) throw new Error("Automatic code preparation must succeed before continuing.");
-      if (index === 0 && !reviewRows_("ReviewAccessChecks").some((row) => row.evaluation_id === run.evaluation_id && row.checked_at && Object.keys(parseJson_(row.report_json, {})).length === 10)) throw new Error("Automatic Hugging Face access checks must pass for all 10 tasks.");
+      if (index === 0 && reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_status !== "passed") throw new Error("Automatic Hugging Face access checks must pass for the current 10 task URLs.");
       if (index === 0 && !reviewTaskLinks_(parseJson_(job.submission.task_checkpoint_links_json, {})) &&
           !reviewTaskLinks_(parseJson_(run.task_checkpoint_links_json, {}))) throw new Error("All 10 task checkpoints must be declared or verified by an organizer.");
       if (index === 1 && (!run.bundle_commit || !run.bundle_url)) throw new Error("Prepared evaluation code is not available yet.");
@@ -649,7 +696,8 @@ function reviewSendIssue_(payload) {
       reviewer_email: viewer.email, stage, recipient, subject, body, status: "sending", created_at: now_() });
     const row = reviewRows_("ReviewMessages").find((item) => item.message_id === messageId);
     const preparation = reviewRows_("ReviewPreparation").find(item => item.evaluation_id === run.evaluation_id);
-    const needsArgument = stage === 0 && String(preparation?.message || "").includes("NO_LEGAL_VERSION");
+    const checkpointError = reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_error || "";
+    const needsArgument = stage === 0 && String((preparation?.message || "") + checkpointError).includes("NO_LEGAL_VERSION");
     const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId);
     const responseText = response ? `\n\nConfirm or submit your single code correction: ${response.url}\nDeadline (UTC): ${response.deadline}\nOne code correction is allowed within 24 hours of the first issue notification. The original team and submission identity cannot be changed.` : "";
     try {
@@ -704,6 +752,7 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_send_issue") return reviewSendIssue_(payload);
   if (action === "reviewer_save_command") return reviewSaveCommand_(payload);
   if (action === "reviewer_access_check") return reviewAccessCheck_(payload);
+  if (action === "reviewer_checkpoint_check") return reviewCheckpointCheck_(payload);
   if (action === "reviewer_assign") return reviewAssign_(payload);
   if (action === "reviewer_verify_coverage") return reviewVerifyCoverage_(payload);
   if (action === "reviewer_prepare") return reviewPrepare_(payload);

@@ -8,7 +8,7 @@ Local walkthrough: http://127.0.0.1:8032/eval_backend/?review_preview=1. The fir
 
 ## Verified
 
-- The original Apps Script deployment is version 43, reviewer API v6, with independent code-preparation records; live health and authenticated submission-link audit passed. The existing ACT source SHA256 was accepted by the immutable scoring configuration endpoint.
+- The original Apps Script deployment is version 46, reviewer API v6, with independent code-preparation and checkpoint-check records; live health and authenticated submission-link audit passed. The existing ACT source SHA256 was accepted by the immutable scoring configuration endpoint.
 - HF official endpoint verifies the individual RoboSynChallenge account; auth ignores HF_ENDPOINT mirror overrides. Credentials are mode 0600.
 - GitHub robosynchallenge account is authorized for participant repositories. Private composition publishes under ZhaoRunyi/RoboSynChallenge_eval; main remains the frozen official commit.
 - Private repo main was independently checked against official SHA 8818c82df5fa2522809b8105e7018950dcc9a9a8. Guiliang and lichengkun789-ship-it still have pending invitations; they must accept their own invitations.
@@ -39,7 +39,15 @@ Submission retries now use a durable SubmissionReceipts row and a script lock, w
 
 Code-only validation branches use validation/{evaluation_id}-{participant_sha12}-{official_sha12}, with correction/exception suffixes when applicable. They contain no checkpoint receipt or upload capability and cannot unlock formal evaluation or retrieve the organizer HF credential. The first review stage shows the real code result even while checkpoint mapping is incomplete. A correction or approved version exception invalidates the old displayed code record. Retries reuse an existing matching branch and never force-push it.
 
-The private evaluation repository was rechecked through GitHub API: private=true, visibility=private. For real request eval_65821972c17441, the validation branch's policy Git tree hash exactly matches the participant commit; every root entry outside policy/ and the generated bundle manifest matches the official base. It contains neither evaluation-upload.json nor an HF receipt. All 43 offline Python tests, backend/upload tests and the five-stage desktop browser flow passed, including real validation-status display while the checkpoint gate remains blocked.
+The private evaluation repository was rechecked through GitHub API: private=true, visibility=private. For real request eval_65821972c17441, the validation branch's policy Git tree hash exactly matches the participant commit; every root entry outside policy/ and the generated bundle manifest matches the official base. It contains neither evaluation-upload.json nor an HF receipt. All 45 offline Python tests, backend/upload tests and the five-stage desktop browser flow passed, including real validation-status display while the checkpoint gate remains blocked and consistent provisional Git/HF receipt cutoffs.
+
+### Independent Checkpoint Access
+
+The first review stage has two substeps: Code preparation / GitHub access, and Hugging Face checkpoint access. Code checks run without a task checkpoint map. Once a reviewer saves all ten task URLs, the persistent preparer checks HF access independently, using the organizer's authorized read account and actual file metadata requests. Code failure does not skip HF checks; HF failure does not suppress a successful code result.
+
+ReviewCheckpointChecks stores pending/checking/passed/failed state and safe failure diagnostics. Receipts are bound to the submission, ten URLs, correction attempt, exception generation and cutoff. Changed inputs hide stale receipts; late results cannot overwrite the newer context. Successful or failed unchanged checks are not repeated every 120 seconds. Explicit reviewer retry or changed URLs requeues failures; the deadline freeze requires a final cutoff check. Formal handoff still requires both successful checks and frozen versions.
+
+Live verification: PeaceVLA has a successful existing HF receipt. DHU RoboLab's ten-task HF check passed automatically at 2026-10-11T08:18:32Z despite its code preparation remaining blocked. The other 26 current requests require reviewer-confirmed task URLs; no mapping or access success was invented. The preview is a read-only snapshot: simulated local form saves do not run production HF checks.
 
 To refresh the local-only walkthrough with live preparation status:
 
@@ -59,15 +67,15 @@ On October 11, the first pass processed 28 latest requests: 17 real validation b
 | eval_1745e4e6bb874a | Vulcan Dynamics | Selected commit has no policy/ directory; verified through GitHub tree API. |
 | eval_1e815230feb54b | Kaelio | Submitted repository cannot be read using the official participant-read account. |
 | eval_21a30779b1b445 | Team Turbo | Submitted repository cannot be read using the official participant-read account. |
-| eval_6a78fd0ef86b40 | RobotQQ | Policy tree contains symlinks or submodules rejected by the safety guard. |
-| eval_770795218d0441 | luminbot | Policy tree contains symlinks or submodules rejected by the safety guard. |
-| eval_7c9414f1a05b4d | smallzhangiscodeing | policy/iaiicas/manipulate_pipette lacks at least one required eval.sh / deploy_policy.yml file. |
-| eval_7b8c2870df9444 | SZU-VCC Synapse | policy/sample_poseplan_v1/frozen/RoboSynChallenge/policy/act lacks at least one required adapter file. |
-| eval_c7b2a7e327ea4d | DHU RoboLab | policy/robosyn_team/runtime lacks at least one required adapter file. Supersedes eval_fb417a4736d345. |
-| eval_ed0b18afd0d445 | SEU MAI | policy/act lacks at least one required adapter file. |
+| eval_6a78fd0ef86b40 | RobotQQ | Documentation symlinks under policy/smolvla/lerobot/src/lerobot/policies, robots and teleoperators are rejected by the safety guard, including policies/act/README.md. |
+| eval_770795218d0441 | luminbot | Four HF cache symlinks under policy/policy_v3/services/mono/hf_cache are rejected: config.json, model.safetensors, preprocessor_config.json and processor_config.json. |
+| eval_7c9414f1a05b4d | smallzhangiscodeing | policy/iaiicas/manipulate_pipette and policy/iaiicas/pi05_overrides each lack both eval.sh and deploy_policy.yml. |
+| eval_7b8c2870df9444 | SZU-VCC Synapse | policy/sample_poseplan_v1/frozen/RoboSynChallenge/policy/act lacks both eval.sh and deploy_policy.yml. The recursive adapter guard includes this nested frozen adapter. |
+| eval_c7b2a7e327ea4d | DHU RoboLab | policy/robosyn_team/runtime lacks both eval.sh and deploy_policy.yml. Supersedes eval_fb417a4736d345. HF access passed independently. |
+| eval_ed0b18afd0d445 | SEU MAI | policy/act lacks eval.sh; deploy_policy.yml exists. |
 | eval_3b7f6832eca94f | Robo | Ten repository URLs were submitted instead of one complete policy/ repository URL. |
 
-These are code-preparation blockers, not measured policy-quality failures. Reviewers can inspect the recorded error in the first stage, send an issue notice deliberately and retry after participant follow-up. Safety guards and the separate formal evaluation gates were not relaxed to increase the success count.
+These were rechecked against the submitted GitHub trees using the official read account. Kaelio and Team Turbo return HTTP 404; this alone cannot distinguish an absent repository from a private repository hidden from that account. The private runtime audit includes exact paths and inspected commits. These are code-preparation blockers, not measured policy-quality failures or evidence of malicious code. Reviewers can inspect the recorded error in the first stage, send an issue notice deliberately and retry after participant follow-up. Safety guards and the separate formal evaluation gates were not relaxed to increase the success count. Future failure records include exact missing filenames and unsafe paths instead of opaque git archive exit codes.
 
 ## Remaining Acceptance
 

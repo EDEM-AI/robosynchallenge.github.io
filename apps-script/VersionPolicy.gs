@@ -24,8 +24,9 @@ function reviewApproveVersionException_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewOwnedRun_(payload);
     const preparation = reviewRows_("ReviewPreparation").find(row => row.evaluation_id === run.evaluation_id);
+    const checkpointError = reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_error || "";
     if (run.bundle_commit || reviewWorkflow_(run.evaluation_id).stages[1].done ||
-        !String(preparation?.message || "").includes("NO_LEGAL_VERSION")) throw new Error("Only a blocked no-legal-version request can receive this exception.");
+        !String((preparation?.message || "") + checkpointError).includes("NO_LEGAL_VERSION")) throw new Error("Only a blocked no-legal-version request can receive this exception.");
     const reason = requiredString_(payload.reason, "Accepted argument and approval reason");
     if (!isTruthy_(payload.argument_reviewed)) throw new Error("Confirm that you reviewed the participant's email argument.");
     const old = reviewRows_("ReviewVersionDecisions").find(row => row.evaluation_id === run.evaluation_id);

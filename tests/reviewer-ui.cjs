@@ -113,6 +113,10 @@ async function main() {
     assert.equal(await evaluate("[...document.querySelectorAll('[data-review-form=verify] input[type=url]')].every(input => input.value === '')"), true);
     await evaluate("document.querySelectorAll('[data-review-form=verify] input[type=url]').forEach((input) => { input.value = 'https://huggingface.co/test/ckpt'; }); document.querySelector('[data-review-form=verify] [name=coverage_confirmed]').checked = true; document.querySelector('[data-review-form=verify]').requestSubmit()");
     await until("document.querySelector('.reviewer-meta')?.textContent.includes('Checkpoint URLs recorded for all 10 tasks')");
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-instruction > h4')].map(node=>node.lastChild.textContent).join('|')"), "Code preparation / GitHub access|Hugging Face checkpoint access");
+    assert.equal(await evaluate("document.body.textContent.includes('Automatic HF access check is queued')"), true);
+    await evaluate("document.querySelectorAll('.reviewer-instruction')[1].scrollIntoView({block:'start'})");
+    await screenshot("checkpoint-check-desktop");
     assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null && document.querySelector('[data-review-form=reassign]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-stage-check=repository_access]') === null"), true);
@@ -127,7 +131,7 @@ async function main() {
       else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
     };
     const bundleCommit = "a".repeat(40);
-    await evaluate(`(() => { const key = 'rsc-reviewer-preview-workflow-v4'; const saved = JSON.parse(sessionStorage.getItem(key)); const job = saved.jobs.find(job => job.evaluation_id === ${JSON.stringify(evaluationId)}); job.bundle_commit = ${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; sessionStorage.setItem(key, JSON.stringify(saved)); })()`);
+    await evaluate(`(() => { const key = 'rsc-reviewer-preview-workflow-v4'; const saved = JSON.parse(sessionStorage.getItem(key)); const job = saved.jobs.find(job => job.evaluation_id === ${JSON.stringify(evaluationId)}); job.bundle_commit = ${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; job.hf_check_status='passed'; job.hf_access=Object.fromEntries(Object.entries(job.task_checkpoint_links).map(([task,url])=>[task,{url,revision:'f'.repeat(40),accessible:true,files_checked:2}])); sessionStorage.setItem(key, JSON.stringify(saved)); })()`);
     await rpc("Page.reload");
     await until("!!document.querySelector('.reviewer-job')");
     await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);

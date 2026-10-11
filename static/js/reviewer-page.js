@@ -84,6 +84,7 @@
     if (state.stage === 0 && job.coverage_status === "legacy_unverified") return "Record a checkpoint URL for each of the 10 tasks";
     if (job.version_status === "provisional") return "Validation only; formal versions will be frozen after the deadline";
     if (state.stage <= 1 && !job.bundle_commit) return "Prepared code required";
+    if (state.stage === 0 && job.hf_check_status !== "passed" && !TASKS.every(task => job.hf_access?.[task]?.accessible && job.hf_access[task].url === job.task_checkpoint_links?.[task])) return "Automatic HF access checks must pass for all 10 task URLs";
     if (state.stage === 3 && TASKS.some((task) => !job.task_commands?.[task])) return "Record all 10 actual evaluation commands";
     if (state.stage === 3 && TASKS.some((task) => !["submitted", "checked"].includes(resultFor(job, task)?.status))) return "Upload all 10 task results";
     if (state.stage === 4 && TASKS.some((task) => resultFor(job, task)?.status !== "checked")) return "Accept all 10 task results";
@@ -139,6 +140,7 @@
       if (job.bundle_commit || !fields.coverage_confirmed || Object.keys(fields.task_checkpoint_links || {}).length !== 10 ||
           TASKS.some((task) => !/^https:\/\/huggingface\.co\/\S+$/i.test(String(fields.task_checkpoint_links?.[task] || "")))) throw new Error("Record and confirm a checkpoint URL for each of the 10 tasks first.");
       job.task_checkpoint_links = fields.task_checkpoint_links; job.coverage_status = "verified_all_10"; job.coverage_verified_by = state.credentials.email;
+      job.hf_check_status = "pending"; job.hf_check_error = ""; job.hf_access = {};
     } else if (action === "reviewer_prepare") {
       if (job.coverage_status === "legacy_unverified" || !/^[a-f0-9]{40}$/.test(fields.bundle_commit) ||
           fields.bundle_url !== "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/" + job.evaluation_id + versionSuffix(job) ||
@@ -146,12 +148,13 @@
       job.bundle_url = fields.bundle_url; job.bundle_commit = fields.bundle_commit; job.policy_dirs = fields.policy_dirs; job.state = "ready";
       job.preparation_status = "ready"; job.preparation_error = "";
     } else if (action === "reviewer_approve_version_exception") {
-      if (!fields.argument_reviewed || !String(fields.reason || "").trim() || !String(job.preparation_error).includes("NO_LEGAL_VERSION")) throw new Error("Review and record the participant argument first.");
+      if (!fields.argument_reviewed || !String(fields.reason || "").trim() || !String((job.preparation_error || "") + (job.hf_check_error || "")).includes("NO_LEGAL_VERSION")) throw new Error("Review and record the participant argument first.");
       job.version_generation = (job.version_generation || 0) + 1;
       job.version_cutoff_at = new Date().toISOString(); job.preparation_status = "pending"; job.preparation_error = "";
     } else if (action === "reviewer_retry_preparation") {
       if (job.bundle_commit) throw new Error("Prepared code already exists.");
       job.preparation_status = "pending"; job.preparation_error = "";
+      if (job.hf_check_status === "failed") { job.hf_check_status = "pending"; job.hf_check_error = ""; }
     } else if (["reviewer_complete_stage", "reviewer_save_checks"].includes(action)) {
       if (!Number.isInteger(fields.stage) || fields.stage < 0 || fields.stage > 4 || job.workflow.stages.slice(0, fields.stage).some((stage) => !stage.done)) throw new Error("Complete the previous stages first.");
       if (action === "reviewer_complete_stage") {
@@ -237,7 +240,7 @@
       step(3, "Wait for automatic upload; retry only if it fails", "<p>Each task produces JSON + ZIP. The ZIP is uploaded directly to OneDrive under evaluation_id/task/latest. The script verifies SHA256 and registers the JSON and actual command in the backend. Retrying does not rerun the policy.</p>" + commandBox(retry, "Copy upload retry command") + notice("If the uploaded ZIP fails checksum verification, add --restart to the retry command. Do not rerun evaluation or register unfinished JSON. Accepted task results are locked.", false, "warning"));
   }
   function admissionControls(job) {
-    const hasIssue = job?.preparation_status === "failed" || ["awaiting", "confirmed"].includes(job?.correction?.status) ||
+    const hasIssue = job?.preparation_status === "failed" || job?.hf_check_status === "failed" || ["awaiting", "confirmed"].includes(job?.correction?.status) ||
       job?.results?.some(result => result.status === "needs_correction") ||
       (job?.correction?.status !== "corrected" && job?.messages?.some(message => message.stage !== 2 && message.status === "sent"));
     if (state.role !== "admin" || !job || job.local_walkthrough || doneCount(job) === 5 || !hasIssue) return "";
@@ -247,7 +250,7 @@
     if (job.local_walkthrough) return "";
     const report = job.version_report?.code;
     const metadata = report ? notice(`Version selection: ${escape(job.version_status)}<br>Commit: <code>${escape(report.revision)}</code><br>Committed: ${escape(report.committed_at)}<br>Cutoff: ${escape(report.cutoff_at)}`, false, job.version_status === "provisional" ? "warning" : "info") : "";
-    const appeal = String(job.preparation_error || "").includes("NO_LEGAL_VERSION") ? `<form class="reviewer-form" data-review-form="version-exception"><h4>Approve participant argument</h4><label>Accepted email argument and reason<textarea name="reason" required maxlength="6000"></textarea></label><label class="reviewer-confirm"><input type="checkbox" name="argument_reviewed" required>I reviewed the participant's email argument and approve one rebuild using versions available now.</label><button class="button button-secondary">${icon("check")}Approve / Queue rebuild</button></form>` : "";
+    const appeal = String((job.preparation_error || "") + (job.hf_check_error || "")).includes("NO_LEGAL_VERSION") ? `<form class="reviewer-form" data-review-form="version-exception"><h4>Approve participant argument</h4><label>Accepted email argument and reason<textarea name="reason" required maxlength="6000"></textarea></label><label class="reviewer-confirm"><input type="checkbox" name="argument_reviewed" required>I reviewed the participant's email argument and approve one rebuild using versions available now.</label><button class="button button-secondary">${icon("check")}Approve / Queue rebuild</button></form>` : "";
     return metadata + appeal;
   }
   function taskTable(job, checkpoints = false) {
@@ -267,7 +270,8 @@
         notice("This legacy request did not specify each task's checkpoint. Use the participant's documentation; do not guess. Multiple tasks may share a URL only when documented. Ten different models are not required. Unclear documentation: use Issue / Send email.", false, "warning") +
         `<form class="reviewer-form" data-review-form="verify"><p>Enter the Hugging Face URL for each task, including the documented revision or checkpoint subdirectory. Saving starts checkpoint access checks; code preparation does not wait for this form.</p><div class="reviewer-verify-grid">${TASKS.map(task => `<label>${label(task)}<input type="url" name="${task}" value="${escape(job.task_checkpoint_links?.[task] || "")}" required></label>`).join("")}</div><label class="reviewer-confirm"><input type="checkbox" name="coverage_confirmed" required>I verified every task's checkpoint from the participant's documentation; shared checkpoints are explicitly documented.</label><button class="button button-secondary">${icon("check")}Save task checkpoints</button></form>`;
       const preparation = job.bundle_commit ? notice("Code prepared automatically. Evaluation commit: <code>" + escape(job.bundle_commit) + "</code>. Participant policy/ is retained; environment code comes from the private official base.", true) : codeStage(job);
-      return step(1, "Read the participant's submission", identity) + step(2, "Verify checkpoint URLs for all 10 tasks", checkpoints) + `<div class="reviewer-automatic-status"><h4>Automatic preparation status</h4>${preparation}</div>`;
+      return step(1, "Code preparation / GitHub access", identity + `<div class="reviewer-automatic-status"><h4>Automatic code preparation status</h4>${preparation}</div>`) +
+        step(2, "Hugging Face checkpoint access", checkpoints + checkpointStatus(job));
     }
     if (state.stage === 1) return step(1, "Clone the prepared code", codeStage(job)) + (job.bundle_commit ? step(2, "Download the frozen task checkpoints", commandBox(`cd ${cloneDirectory(job)}\nexport RSC_CHECKPOINTS=/path/to/checkpoints\npython tools/download_checkpoints.py --output "$RSC_CHECKPOINTS"`, "Copy pinned checkpoint download command") + "<p>Replace /path/to/checkpoints with the chosen local directory. The command uses the organizer's RoboSynChallenge HF authorization automatically. No personal HF token or login is required. It downloads pinned revisions and writes the checksum receipt; retry the same command if interrupted.</p>") + step(3, "Install the participant's dependencies", "<p>Follow the repository README and policy documentation. Use an isolated dependency image; keep checkpoints, seed packets and clone credentials outside the participant runtime. Check the documented entrypoint for every task.</p>") : "");
     if (state.stage === 2) return step(1, "Run the built-in check", commandBox(`cd ${cloneDirectory(job)}\npython tools/check_environment.py`, "Copy environment check command")) + step(2, "Confirm the result", "<p>Continue only when the terminal prints <strong>ENVIRONMENT CHECK PASSED</strong> and returns exit code 0. The script checks official planning, rendering and state/action capture. No machine ID, metric input or report upload is required.</p>" + notice("Missing official reference scenes, unset SSIM/PSNR thresholds or a failed check block evaluation. Contact the organizers; do not change the official environment to bypass the check.", false, "warning"));
@@ -285,6 +289,13 @@
       : "Code preparation is queued or running automatically; it does not wait for task checkpoint URLs. The script keeps the participant's complete policy/ folder and uses the official held-out environment for everything else. Refresh to see the result. No reviewer code-preparation form is required.", false, job.preparation_status === "failed" ? "error" : "info")}${instructions}${job.preparation_status === "failed" ? `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>` : ""}`;
     return `<div class="reviewer-code"><div class="reviewer-links"><a target="_blank" rel="noreferrer" href="${escape(safeHref(job.bundle_url))}">${icon("git-branch")}Prepared evaluation branch</a></div><div class="reviewer-command"><code data-copy-command>${escape(cloneCommand(job))}</code><button class="reviewer-icon" data-review-action="copy" title="Copy clone and checkout commands" aria-label="Copy clone and checkout commands">${icon("copy")}</button></div><dl class="reviewer-meta"><div><dt>Evaluation commit (set automatically)</dt><dd>${escape(job.bundle_commit)}</dd></div><div><dt>Detected evaluation entrypoints</dt><dd>${escape(job.policy_dirs.join(", "))}</dd></div></dl>${notice("The entire policy/ tree is preserved, including shared files and nested folders. The script detects evaluation entrypoints; no directory names or commit SHA need to be entered here.", true)}${instructions}${taskTable(job, true)}</div>`;
   }
+  function checkpointStatus(job) {
+    if (job.local_walkthrough) return notice("Workflow demo: no live Hugging Face access check is performed.", false, "warning");
+    const status = job.hf_check_status || (TASKS.every(task => job.hf_access?.[task]?.accessible) ? "passed" : "pending");
+    if (status === "passed") return notice("Automatic HF access check passed for all 10 current task URLs. Model files are readable using the organizer's shared HF account. Pinned revisions and checked file counts are listed above; access is checked again for the final deadline freeze.", true);
+    if (status === "failed") return notice(`Automatic HF access check failed.<br>${escape(job.hf_check_error || "Checkpoint access was not confirmed.")}<br>Code preparation runs independently. Use Issue / Send email, then retry after access or the checkpoint URLs have been corrected.`, false, "error") + `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>`;
+    return notice(job.coverage_status === "legacy_unverified" ? "Save the checkpoint URL for each of the 10 tasks above. The script then checks HF access automatically, even if code preparation failed." : status === "checking" ? "Automatic HF access check is running. Refresh to see the result; no personal HF token or manual access check is required." : "Automatic HF access check is queued for these saved URLs. The script checks repository access and the actual model files, independently of code preparation. Refresh to see the result.", false, "info");
+  }
   function taskCommands(job) {
     return `<form class="reviewer-form" data-review-form="commands"><h4>Actual task evaluation commands <span class="reviewer-required">*</span></h4><div class="reviewer-command-fields">${TASKS.map((task) => `<label>${escape(label(task))}<textarea name="command_${task}" rows="2" maxlength="4000" ${resultFor(job, task) ? "readonly" : ""} required>${escape(job.task_commands?.[task] || "")}</textarea></label>`).join("")}</div><button class="button button-secondary">${icon("save")}Save commands</button></form>`;
   }
@@ -293,7 +304,7 @@
     const issue = ISSUE_TEMPLATES[state.stage].find((item) => item[0] === template)?.[2] || STAGES[state.stage].issue;
     return { stage: state.stage, template, message_id: "msg_" + crypto.randomUUID().replace(/-/g, ""),
       subject: blank ? "" : "RoboSynChallenge evaluation update: " + job.evaluation_id,
-      body: blank ? "" : `Dear ${job.team_name},\n\n${issue}\n\nEvaluation ID: ${job.evaluation_id}\nTask / issue details:\n${state.stage <= 1 ? job.preparation_error || "" : ""}\n\n${state.stage === 2 ? "No participant action is required unless separately requested." : "Use the response link to confirm or submit your single code correction within 24 hours of the first issue notification. Corrections must include an immutable GitHub commit URL and checkpoint URLs for all 10 tasks."}\n\nRoboSynChallenge organizers` };
+      body: blank ? "" : `Dear ${job.team_name},\n\n${issue}\n\nEvaluation ID: ${job.evaluation_id}\nTask / issue details:\n${state.stage <= 1 ? [job.preparation_error, job.hf_check_error].filter(Boolean).join("\n") : ""}\n\n${state.stage === 2 ? "No participant action is required unless separately requested." : "Use the response link to confirm or submit your single code correction within 24 hours of the first issue notification. Corrections must include an immutable GitHub commit URL and checkpoint URLs for all 10 tasks."}\n\nRoboSynChallenge organizers` };
   }
   function composer(job) {
     if (!state.emailDraft) return "";
