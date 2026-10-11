@@ -173,11 +173,14 @@ async function main() {
     assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-review-form=prepare]') === null && document.querySelector('[name=bundle_commit]') === null && document.querySelector('[name=policy_dirs]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
-    await evaluate(`(() => { const key='rsc-reviewer-preview-workflow-v4'; const saved=JSON.parse(sessionStorage.getItem(key)); const job=saved.jobs.find(job=>job.evaluation_id===${JSON.stringify(evaluationId)}); job.bundle_commit=${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; sessionStorage.setItem(key,JSON.stringify(saved)); })()`);
+    await evaluate(`(() => { const key='rsc-reviewer-preview-workflow-v4'; const saved=JSON.parse(sessionStorage.getItem(key)); const job=saved.jobs.find(job=>job.evaluation_id===${JSON.stringify(evaluationId)}); job.bundle_commit=${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id+'-snapshot0123456789abcdef'; job.policy_dirs=['policy/test']; sessionStorage.setItem(key,JSON.stringify(saved)); })()`);
     await rpc("Page.reload");
     await until("!!document.querySelector('.reviewer-job')");
     await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
     await until("!!document.querySelector('.reviewer-code')");
+    assert.equal(await evaluate("document.querySelector('.reviewer-code table') === null"), true, "Stage 2 must not repeat Stage 1's checkpoint table");
+    assert.equal(await evaluate("document.querySelector('.reviewer-code [data-copy-command]').textContent.includes('-snapshot0123456789abcdef')"), true, "Clone the actual registered snapshot branch, not an inferred name");
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].every(code=>!code.textContent.includes('$HOME') && code.textContent.includes('/path/to/'))"), true, "All stage commands use the same user-selected path placeholder");
     assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].find(code=>code.textContent.includes('download_checkpoints.py')).textContent.includes('--token-file')"), false);
     await screenshot("code-desktop");
     await finishStage(1);
