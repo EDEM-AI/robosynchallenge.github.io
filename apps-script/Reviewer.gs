@@ -23,6 +23,7 @@ const REVIEW_TABLES = {
   ReviewVersionDecisions: ["evaluation_id", "cutoff_at", "reason", "approved_by", "approved_at", "generation"],
   ReviewAssignments: ["evaluation_id", "previous_reviewer", "reviewer_email", "reason", "changed_by", "changed_at"],
   ReviewProgressBackups: ["backup_id", "evaluation_id", "table_name", "row_key", "part", "snapshot_json", "reason", "created_at"],
+  ReviewToolUpgrades: ["evaluation_id", "base_commit", "previous_bundle_commit", "selection_json", "backup_id", "updated_at"],
 };
 const REVIEW_TASK_STEPS = {
   click_bell: 361, drawer_open_place: 900, mixer_operating: 500, table_rearrangement: 361,
@@ -130,7 +131,7 @@ function provisionReviewer(email, role) {
 function provisionReviewerToken_(email, role, token) {
   const normalized = requiredEmail_(email);
   const assignedRole = String(role || "evaluator");
-  if (!["evaluator", "admin", "observer"].includes(assignedRole)) throw new Error("Invalid reviewer role.");
+  if (!["evaluator", "admin", "observer", "supervisor"].includes(assignedRole)) throw new Error("Invalid reviewer role.");
   if (!/^act_[0-9a-f]{64}$/i.test(token)) throw new Error("Invalid reviewer token format.");
   const row = reviewRows_("Reviewers").find((item) => normalizeEmail_(item.email) === normalized);
   reviewWrite_("Reviewers", row?._rowNumber, { email: normalized, token_sha256: reviewerHash_(token),
@@ -157,7 +158,7 @@ function reviewerIdentity_(payload, workbook) {
   let mismatch = expected.length !== actual.length ? 1 : 0;
   for (let index = 0; index < actual.length; index += 1) mismatch |= actual.charCodeAt(index) ^ (expected.charCodeAt(index) || 0);
   if (mismatch || !isTruthy_(row?.active)) throw new Error("Invalid reviewer credentials.");
-  if (!["admin", "evaluator", "observer"].includes(row.role)) throw new Error("Invalid reviewer role.");
+  if (!["admin", "evaluator", "observer", "supervisor"].includes(row.role)) throw new Error("Invalid reviewer role.");
   return { email, role: row.role };
 }
 
@@ -167,7 +168,7 @@ function reviewProvisionAccount_(payload) {
     if (viewer.role !== "admin") throw new Error("Organizer access required.");
     const email = requiredEmail_(payload.email);
     const role = String(payload.role || "evaluator");
-    if (role === "observer" && reviewRows_("ReviewRuns").some(row => normalizeEmail_(row.reviewer_email) === email)) {
+    if (["observer", "supervisor"].includes(role) && reviewRows_("ReviewRuns").some(row => normalizeEmail_(row.reviewer_email) === email)) {
       throw new Error("Release this account's assignments before making it an observer.");
     }
     if (role !== "admin" && reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) === email && row.role === "admin" && isTruthy_(row.active)) &&
@@ -202,7 +203,7 @@ function reviewSendInvitation_(payload) {
     const receipt = { email, role: account.role, fingerprint, status: "sending", created_at: now_() };
     properties.setProperty(key, JSON.stringify(receipt));
     const url = "https://robosyn-bench.net/eval_backend/";
-    const access = account.role === "observer" ? "You can view all evaluation requests and progress. This is read-only access; no evaluation tasks are assigned to you." : "You can view and work on evaluation requests assigned to you.";
+    const access = account.role === "observer" ? "You can view all evaluation requests and progress. This is read-only access; no evaluation tasks are assigned to you." : account.role === "supervisor" ? "You can view and work on all evaluation requests. No tasks are assigned to you and you are not in the automatic assignment pool." : "You can view and work on evaluation requests assigned to you.";
     try {
       MailApp.sendEmail({ to: email, subject: "RoboSynChallenge evaluation workspace access",
         body: `Evaluation workspace: ${url}\nEmail: ${email}\nEvaluation token: ${token}\n\n${access}\n\nKeep this token private. It is separate from participant access tokens.`,
@@ -346,7 +347,7 @@ function reviewQueue_(payload, organizer) {
   if (organizer && viewer.role !== "admin") throw new Error("Organizer access required.");
   const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "ReviewRuns", "ReviewTaskResults",
     "ReviewProgress", "ReviewMachines", "ReviewMessages", "ReviewPreparation", "ReviewCodePreparations", "ReviewCorrections",
-    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows"]);
+    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades"]);
   const read = name => snapshot.rows[name];
   const runs = new Map(read("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
   const tasks = read("ReviewTaskResults");
@@ -363,10 +364,12 @@ function reviewQueue_(payload, organizer) {
   const versionChecks = new Map(read("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
   const versionDecisions = new Map(read("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
   const windows = read("ReviewSubmissionWindows");
+  const upgrades = new Map(read("ReviewToolUpgrades").map(row => [String(row.evaluation_id), row]));
+  const archives = read("ReviewArchiveUploads");
   const submissionWindows = new Map(windows.map(row => [row.window_id, row]));
   const jobs = latestReviewSubmissions_(workbook, windows, snapshot.rows).filter(({ evaluation }) => {
     const owner = runs.get(String(evaluation.evaluation_id))?.reviewer_email;
-    return organizer || ["admin", "observer"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
+    return organizer || ["admin", "observer", "supervisor"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {
     const run = runs.get(String(evaluation.evaluation_id));
     const correction = corrections.get(String(evaluation.evaluation_id));
@@ -424,6 +427,13 @@ function reviewQueue_(payload, organizer) {
       preparation_error: preparation.get(String(evaluation.evaluation_id))?.message || "",
       preparation_updated_at: preparation.get(String(evaluation.evaluation_id))?.updated_at || "",
       bundle_commit: run?.bundle_commit || "", policy_dirs: parseJson_(run?.policy_dirs_json, []),
+      tool_upgrade: upgrades.has(String(evaluation.evaluation_id)) ? {
+        base_commit: upgrades.get(String(evaluation.evaluation_id)).base_commit,
+        selection: parseJson_(upgrades.get(String(evaluation.evaluation_id)).selection_json, {}),
+        backup_id: upgrades.get(String(evaluation.evaluation_id)).backup_id,
+      } : null,
+      uploads: archives.filter(row => row.evaluation_id === evaluation.evaluation_id && row.status !== "superseded")
+        .map(row => ({task: row.task, status: row.status, updated_at: row.updated_at})),
       code_bundle_url: code?.bundle_url || "", code_bundle_commit: code?.bundle_commit || "",
       code_participant_commit: code?.participant_commit || "", code_base_commit: code?.private_base_commit || "",
       code_policy_dirs: parseJson_(code?.policy_dirs_json, []), code_selection: parseJson_(code?.selection_json, {}),
@@ -459,7 +469,7 @@ function reviewVerifyCoverage_(payload) {
       throw new Error("This request already declared all 10 tasks.");
     }
     const run = reviewRun_(job.evaluation.evaluation_id);
-    if (reviewer.role !== "admin" && (!run || normalizeEmail_(run.reviewer_email) !== reviewer.email)) {
+    if (!["admin", "supervisor"].includes(reviewer.role) && (!run || normalizeEmail_(run.reviewer_email) !== reviewer.email)) {
       throw new Error("This request is not assigned to you.");
     }
     if (run?.bundle_commit) throw new Error("Coverage cannot be changed after code preparation.");
@@ -489,7 +499,7 @@ function reviewAssign_(payload) {
       if (!payload.assign_to && !active.length) throw new Error("No active evaluators. Request remains unassigned.");
       owner = requiredEmail_(payload.assign_to || active[0]?.email);
     }
-    if (!reviewRows_("Reviewers").some((row) => normalizeEmail_(row.email) === owner && isTruthy_(row.active) && row.role !== "observer")) throw new Error("Reviewer is not active or is read-only.");
+    if (!reviewRows_("Reviewers").some((row) => normalizeEmail_(row.email) === owner && isTruthy_(row.active) && ["evaluator", "admin"].includes(row.role))) throw new Error("Reviewer is not active or is read-only/non-assigned.");
     reviewWrite_("ReviewRuns", existing?._rowNumber, { evaluation_id: job.evaluation.evaluation_id,
       submission_id: job.submission.submission_id, participant_email: normalizeEmail_(job.submission.email),
       reviewer_email: owner, state: "assigned", assigned_at: now_(), updated_at: now_() });
@@ -502,7 +512,7 @@ function reviewOwnedRun_(payload, organizer) {
   const job = reviewJob_(payload.evaluation_id);
   const run = reviewRun_(job.evaluation.evaluation_id);
   if (!run || String(run.submission_id) !== String(job.submission.submission_id) ||
-      (!(organizer && viewer.role === "admin") && normalizeEmail_(run.reviewer_email) !== viewer.email)) throw new Error("This request is not assigned to you.");
+      (!(organizer && viewer.role === "admin") && viewer.role !== "supervisor" && normalizeEmail_(run.reviewer_email) !== viewer.email)) throw new Error("This request is not assigned to you.");
   return { viewer, job, run };
 }
 
@@ -686,7 +696,7 @@ function reviewCheckResult_(payload) {
 const REVIEW_STAGES = [
   { title: "Preparation receipt", checks: ["repository_access", "checkpoint_access", "ten_tasks"] },
   { title: "Evaluation code", checks: ["commit_verified", "policy_entrypoints", "dependencies"] },
-  { title: "Environment check", checks: ["machine_checked", "reference_checked"] },
+  { title: "Environment check", checks: [] },
   { title: "Result upload", checks: ["all_runs", "archives_uploaded"] },
   { title: "Result review", checks: ["videos_checked", "trajectories_checked", "hashes_checked"] },
 ];
@@ -722,6 +732,7 @@ function reviewUpdateStage_(payload, complete) {
     const current = index === 0 ? reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id) : null;
     if (index === 0) checks.repository_access = Boolean(current?.bundle_commit && current.bundle_url || current?.code_bundle_commit && current.code_bundle_url);
     workflow.stages[index].checks = checks;
+    if (index === 2) workflow.stages[index].checks.environment_check_waived = true;
     if (complete) {
       if (index === 0 && !checks.repository_access) throw new Error("Automatic code preparation must succeed before continuing.");
       if (index === 0 && current.hf_check_status !== "passed") throw new Error("Automatic Hugging Face access checks must pass for the current 10 task URLs.");
@@ -831,10 +842,19 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
-  if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).role === "observer") throw new Error("Read-only access: observers cannot modify evaluations.");
+  const cloneActions = ["reviewer_checkpoint_credential", "reviewer_save_command", "reviewer_submit_result",
+    "reviewer_upload_health", "reviewer_evidence_status", "reviewer_start_evidence_upload",
+    "reviewer_verify_evidence_upload", "reviewer_finish_evidence_upload"];
+  if (payload.upload_token) {
+    if (!cloneActions.includes(action)) throw new Error("Private clone capability cannot access this action.");
+    reviewUploadContext_(payload);
+  } else if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).role === "observer") {
+    throw new Error("Read-only access: observers cannot modify evaluations.");
+  }
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
   if (action === "reviewer_migrate_response_schema") return reviewMigrateResponseSchema_(payload);
   if (action === "reviewer_reconcile_final_progress") return reviewReconcileFinalProgress_(payload);
+  if (action === "reviewer_upgrade_tools") return reviewUpgradeTools_(payload);
   if (action === "reviewer_pool") return reviewPool_(payload);
   if (action === "reviewer_move_evaluator_email") return reviewMoveEvaluatorEmail_(payload);
   if (action === "reviewer_set_pool") return reviewSetPool_(payload);
@@ -856,6 +876,7 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_configure_storage") return archiveConfigure_(payload);
   if (action === "reviewer_storage_status") return archiveStatus_(payload);
   if (action === "reviewer_upload_health") return archiveUploadHealth_(payload);
+  if (action === "reviewer_evidence_status") return archiveEvidenceStatus_(payload);
   if (action === "reviewer_start_evidence_upload") return archiveStart_(payload);
   if (action === "reviewer_verify_evidence_upload") return archiveDownload_(payload);
   if (action === "reviewer_finish_evidence_upload") return archiveFinish_(payload);
@@ -898,7 +919,7 @@ function reviewMailStatus_(payload) {
 
 function reviewMailMessages_(viewer, snapshot) {
   const read = name => snapshot ? snapshot[name] : REVIEW_TABLES[name] ? reviewRows_(name) : rows_(name);
-  const global = ["admin", "observer"].includes(viewer.role);
+  const global = ["admin", "observer", "supervisor"].includes(viewer.role);
   const assigned = new Set(read("ReviewRuns").filter(row => normalizeEmail_(row.reviewer_email) === viewer.email).map(row => row.evaluation_id));
   const users = new Map(read("Users").map(row => [normalizeEmail_(row.email), row]));
   const mailbox = config_("CONTACT_EMAIL", "robosynchallenge@gmail.com");

@@ -3,7 +3,7 @@ function reviewBackupProgress_(run, reason) {
   const backupId = "backup_" + Utilities.getUuid().replace(/-/g, "");
   const tables = ["ReviewRuns", "ReviewProgress", "ReviewTaskResults", "ReviewTaskCommands", "ReviewCodePreparations",
     "ReviewVersionChecks", "ReviewCorrections", "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewPreparation",
-    "ReviewUploadAccess", "ReviewArchiveUploads"];
+    "ReviewUploadAccess", "ReviewArchiveUploads", "ReviewToolUpgrades"];
   tables.forEach(name => reviewRows_(name).filter(row => row.evaluation_id === run.evaluation_id).forEach(row => {
     const data = JSON.stringify(row);
     for (let offset = 0; offset < data.length; offset += 20000) {
@@ -14,6 +14,37 @@ function reviewBackupProgress_(run, reason) {
   }));
   SpreadsheetApp.flush();
   return backupId;
+}
+
+/** Repeatable organizer maintenance: preserve submitted versions, not a new participant revision. */
+function reviewUpgradeTools_(payload) {
+  return withReviewLock_(() => {
+    const {viewer, run} = reviewOwnedRun_(payload, true);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const base = String(payload.base_commit || "");
+    if (!/^[a-f0-9]{40}$/.test(base)) throw new Error("Pin the official tools commit.");
+    const previous = reviewRows_("ReviewToolUpgrades").find(row => row.evaluation_id === run.evaluation_id);
+    if (previous?.base_commit === base) return {ok: true, state: "already_queued", backup_id: previous.backup_id};
+    if (String(payload.expected_bundle_commit || "") !== String(run.bundle_commit || "")) throw new Error("Prepared code changed; refresh before maintenance.");
+    const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    const reason = "Official recording/upload tools upgraded. Use the new clone; prior evidence and progress are backed up.";
+    const backupId = reviewBackupProgress_(run, reason);
+    const workflow = reviewWorkflow_(run.evaluation_id);
+    const version = reviewRows_("ReviewVersionChecks").find(row => row.evaluation_id === run.evaluation_id);
+    const access = reviewRows_("ReviewAccessChecks").find(row => row.evaluation_id === run.evaluation_id);
+    const selection = job.bundle_commit ? {...job.version_report, preparation_attempt: job.preparation_attempt, version_generation: job.version_generation} : {};
+    if (job.bundle_commit && !/^[a-f0-9]{40}$/.test(selection.code?.revision || "")) throw new Error("Cannot upgrade without the original pinned participant revision.");
+    reviewResetParticipantProgress_(run, job.task_checkpoint_links, reason);
+    // The submission access check remains valid: only the organizer tools changed.
+    const reset = reviewWorkflow_(run.evaluation_id);
+    reset.stages[0] = workflow.stages[0];
+    reviewStoreWorkflow_(run, reset);
+    if (version) reviewWrite_("ReviewVersionChecks", version._rowNumber, {...version, evaluation_id: run.evaluation_id});
+    if (access) reviewWrite_("ReviewAccessChecks", access._rowNumber, {...access, evaluation_id: run.evaluation_id});
+    reviewWrite_("ReviewToolUpgrades", previous?._rowNumber, {evaluation_id: run.evaluation_id, base_commit: base,
+      previous_bundle_commit: run.bundle_commit, selection_json: JSON.stringify(selection), backup_id: backupId, updated_at: now_()});
+    return {ok: true, state: "queued", backup_id: backupId};
+  });
 }
 
 function reviewResetParticipantProgress_(run, links, reason) {

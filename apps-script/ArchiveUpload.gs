@@ -86,6 +86,21 @@ function archiveUploadHealth_(payload) {
   return archiveReadStatus_();
 }
 
+function archiveEvidenceStatus_(payload) {
+  const { run } = reviewUploadContext_(payload);
+  if (payload.bundle_commit !== run.bundle_commit) throw new Error("Use the current prepared evaluation commit.");
+  const task = String(payload.task || "");
+  if (!Object.prototype.hasOwnProperty.call(REVIEW_TASK_STEPS, task)) throw new Error("Unknown task.");
+  const result = reviewTaskRows_(run.evaluation_id).find(row => row.task === task && row.status !== "superseded");
+  const archive = reviewRows_("ReviewArchiveUploads").find(row => row.evaluation_id === run.evaluation_id && row.task === task && row.status !== "superseded");
+  const registered = Boolean(result && archive?.status === "completed" &&
+    (!payload.archive_sha256 || payload.archive_sha256 === archive.expected_sha256));
+  return { ok: true, evaluation_id: run.evaluation_id, task,
+    status_code: registered ? "RSC_UPLOAD_OK" : "RSC_UPLOAD_PENDING",
+    backend_registered: registered, archive_sha256: archive?.expected_sha256 || "",
+    archive_status: archive?.status || "not_started", result_status: result?.status || "not_uploaded" };
+}
+
 function archiveReadStatus_() {
   const drive = config_("ARCHIVE_MS_DRIVE_ID", ""), root = config_("ARCHIVE_MS_ROOT_ITEM_ID", "");
   if (!drive || !root) throw new Error("Organizer archive folder is not configured.");

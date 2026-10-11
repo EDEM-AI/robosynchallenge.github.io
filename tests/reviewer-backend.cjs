@@ -133,7 +133,9 @@ const report = { schema: 1, kind: "render_first_frame_comparison", reference_sha
   task_coverage: Object.fromEntries(taskNames.map((task) => [task, true])), results: taskNames.flatMap((task) =>
     ["cam_high", "cam_left_wrist", "cam_right_wrist"].map((camera) => ({ task, camera, ssim: 0.999, psnr_db: 50, identical_pixels: false })) ) };
 assert.equal(call("reviewSavePreflight_", { ...credentials, evaluation_id: "eval_new", machine_id: "test-machine", report }).status, "pending_thresholds");
-assert.throws(() => stage(2, { machine_checked: true, reference_checked: false }), /checklist/);
+stage(2, {});
+assert.equal(call("reviewWorkflow_", "eval_new").stages[2].checks.environment_check_waived, true);
+assert.equal(call("reviewWorkflow_", "eval_new").stages[2].checks.machine_checked, undefined, "A waiver is not a fabricated successful check");
 vm.runInContext('config_ = (key, fallback) => key === "REVIEW_RENDER_THRESHOLDS" ? JSON.stringify({ssim_min: 0.98, psnr_min_db: 35}) : fallback', context);
 assert.equal(call("reviewSavePreflight_", { ...credentials, evaluation_id: "eval_new", machine_id: "test-machine", report }).status, "passed");
 stage(2, { machine_checked: true, reference_checked: true });
@@ -541,6 +543,14 @@ const observer = vm.runInContext('provisionReviewer("observer@example.com", "obs
 const observerCredentials = { reviewer_email: observer.email, reviewer_token: observer.token };
 assert.equal(call("reviewerIdentity_", observerCredentials).role, "observer");
 const dispatch = (action, payload) => vm.runInContext(`handleReviewerAction_(${JSON.stringify(action)}, ${JSON.stringify(payload)})`, context);
+const supervisor = vm.runInContext('provisionReviewer("supervisor@example.com", "supervisor")', context);
+const supervisorCredentials = {reviewer_email:supervisor.email, reviewer_token:supervisor.token};
+assert.equal(dispatch("reviewer_queue", supervisorCredentials).jobs.length, call("reviewQueue_", credentials).jobs.length);
+assert.equal(call("reviewOwnedRun_", {...supervisorCredentials, evaluation_id:"eval_assigned"}).run.evaluation_id,"eval_assigned");
+assert.equal(call("reviewSaveChecks_", {...supervisorCredentials, evaluation_id:"eval_assigned",stage:0,checks:{}}).ok,true);
+for (const action of ["reviewer_preparation_queue", "reviewer_configure_storage", "reviewer_provision_account", "reviewer_pool"]) {
+  assert.throws(() => dispatch(action, supervisorCredentials), /Organizer/);
+}
 assert.equal(dispatch("reviewer_login", observerCredentials).reviewer.role, "observer");
 assert.equal(dispatch("reviewer_queue", observerCredentials).jobs.length, call("reviewQueue_", credentials).jobs.length);
 for (const action of ["reviewer_assign", "reviewer_complete_stage", "reviewer_send_issue", "reviewer_preparation_queue", "reviewer_configure_storage", "reviewer_provision_account", "reviewer_ensure_run"]) {
@@ -556,6 +566,7 @@ call("reviewEnsureRun_", { ...credentials, evaluation_id: "eval_pending" });
 call("reviewEnsureRun_", { ...credentials, evaluation_id: "eval_pending" });
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_pending").reviewer_email, "");
 assert.throws(() => call("reviewAssign_", { ...credentials, evaluation_id: "eval_pending", assign_to: observer.email }), /read-only/);
+assert.throws(() => call("reviewAssign_", { ...credentials, evaluation_id: "eval_pending", assign_to: supervisor.email }), /non-assigned/);
 call("reviewAssign_", { ...credentials, evaluation_id: "eval_pending" });
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_pending").reviewer_email, evaluator.email);
 assert.throws(() => call("reviewReassign_", { ...credentials, evaluation_id: "eval_pending", assign_to: observer.email, reason: "Bad role" }), /read-only/);
@@ -702,4 +713,24 @@ call("reviewSendIssue_", {...issue,evaluation_id:"eval_accessfollow",message_id:
 const accessResponse = Object.fromEntries(new URL(sent.at(-1).body.match(/https:\/\/\S+rsc_action=review_response\S+/)[0]).searchParams);
 call("handleReviewResponseSubmit_", {...accessResponse,response_kind:"confirm",notes:"Gated access granted; URLs unchanged"});
 assert.equal(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_accessfollow").hf_check_status,"pending","Access-only confirmation queues another HF check without a new submission or correction");
+// Official maintenance never chooses a new participant commit and is repeatable.
+const toolsFields = {...credentials,evaluation_id:"eval_accessfollow",base_commit:"7".repeat(40),expected_bundle_commit:""};
+assert.throws(() => call("reviewUpgradeTools_",{...toolsFields,...supervisorCredentials}), /Organizer/);
+vm.runInContext('reviewStoreWorkflow_(reviewRun_("eval_accessfollow"), {stages:REVIEW_STAGES.map((_,i)=>({done:i<3,checks:{},completed_at:"before-upgrade"}))})', context);
+const upgraded = call("reviewUpgradeTools_",toolsFields);
+assert.equal(upgraded.state,"queued");
+assert.equal(call("reviewUpgradeTools_",toolsFields).state,"already_queued");
+const upgradedWorkflow = call("reviewWorkflow_","eval_accessfollow");
+assert.equal(upgradedWorkflow.stages[0].done,true);
+assert.equal(upgradedWorkflow.stages[1].done,false);
+assert.equal(upgradedWorkflow.stages[2].done,true);
+assert(call("reviewRows_","ReviewProgressBackups").some(row=>row.backup_id===upgraded.backup_id));
+const uploadStatus = call("archiveEvidenceStatus_",{...supervisorCredentials,evaluation_id:"eval_accessfollow",task:"click_bell",bundle_commit:""});
+assert.equal(uploadStatus.status_code,"RSC_UPLOAD_PENDING");
+assert.equal(uploadStatus.backend_registered,false);
+const statusCapability = call("reviewIssueUploadAccess_", {...credentials,evaluation_id:"eval_accessfollow"});
+const statusClone = {evaluation_id:"eval_accessfollow",upload_token:statusCapability.upload_token,bundle_commit:"",task:"click_bell"};
+assert.equal(dispatch("reviewer_evidence_status",statusClone).status_code,"RSC_UPLOAD_PENDING","Clone commands do not require a separate reviewer login");
+assert.throws(()=>dispatch("reviewer_upgrade_tools",statusClone),/cannot access/);
+assert.throws(()=>dispatch("reviewer_evidence_status",{...statusClone,upload_token:"upl_"+"0".repeat(64)}),/Invalid or expired/);
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");
