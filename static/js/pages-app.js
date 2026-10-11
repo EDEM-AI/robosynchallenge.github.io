@@ -1797,18 +1797,14 @@
                 <span>Code URL</span>
                 <input type="url" name="code_link" placeholder="https://github.com/your-org/your-policy" required>
               </label>
-              <label class="field field-span-2">
-                <span>Hugging Face checkpoint URL</span>
-                <input type="url" name="checkpoint_link" placeholder="https://huggingface.co/your-org/your-policy-ckpt" required>
-              </label>
               <details class="task-checkpoints field-span-2" open>
                 <summary>Checkpoints for all 10 tasks</summary>
-                <p class="helper-note">The link above applies to every task unless you set an override here. Describe the exact checkpoint path and run command for each task in your README or run notes.</p>
+                <p class="helper-note">Provide a checkpoint URL for each task. If several tasks share a checkpoint, repeat the same URL. Describe the exact checkpoint path and run command for each task in your README or run notes.</p>
                 <div class="form-grid">
                   ${LEADERBOARD_TASKS.map((task) => `
                     <label class="field">
                       <span>${escapeHtml(task.label)}</span>
-                      <input type="url" name="checkpoint_${task.id}" placeholder="Use the common checkpoint URL">
+                      <input type="url" name="checkpoint_${task.id}" placeholder="https://huggingface.co/your-org/your-policy-ckpt" required>
                     </label>
                   `).join("")}
                 </div>
@@ -2795,10 +2791,11 @@
     const title = String(formData.get("title") || "").trim();
     const shortDescription = String(formData.get("short_description") || "").trim();
     const codeLink = String(formData.get("code_link") || "").trim();
-    const checkpointLink = String(formData.get("checkpoint_link") || "").trim();
     const taskCheckpointLinks = Object.fromEntries(LEADERBOARD_TASKS.map((task) => [
-      task.id, String(formData.get(`checkpoint_${task.id}`) || "").trim() || checkpointLink,
+      task.id, String(formData.get(`checkpoint_${task.id}`) || "").trim(),
     ]));
+    // Keep a representative link for the legacy backend column, not a second form field.
+    const checkpointLink = taskCheckpointLinks[LEADERBOARD_TASKS[0].id];
     const dataSourceText = String(formData.get("data_source_text") || "").trim();
     const technicalNotes = String(formData.get("technical_notes") || "").trim();
     const isRanked = formData.has("is_ranked");
@@ -2809,10 +2806,6 @@
     }
     if (!isHttpUrl(codeLink)) {
       pushFlash("error", "Provide a valid code URL.");
-      return;
-    }
-    if (!isHuggingFaceUrl(checkpointLink)) {
-      pushFlash("error", "Checkpoint link must be a https://huggingface.co/... URL.");
       return;
     }
     if (!formData.has("all_tasks_confirmed") || Object.values(taskCheckpointLinks).some((url) => !isHuggingFaceUrl(url))) {
