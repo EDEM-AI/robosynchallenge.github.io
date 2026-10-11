@@ -3,6 +3,17 @@
 Latest repository/entrypoint and HF recheck: [Submission Access Audit](request-access-audit-20261011.md).
 That report supersedes the earlier preparation-blocker descriptions below.
 
+Latest verified preparation snapshot: 29 requests, 23 code-only validation branches
+ready and six code-preparation blockers. RobotQQ's missing documentation and
+luminbot's declared HF weight dependency are no longer incorrectly rejected at
+composition. The collector still requires the latter's downloaded weight to match
+its expected SHA256 before execution; no GPU runtime pass is claimed.
+
+The public submission form now contains exactly ten required task checkpoint URL
+fields, with no separate common checkpoint input. Shared checkpoints may be repeated.
+A representative URL is derived for the existing backend column, preserving legacy
+submissions without changing participant identities or publishing the reviewer UI.
+
 ## Integration
 
 The evaluator frontend is part of this website repository: eval_backend/, static/js/reviewer-page.js, static/js/reviewer-onedrive.js and static/css/reviewer.css. It uses the same static assets/configuration and the existing Apps Script/Google Sheet backend. No production application server is introduced. The public submission form and FAQ are published separately; evaluator UI remains on a non-Pages work branch and local preview until approved.

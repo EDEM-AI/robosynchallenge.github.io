@@ -2,16 +2,17 @@
 
 Date: October 11, 2026. This report checks actual submitted URLs using the authorized
 GitHub `robosynchallenge` and HF `RoboSynChallenge` accounts. It does not execute
-participant code or certify GPU evaluation results. No participant mail was sent.
+participant code or certify GPU evaluation results. See the notification record below
+for the separately authorized participant reminders.
 
 ## Persisted Preparation Results
 
 After actual retries, the existing Sheet queue and refreshed local preview show
-29 latest requests: 21 code-only validation branches ready, eight blocked, and
+29 latest requests: 23 code-only validation branches ready, six blocked, and
 zero formal evaluation branches. The helper-entrypoint false positives for
 IAII-CAS, SZU and DHU were fixed and their new private branches were pushed and
 registered. Sny was successfully retried too. The persistent preparation service
-is running with private tooling commit `41e749f`; 51 offline Python tests and the
+is running with private tooling commit `31fd1fa`; 53 offline Python tests and the
 existing backend/upload tests passed. The evaluator website branch was not
 published publicly.
 
@@ -20,8 +21,6 @@ published publicly.
 | `eval_43db939c249046` | 115 | Submitted upstream OpenPI commit has no `policy/` tree. |
 | `eval_1e815230feb54b` | Kaelio | Exact submitted repository still returns HTTP 404 with the official account; clone also fails. |
 | `eval_21a30779b1b445` | Team Turbo | Exact submitted repository still returns HTTP 404 with the official account; clone also fails. |
-| `eval_6a78fd0ef86b40` | RobotQQ | Documentation symlinks point to uncommitted `docs/source/` targets. |
-| `eval_770795218d0441` | luminbot | HF cache `model.safetensors` points to an uncommitted weight blob. |
 | `eval_3b7f6832eca94f` | Robo | Selected request still contains ten repository URLs, not the now-accessible consolidated repository URL. |
 | `eval_ed0b18afd0d445` | SEU MAI | No `eval.sh` launcher inside the submitted policy tree. |
 | `eval_1745e4e6bb874a` | Vulcan Dynamics | Root-level release package has no `policy/` tree. |
@@ -65,21 +64,37 @@ remain visible in the submitted instructions:
 
 A Git symbolic link stores a target path, not the target's bytes. The old guard
 rejected every symlink. It now preserves relative links whose final target is a
-committed file inside `policy/`; absolute paths, escapes, cycles, missing targets,
-directory links and submodules remain blocked. The manifest records link text,
-and the official collector checks link identity, target containment and file
-hashes before execution. No host files are followed or copied during preparation.
+committed file inside `policy/`. Two narrowly classified deferred dependencies are
+also allowed: missing linked documentation under an internal `docs/` tree, and HF
+cache weights whose blob name is a full SHA256. All other missing targets remain
+blocked, as do absolute paths, escapes, cycles, directory links and submodules.
+The manifest records link text and deferred dependencies. The official collector
+checks exact link identity, target containment and file hashes before execution;
+deferred HF weights must have been downloaded and match their expected SHA256.
+No host files are followed or copied during preparation.
 
 - RobotQQ: all 25 documentation links under `policy/smolvla/lerobot/src/lerobot/`
   point to omitted `policy/smolvla/lerobot/docs/source/` files. These are broken
-  documentation links, not evidence of malicious code. Submit the missing docs
-  or remove the unused links; they are not silently dropped from the policy tree.
+  documentation links, not evidence of malicious code. The inspected adapter,
+  launcher and installation metadata do not read these module docs; the package's
+  root README used by setup exists. These missing docs are not an inference blocker.
+  Our former blanket rule was a false positive. The links remain unchanged in the
+  new private validation branch; the reviewer sees a documentation warning.
 - luminbot: three HF cache links resolve to committed config blobs. The
   `model.safetensors` link points to the missing blob
   `e990eb82fbf11b05b7813261196a2b841bdcf5a05f64396724a8987fa90504a3`.
-  Allowing safe links alone cannot supply that missing weight. Include the weight
-  through the declared HF/dependency download process, or remove the stale cache
-  from the submitted source and document initialization.
+  The submission already provides `policy/policy_v3/services/fetch_weights.sh`
+  and `--verify-only`, with expected SHA256 checks. HF metadata confirmed this exact
+  blob at README revision `063cc7a5b1dc6c3e1c000507f3d1fc1571056964` in
+  `aaajlw/robosyn-challenge-policy_v3-weights`. This is an intentional external
+  dependency, not evidence that the participant must commit a large weight to Git.
+  Before running offline evaluation, download the dependency at the organizer-frozen
+  revision and verify it. Without that setup, the offline Depth Anything model load
+  will fail; with the correct weight present, its absence from Git is not itself a
+  runtime blocker. The collector enforces presence and SHA256 before evaluation.
+
+Both RobotQQ and luminbot were actually recomposed and registered as code-ready;
+this does not certify GPU runtime, ten-task coverage or formal evaluation readiness.
 
 ## GitHub Permissions and Mail
 

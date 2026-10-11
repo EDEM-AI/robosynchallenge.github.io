@@ -71,13 +71,16 @@ async function main() {
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/#/submit-policy" });
     await until("!!document.querySelector('[data-form=evaluation]')");
     await until("!document.querySelector('[data-form=evaluation] [type=submit]').disabled");
-    assert.equal(await evaluate("document.querySelectorAll('[name^=checkpoint_]').length"), 11);
+    assert.equal(await evaluate("document.querySelectorAll('[name^=checkpoint_]').length"), 10);
+    assert.equal(await evaluate("document.querySelector('[name=checkpoint_link]')"), null);
+    assert.equal(await evaluate("[...document.querySelectorAll('[name^=checkpoint_]')].every(input=>input.required)"), true);
     assert.equal(await evaluate("document.querySelector('.task-checkpoints').open"), true);
     await evaluate(`(() => {
       const form=document.querySelector('[data-form=evaluation]');
       const values={artifact_name:"Synthetic",title:"Test",short_description:"Test",code_link:"https://github.com/example/test",
-        checkpoint_link:"https://huggingface.co/example/common",data_source_text:"Test",technical_notes:"All tasks"};
+        data_source_text:"Test",technical_notes:"All tasks"};
       Object.entries(values).forEach(([name,value])=>form.elements[name].value=value);
+      form.querySelectorAll('[name^=checkpoint_]').forEach(input=>input.value="https://huggingface.co/example/common");
       form.requestSubmit();
     })()`);
     await until("document.querySelector('[data-evaluation-status]')?.hidden===false");
@@ -88,6 +91,7 @@ async function main() {
     assert.equal(Object.keys(payload.task_checkpoint_links).length, 10);
     assert.equal(payload.task_checkpoint_links.click_bell, "https://huggingface.co/example/bell");
     assert.equal(payload.task_checkpoint_links.water_pouring, "https://huggingface.co/example/common");
+    assert.equal(payload.checkpoint_link, await evaluate("document.querySelector('[name^=checkpoint_]').value"));
     assert.equal(payload.all_tasks_confirmed, true);
     assert.equal(await evaluate("document.querySelector('[data-evaluation-status]').textContent.includes('Synthetic backend refusal')"), true);
     await rpc("Page.captureScreenshot", { format: "png", captureBeyondViewport: true }).then(result =>
@@ -103,8 +107,9 @@ async function main() {
     await until("!!document.querySelector('[data-form=evaluation]') && !document.querySelector('[data-form=evaluation] [type=submit]').disabled");
     await evaluate(`(() => {
       const form=document.querySelector('[data-form=evaluation]');
-      const values={artifact_name:"Synthetic",title:"Test",short_description:"Test",code_link:"https://github.com/example/test",checkpoint_link:"https://huggingface.co/example/common",data_source_text:"Test",technical_notes:"All tasks"};
+      const values={artifact_name:"Synthetic",title:"Test",short_description:"Test",code_link:"https://github.com/example/test",data_source_text:"Test",technical_notes:"All tasks"};
       Object.entries(values).forEach(([name,value])=>form.elements[name].value=value);
+      form.querySelectorAll('[name^=checkpoint_]').forEach(input=>input.value="https://huggingface.co/example/common");
       form.elements.all_tasks_confirmed.checked=true;
       form.requestSubmit();
     })()`);
