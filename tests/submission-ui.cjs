@@ -46,10 +46,15 @@ async function main() {
         user:{id:"synthetic@example.invalid",email:"synthetic@example.invalid",username:"Synthetic test",role:"participant"},
         session:{session_id:"synthetic",expires_at:"2099-01-01T00:00:00Z"}}));
       window.submissionCalls=[];
+      window.submissionGate={allowed:true,deadline_at:"2099-10-12T12:00:00Z",exception:false};
+      const testGate=new URLSearchParams(location.search).get("test_gate");
+      if(testGate==="closed") window.submissionGate={allowed:false,deadline_at:"2026-10-12T12:00:00Z",exception:false,contact_email:"robosynchallenge@gmail.com"};
+      if(testGate==="extension") window.submissionGate={allowed:true,deadline_at:"2026-10-12T12:00:00Z",exception:true,exception_expires_at:"2099-01-01T00:00:00Z"};
       const originalFetch=window.fetch;
       window.fetch=async function(url, options) {
         if (!String(url).startsWith("https://script.google.com/")) return originalFetch(url, options);
         const payload=JSON.parse(options?.body || "{}");
+        if(payload.action==="submission_status") return new Response(JSON.stringify({ok:true,...window.submissionGate}));
         if(payload.action==="submit_policy") {
           window.submissionCalls.push(payload);
           await new Promise(resolve=>setTimeout(resolve,100));
@@ -60,6 +65,7 @@ async function main() {
     ` });
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/#/submit-policy" });
     await until("!!document.querySelector('[data-form=evaluation]')");
+    await until("!document.querySelector('[data-form=evaluation] [type=submit]').disabled");
     assert.equal(await evaluate("document.querySelectorAll('[name^=checkpoint_]').length"), 11);
     assert.equal(await evaluate("document.querySelector('.task-checkpoints').open"), true);
     await evaluate(`(() => {
@@ -81,6 +87,13 @@ async function main() {
     assert.equal(await evaluate("document.querySelector('[data-evaluation-status]').textContent.includes('Synthetic backend refusal')"), true);
     await rpc("Page.captureScreenshot", { format: "png", captureBeyondViewport: true }).then(result =>
       fs.writeFileSync("/tmp/rsc-submission-desktop.png", Buffer.from(result.data, "base64")));
+    await rpc("Page.navigate", { url: "http://127.0.0.1:8032/?test_gate=closed#/submit-policy" });
+    await until("!!document.querySelector('[data-form=evaluation]') && document.body.textContent.includes('closed')");
+    assert.equal(await evaluate("document.querySelector('[data-form=evaluation] [type=submit]').disabled"),true);
+    assert.equal(await evaluate("document.body.textContent.includes('robosynchallenge@gmail.com')"),true);
+    await rpc("Page.navigate", { url: "http://127.0.0.1:8032/?test_gate=extension#/submit-policy" });
+    await until("!!document.querySelector('[data-form=evaluation]') && !document.querySelector('[data-form=evaluation] [type=submit]').disabled");
+    assert.equal(await evaluate("document.body.textContent.includes('organizer-approved extension')"),true);
     console.log("Submission UI: ten-task mapping, shared checkpoint, override, required confirmation, visible errors and double-submit guard passed; no real API calls.");
   } finally {
     socket?.close();

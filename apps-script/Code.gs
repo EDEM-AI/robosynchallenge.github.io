@@ -75,6 +75,7 @@ const SHEETS = {
     "status",
     "created_at",
     "task_checkpoint_links_json",
+    "submission_window_id",
   ],
   Evaluations: [
     "evaluation_id",
@@ -145,7 +146,7 @@ function doGet(e) {
     if (action === "review_response") return handleReviewResponsePage_(e.parameter);
     if (action === "access_decision") return handleAccessDecisionPage_(e.parameter);
     return json_({ ok: true, service: "RoboSynChallenge backend", time: new Date().toISOString(),
-      reviewer_api_version: typeof handleReviewerAction_ === "function" && typeof archiveStart_ === "function" && typeof handleReviewResponseSubmit_ === "function" ? 4 : 0 });
+      reviewer_api_version: typeof handleReviewerAction_ === "function" && typeof archiveStart_ === "function" && typeof handleReviewResponseSubmit_ === "function" && typeof submissionAdmission_ === "function" && typeof reviewScoredSummary_ === "function" ? 5 : 0 });
   } catch (error) {
     if (action === "review_response") console.error(error);
     else recordError_("doGet", error);
@@ -166,13 +167,14 @@ function doPost(e) {
     if (action === "my_submissions") return json_(handleMySubmissions_(payload));
     if (action === "review_response_submit") return handleReviewResponseSubmit_(payload);
     if (action === "submit_policy") return json_(handleSubmitPolicy_(payload));
+    if (action === "submission_status") return json_(handleSubmissionStatus_(payload));
     if (action === "leaderboard") return json_(handleLeaderboard_());
     if (action.startsWith("reviewer_")) return json_(handleReviewerAction_(action, payload));
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
-    if (action.startsWith("reviewer_") || action === "review_response_submit") console.error(error);
+    if (action.startsWith("reviewer_") || action === "review_response_submit" || error.code === "SUBMISSIONS_CLOSED") console.error(error);
     else recordError_("doPost", error);
-    return json_({ ok: false, error: String(error.message || error) });
+    return json_({ ok: false, error: String(error.message || error), ...(error.code ? { error_code: error.code } : {}) });
   }
 }
 
@@ -630,6 +632,12 @@ function handleSubmitPolicy_(payload) {
   checkRateLimit_("submit_policy", session.email, 10, 60 * 60 * 1000);
   const user = findRow_("Users", "email", session.email);
   if (!user || user.token_status !== "active") throw new Error("User token is not active.");
+  const admission = submissionAdmission_(user);
+  if (!admission.allowed) {
+    const error = new Error(`Preliminary submissions closed on October 11, 2026 at 23:59 AoE. Please contact ${admission.contact_email}; only organizers can grant a token-specific extension.`);
+    error.code = "SUBMISSIONS_CLOSED";
+    throw error;
+  }
   const submission = payload.submission || {};
   const artifactName = requiredString_(submission.artifact_name, "Artifact name");
   const title = requiredString_(submission.title, "Experiment name");
@@ -650,6 +658,7 @@ function handleSubmitPolicy_(payload) {
     email: session.email,
     task_checkpoint_links_json: Object.keys(checkedTaskLinks).length ? JSON.stringify(checkedTaskLinks) : "",
     token: user.token,
+    submission_window_id: admission.window_id,
     artifact_name: artifactName,
     title,
     short_description: shortDescription,
@@ -1605,6 +1614,7 @@ function publicSubmission_(row, evaluation = null) {
 
 function publicEvaluation_(row) {
   return {
+    ...reviewParticipantOutcome_(row),
     id: row.evaluation_id,
     submission_id: row.submission_id,
     display_name: `${row.artifact_name || "Policy artifact"} | ${row.title || ""}`,

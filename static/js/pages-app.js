@@ -395,7 +395,7 @@
           <li><strong>Artifact name and experiment name.</strong> Use names that clearly identify the policy checkpoint being evaluated.</li>
           <li><strong>Short description.</strong> Summarize the method, training setup, or intended run in a few sentences.</li>
           <li><strong>Code URL.</strong> Use a GitHub repository for the evaluation code. Teams should register a GitHub account if they do not already have one. Private repositories are allowed if <a href="https://github.com/robosynchallenge" target="_blank" rel="noreferrer">robosynchallenge</a> is invited as a collaborator.</li>
-          <li><strong>Hugging Face checkpoint URL.</strong> Provide checkpoints covering all 10 tasks, with a clear task-to-checkpoint mapping in the run notes or README.</li>
+          <li><strong>Hugging Face checkpoint URL.</strong> Provide checkpoints covering all 10 tasks, with a clear task-to-checkpoint mapping in the run notes or README. Public checkpoints are preferred. For gated models, approve the individual <strong>RoboSynChallenge</strong> Hugging Face user. For private organization repositories, grant that user read access. A URL alone does not grant access; do not put access tokens in submission notes or public code.</li>
           <li><strong>Data source.</strong> Describe the data used for training, including official released data and any additional allowed data.</li>
           <li><strong>Run and dependency notes.</strong> Include the commands, environment details, and dependencies needed by the organizers. The repository should expose the RoboSynChallenge policy adapter entrypoints and include <code>eval.sh</code>, <code>deploy_policy.yml</code>, and <code>deploy_policy.py</code>.</li>
           <li><strong>Leaderboard option.</strong> Choose whether the run should count on the public leaderboard once the result is published.</li>
@@ -476,6 +476,10 @@
     leaderboardLoaded: false,
     leaderboardLoading: false,
     leaderboardError: "",
+    submissionAccess: null,
+    submissionAccessLoading: false,
+    submissionAccessError: "",
+    submissionAccessSession: "",
   };
   let flashes = [];
   let flashTimer = null;
@@ -922,6 +926,8 @@
       real_time: evaluation.real_time === "" || evaluation.real_time == null ? null : Number(evaluation.real_time),
       notes: String(evaluation.notes || ""),
       leaderboard_notes: String(evaluation.leaderboard_notes || ""),
+      task_results: Array.isArray(evaluation.task_results) ? evaluation.task_results : [],
+      overall_summary: evaluation.overall_summary || null,
       episodes: Array.isArray(evaluation.episodes) ? evaluation.episodes : [],
     };
   }
@@ -1084,6 +1090,31 @@
       remoteState.submissionsLoading = false;
       const route = parseRoute(currentRoute());
       if (route.name === "dashboard" || route.name === "submission") render();
+    }
+  }
+
+  async function loadSubmissionAccess() {
+    if (remoteState.submissionAccessLoading || !state.session.session_id) return;
+    remoteState.submissionAccessLoading = true;
+    if (remoteState.submissionAccessSession !== state.session.session_id) remoteState.submissionAccess = null;
+    const sessionId = state.session.session_id;
+    try {
+      const access = await apiRequest("submission_status", { session_id: sessionId });
+      if (state.session.session_id !== sessionId) return;
+      remoteState.submissionAccess = access;
+      remoteState.submissionAccessError = "";
+      const boundary = Date.parse(access.exception ? access.exception_expires_at : access.deadline_at);
+      const delay = boundary - Date.now();
+      if (access.allowed && delay > 0 && delay < 2147483647) setTimeout(() => {
+        remoteState.submissionAccess = null;
+        if (parseRoute(currentRoute()).name === "submit-policy") render();
+      }, delay + 50);
+    } catch (error) {
+      remoteState.submissionAccessError = error.message || "Could not verify submission eligibility. Reload to retry.";
+    } finally {
+      remoteState.submissionAccessLoading = false;
+      remoteState.submissionAccessSession = sessionId;
+      if (parseRoute(currentRoute()).name === "submit-policy") render();
     }
   }
 
@@ -1713,8 +1744,14 @@
   }
 
   function renderPolicySubmissionForm() {
+    const access = remoteState.submissionAccess;
+    const accessNotice = remoteState.submissionAccessError || (!access ? "Checking submission eligibility..." : !access.allowed
+      ? `Preliminary submissions closed on October 11, 2026 at 23:59 AoE. Contact ${access.contact_email || CONTACT_EMAIL} to request an organizer-approved extension.`
+      : access.exception ? `An organizer-approved extension is active for your current access token until ${new Date(access.exception_expires_at).toUTCString()}.`
+      : "Preliminary submissions close October 11, 2026 at 23:59 AoE (October 12, 20:00 Beijing time).");
     return `
       <section class="section shell" data-policy-submit>
+        <p class="helper-note" data-submission-access role="status">${escapeHtml(accessNotice)} ${access && !access.allowed ? `<a href="mailto:${escapeHtml(access.contact_email || CONTACT_EMAIL)}">Contact organizers</a>` : ""}</p>
         <form class="panel-stack" data-form="evaluation">
           <article class="card">
             <div class="section-heading left">
@@ -1775,7 +1812,7 @@
           </article>
 
           <div class="section-actions">
-            <button type="submit" class="button button-primary">Submit Policy</button>
+            <button type="submit" class="button button-primary" ${access?.allowed ? "" : "disabled"}>Submit Policy</button>
           </div>
           <p data-evaluation-status role="status" aria-live="polite" hidden></p>
         </form>
@@ -1792,6 +1829,8 @@
       return renderLoginPage();
     }
 
+    if (backendConfigured() && !remoteState.submissionAccessLoading &&
+        (remoteState.submissionAccessSession !== state.session.session_id || (!remoteState.submissionAccess && !remoteState.submissionAccessError))) void loadSubmissionAccess();
     const submissionForm = backendConfigured() ? renderPolicySubmissionForm() : `
       <section class="section shell" data-policy-submit>
         ${renderBackendUnavailableCard("Policy submission backend unavailable")}
@@ -2014,6 +2053,13 @@
     `;
   }
 
+  function renderReviewedTaskResults(evaluation) {
+    if (!evaluation?.task_results?.length) return "";
+    const overall = evaluation.overall_summary;
+    const value = (number, suffix = "") => Number.isFinite(number) ? Number(number).toFixed(1) + suffix : "Pending";
+    return `<section class="section shell"><div class="section-heading"><span class="eyebrow">Reviewed results</span><h2>Task evaluation</h2><p>Ten-task score: <strong>${value(overall?.weighted_score)}</strong></p></div><div class="table-shell"><table class="leaderboard-table"><thead><tr><th>Task</th><th>Success rate</th><th>Action steps</th><th>Inference / call</th><th>Score</th><th>Run record</th></tr></thead><tbody>${evaluation.task_results.map(row => `<tr><td>${escapeHtml(String(row.task).replace(/_/g," "))}</td><td>${value(row.summary?.success_rate,"%")}</td><td>${value(row.summary?.average_steps)}</td><td>${value(row.summary?.inference_ms," ms")}</td><td>${value(row.summary?.weighted_score)}</td><td><details><summary>Command and SHA256</summary><pre style="white-space:pre-wrap;overflow-wrap:anywhere">${escapeHtml(row.eval_command)}</pre><code style="overflow-wrap:anywhere">${escapeHtml(row.archive_sha256)}</code></details></td></tr>`).join("")}</tbody></table></div></section>`;
+  }
+
   function renderSubmissionDetailPage(submissionId) {
     const user = currentUser();
     if (!user) {
@@ -2122,6 +2168,7 @@
         </article>
       </section>
 
+      ${renderReviewedTaskResults(evaluation)}
       ${episodes.length ? `
         <section class="section shell">
           <div class="section-heading">
@@ -2792,7 +2839,7 @@
       pushFlash("error", error.message || "Policy submission failed.");
     } finally {
       delete form.dataset.submitting;
-      if (submitButton) { submitButton.disabled = false; submitButton.textContent = "Submit Policy"; }
+      if (submitButton) { submitButton.disabled = !remoteState.submissionAccess?.allowed; submitButton.textContent = "Submit Policy"; }
     }
   }
 

@@ -78,6 +78,15 @@ function archiveGraph_(path, method, body, raw) {
 
 function archiveStatus_(payload) {
   if (reviewerIdentity_(payload).role !== "admin") throw new Error("Organizer access required.");
+  return archiveReadStatus_();
+}
+
+function archiveUploadHealth_(payload) {
+  reviewUploadContext_(payload);
+  return archiveReadStatus_();
+}
+
+function archiveReadStatus_() {
   const drive = config_("ARCHIVE_MS_DRIVE_ID", ""), root = config_("ARCHIVE_MS_ROOT_ITEM_ID", "");
   if (!drive || !root) throw new Error("Organizer archive folder is not configured.");
   const base = "/drives/" + encodeURIComponent(drive);
@@ -140,6 +149,8 @@ function archiveStart_(payload) {
       if (previous.status === "verified") throw new Error("This ZIP is already verified; finish registering its result JSON before another upload.");
       throw new Error("The upload session cache expired. Wait for the Microsoft session to expire before replacing it.");
     }
+    const quota = archiveGraph_("/drives/" + encodeURIComponent(config_("ARCHIVE_MS_DRIVE_ID", "")) + "?$select=quota").quota;
+    if (Number.isFinite(quota?.remaining) && size > quota.remaining) throw new Error("OneDrive storage is insufficient for this ZIP. Local evidence must be retained; contact the organizer before retrying upload.");
     const base = archiveTarget_(run, record.task);
     const session = archiveGraph_(base + ":/evidence.zip:/createUploadSession", "post", { item: { name: "evidence.zip", "@microsoft.graph.conflictBehavior": "replace" } });
     if (!String(session.uploadUrl).startsWith("https://")) throw new Error("Invalid Microsoft upload session.");

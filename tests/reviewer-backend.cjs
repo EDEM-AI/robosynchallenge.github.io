@@ -36,7 +36,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "ReviewResponse.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 function insert(name, row) {
   const headers = vm.runInContext(`SHEETS.${name}`, context);
@@ -228,7 +228,7 @@ const created = call("handleSubmitPolicy_", { session_id: "x", submission: {
   ...submission, all_tasks_confirmed: true,
 } });
 assert.equal(Object.keys(created.submission.task_checkpoint_links).length, 10);
-assert.equal(JSON.parse(sheet("Submissions").cells.at(-1).at(-1)).item_assembly, taskLinks.item_assembly);
+assert.equal(created.submission.task_checkpoint_links.item_assembly, taskLinks.item_assembly);
 const sent = [];
 context.MailApp = { getRemainingDailyQuota: () => 10, sendEmail: (message) => sent.push(message) };
 const issue = { ...credentials, evaluation_id: "eval_new", stage: 0, message_id: "msg_" + "d".repeat(32), subject: "Review question", body: "Please clarify the task mapping.", recipient: "attacker@example.com" };
@@ -285,4 +285,61 @@ const assignedJob = call("reviewQueue_", { reviewer_email: evaluator.email, revi
 assert.equal(assignedJob.coverage_verified_by, evaluator.email);
 assert.equal(assignedJob.coverage_status, "verified_all_10");
 assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), assignedSnapshot);
-console.log("Reviewer backend: assigned-only authorization, five-stage gates, machine thresholds, ten-task validation, email idempotency/quota, and participant table isolation passed.");
+const properties = {};
+context.PropertiesService = { getScriptProperties: () => ({ getProperty: key => properties[key] || "",
+  setProperty: (key, value) => { properties[key] = value; } }) };
+context.config_ = (key, fallback) => properties[key] || fallback;
+const closing = Date.parse("2026-10-12T12:00:00Z");
+assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing - 1}).allowed`, context), true);
+assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing}).allowed`, context), false);
+vm.runInContext('updateRow_("Users",2,{token:"existing",token_status:"active"})', context);
+assert.throws(() => call("reviewSubmissionWindow_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token,
+  participant_email: "one@example.com", expires_at: "2030-01-01", reason: "Test" }), /Organizer access/);
+const grant = call("reviewSubmissionWindow_", { ...credentials, participant_email: "one@example.com", expires_at: "2030-01-01T00:00:00Z", reason: "Approved extension" });
+assert.equal(grant.status, "granted");
+const admitted = vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing + 1000})`, context);
+assert.equal(admitted.allowed, true);
+assert.equal(admitted.exception, true);
+assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"regenerated"},${closing + 1000}).allowed`, context), false);
+assert(!JSON.stringify(sheet("ReviewSubmissionWindows").cells).includes('"existing"'));
+assert.equal(vm.runInContext(`submissionWasAdmitted_(${JSON.stringify({ email:"one@example.com", token:"existing", created_at: new Date(closing+1000).toISOString(), submission_window_id:admitted.window_id })},reviewRows_("ReviewSubmissionWindows"))`, context), true);
+call("reviewSubmissionWindow_", { ...credentials, participant_email: "one@example.com", revoke: true, reason: "Closed extension" });
+assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing + 1000}).allowed`, context), false);
+vm.runInContext(`savedClock = Date.now; Date.now = () => ${closing + 1000}`, context);
+const countBeforeClosed = sheet("Submissions").cells.length;
+assert.throws(() => call("handleSubmitPolicy_", { session_id: "x", submission: { ...submission, all_tasks_confirmed: true } }), /closed/i);
+assert.equal(sheet("Submissions").cells.length, countBeforeClosed);
+vm.runInContext("Date.now = savedClock", context);
+
+const measured = { schema:1, gpu:"RTX 5090", official_commit:"a".repeat(40), report_sha256:"b".repeat(64),
+  timing_scope:"trusted_policy_rpc_wall_time_excluding_simulator", seconds_per_action_step:Object.fromEntries(taskNames.map(task => [task,0.1])) };
+assert.throws(() => call("reviewConfigureScoring_", { reviewer_email:evaluator.email, reviewer_token:evaluator.token, reference:measured }), /Organizer access/);
+const scoringRecord = { task:"item_assembly", episodes:[{success:true,action_steps:100,inference_ms:100,inference_calls:50,inference_total_ms:5000},
+  {success:false,action_steps:500,inference_ms:500,inference_calls:50,inference_total_ms:25000}] };
+assert.equal(call("reviewScoredSummary_", scoringRecord).weighted_score, null);
+call("reviewConfigureScoring_", { ...credentials, reference:measured });
+const scored = call("reviewScoredSummary_", scoringRecord);
+assert.equal(scored.success_rate,50);
+assert.equal(scored.action_efficiency,40);
+assert.equal(scored.inference_ms,300);
+assert.equal(scored.inference_efficiency,50);
+assert.equal(scored.weighted_score,48);
+assert.throws(() => call("reviewConfigureScoring_", { ...credentials, reference:{...measured,report_sha256:"c".repeat(64)} }), /already frozen/);
+assert.equal(call("reviewOverallSummary_", [{task:"item_assembly",summary:{...scored,episodes:100}}]).weighted_score,null);
+assert.equal(call("reviewOverallSummary_", taskNames.map(task => ({task,summary:{...scored,episodes:100}}))).weighted_score,48);
+delete properties.REVIEW_ACT_SCORING_REFERENCE;
+const publishedReference = { schema:1, reference_mode:"published_act_benchmark", gpu:"RTX 5090", official_commit:"a".repeat(40),
+  report_sha256:"b".repeat(64), source_url:"https://github.com/EDEM-AI/RoboSynChallenge/blob/"+"a".repeat(40)+"/evaluation_results/released_checkpoint_results.json",
+  timing_scope:"trusted_policy_rpc_wall_time_excluding_simulator",seconds_per_call:0.011607777797617019,action_horizon:50 };
+assert.throws(() => call("reviewConfigureScoring_", {...credentials,reference:{...publishedReference,action_horizon:1}}), /pinned published/);
+call("reviewConfigureScoring_", {...credentials,reference:publishedReference});
+const publishedScore = call("reviewScoredSummary_", {task:"click_bell",episodes:[{success:true,action_steps:51,inference_ms:1,inference_calls:1,inference_total_ms:1}]});
+assert.equal(publishedScore.score_status,"published_act_reference");
+assert(Math.abs(publishedScore.inference_efficiency-(1-0.001/(2*publishedReference.seconds_per_call))*100)<1e-9,
+  "Corresponding ACT calls are ceiling(action steps / 50), not episode mean latency or participant calls");
+const ownOutcome = call("reviewParticipantOutcome_", {evaluation_id:"eval_new",submission_id:"sub_new",email:"one@example.com"});
+assert.equal(ownOutcome.task_results.length,10);
+assert(ownOutcome.task_results.every(row=>row.eval_command && row.archive_sha256));
+assert(!JSON.stringify(ownOutcome).includes('"seed"'));
+assert.equal(call("reviewParticipantOutcome_", {evaluation_id:"eval_new",submission_id:"sub_new",email:"attacker@example.com"}).task_results.length,0);
+console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");

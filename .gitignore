@@ -11,6 +11,8 @@ instance/
 
 # Dependency/build output
 node_modules/
+static/reviewer-preview.json
+static/reviewer-demo-files/
 dist/
 build/
 .cache/

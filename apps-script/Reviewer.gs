@@ -16,6 +16,7 @@ const REVIEW_TABLES = {
   ReviewAccessChecks: ["evaluation_id", "report_json", "checked_at"],
   ReviewResponseLinks: ["evaluation_id", "message_id", "token_hash", "status", "created_at"],
   ReviewCorrections: ["evaluation_id", "participant_email", "deadline_at", "status", "code_link", "task_checkpoint_links_json", "notes", "responded_at", "previous_bundle_commit", "updated_at"],
+  ReviewSubmissionWindows: ["window_id", "email", "token_hash", "status", "expires_at", "reason", "granted_by", "created_at"],
 };
 const REVIEW_TASK_STEPS = {
   click_bell: 361, drawer_open_place: 900, mixer_operating: 500, table_rearrangement: 361,
@@ -127,10 +128,11 @@ function latestReviewSubmissions_() {
   const users = new Map(rows_("Users").map((row) => [normalizeEmail_(row.email), row]));
   const evaluations = new Map(rows_("Evaluations").map((row) => [String(row.submission_id), row]));
   const latest = new Map();
+  const windows = reviewRows_("ReviewSubmissionWindows");
   rows_("Submissions").forEach((submission) => {
     const email = normalizeEmail_(submission.email);
     const created = new Date(submission.created_at).getTime();
-    if (!email || !users.has(email) || !isTruthy_(submission.is_ranked) || !Number.isFinite(created) || created > REVIEW_DEADLINE_MS) return;
+    if (!email || !users.has(email) || !isTruthy_(submission.is_ranked) || !submissionWasAdmitted_(submission, windows)) return;
     const evaluation = evaluations.get(String(submission.submission_id));
     const previous = latest.get(email);
     if (!previous || created > previous.created || (created === previous.created && String(submission.submission_id) > String(previous.submission.submission_id))) {
@@ -172,13 +174,17 @@ function reviewTaskCommands_(run) {
 
 function reviewSaveCommand_(payload) {
   return withReviewLock_(() => {
-    const { viewer, run } = reviewOwnedRun_(payload);
+    const { viewer, run } = payload.upload_token ? reviewUploadContext_(payload) : reviewOwnedRun_(payload);
+    if (payload.upload_token && payload.bundle_commit !== run.bundle_commit) throw new Error("Upload command belongs to another prepared commit.");
     if (!run.bundle_commit || reviewWorkflow_(run.evaluation_id).stages.slice(0, 3).some((stage) => !stage.done)) throw new Error("Complete code and environment checks first.");
     if (!Object.prototype.hasOwnProperty.call(REVIEW_TASK_STEPS, payload.task)) throw new Error("Unknown task.");
-    if (reviewTaskRows_(run.evaluation_id).some((row) => row.task === payload.task)) throw new Error("The command is locked after its result upload.");
     const command = reviewCommand_(payload.command);
+    if (reviewTaskRows_(run.evaluation_id).some((row) => row.task === payload.task)) {
+      if (reviewTaskCommands_(run)[payload.task] === command) return { ok: true, duplicate: true };
+      throw new Error("The command is locked after its result upload.");
+    }
     const row = reviewRows_("ReviewTaskCommands").find((item) => item.evaluation_id === run.evaluation_id && item.task === payload.task && item.bundle_commit === run.bundle_commit);
-    reviewWrite_("ReviewTaskCommands", row?._rowNumber, { evaluation_id: run.evaluation_id, task: payload.task, bundle_commit: run.bundle_commit, command, reviewer_email: viewer.email, updated_at: now_() });
+    reviewWrite_("ReviewTaskCommands", row?._rowNumber, { evaluation_id: run.evaluation_id, task: payload.task, bundle_commit: run.bundle_commit, command, reviewer_email: run.reviewer_email || viewer.email, updated_at: now_() });
     return { ok: true };
   });
 }
@@ -235,6 +241,10 @@ function reviewQueue_(payload, organizer) {
     const verifiedLinks = reviewTaskLinks_(parseJson_(run?.task_checkpoint_links_json, {}));
     const correctedLinks = correction?.status === "corrected" ? reviewTaskLinks_(parseJson_(correction.task_checkpoint_links_json, {})) : null;
     const taskLinks = correctedLinks || declaredLinks || verifiedLinks || {};
+    const results = tasks.filter(row => String(row.evaluation_id) === String(evaluation.evaluation_id) && row.status !== "superseded")
+      .map(row => ({ task: row.task, status: row.status, note: row.review_note,
+        artifacts: parseJson_(row.result_json, {}).artifacts || {}, command: parseJson_(row.result_json, {}).eval_command || "",
+        summary: reviewResultSummary_(parseJson_(row.result_json, {})) }));
     return { evaluation_id: evaluation.evaluation_id, submission_id: submission.submission_id,
       email: normalizeEmail_(submission.email), team_name: user.team_name || user.full_name,
       artifact_name: submission.artifact_name, created_at: submission.created_at,
@@ -248,6 +258,7 @@ function reviewQueue_(payload, organizer) {
       coverage_verified_by: run?.coverage_verified_by || "",
       coverage_verified_at: run?.coverage_verified_at || "",
       technical_notes: submission.technical_notes, reviewer_email: run?.reviewer_email || "",
+      overall_summary: reviewOverallSummary_(results),
       state: run?.state || "unassigned", bundle_url: run?.bundle_url || "",
       preparation_status: preparation.get(String(evaluation.evaluation_id))?.status || "pending",
       preparation_error: preparation.get(String(evaluation.evaluation_id))?.message || "",
@@ -256,19 +267,12 @@ function reviewQueue_(payload, organizer) {
       machines,
       messages: messages.filter((row) => String(row.evaluation_id) === String(evaluation.evaluation_id))
         .map((row) => ({ message_id: row.message_id, stage: row.stage, status: row.status, subject: row.subject, sent_at: row.sent_at })),
-      results: tasks.filter((row) => String(row.evaluation_id) === String(evaluation.evaluation_id) && row.status !== "superseded")
-        .map((row) => ({ task: row.task, status: row.status, note: row.review_note,
-          artifacts: parseJson_(row.result_json, {}).artifacts || {},
-          command: parseJson_(row.result_json, {}).eval_command || "",
-          summary: reviewResultSummary_(parseJson_(row.result_json, {})) })) };
+      results };
   }) };
 }
 
 function reviewResultSummary_(record) {
-  const episodes = Array.isArray(record.episodes) ? record.episodes : [];
-  const success = episodes.filter((episode) => episode.success === true).length;
-  return { episodes: episodes.length, success_rate: episodes.length ? 100 * success / episodes.length : null,
-    average_steps: episodes.length ? episodes.reduce((sum, episode) => sum + Number(episode.action_steps || 0), 0) / episodes.length : null };
+  return reviewScoredSummary_(record);
 }
 
 function withReviewLock_(work) {
@@ -401,6 +405,10 @@ function reviewValidatedResult_(payload, run) {
         typeof episode.success !== "boolean" || !Number.isInteger(episode.action_steps) || episode.action_steps < 0 || episode.action_steps > horizon ||
         typeof episode.inference_ms !== "number" || !Number.isFinite(episode.inference_ms) || episode.inference_ms < 0) throw new Error("Episode fields are incomplete or out of bounds.");
     seen.add(episode.index);
+    if (episode.inference_calls != null || episode.inference_total_ms != null) {
+      if (!Number.isInteger(episode.inference_calls) || episode.inference_calls < 1 || !Number.isFinite(episode.inference_total_ms) || episode.inference_total_ms < 0 ||
+          Math.abs(episode.inference_ms * episode.inference_calls - episode.inference_total_ms) > Math.max(0.000001, episode.inference_total_ms * 0.000001)) throw new Error("Inference call count and total time are inconsistent.");
+    }
   });
   const orderedSeeds = [...record.episodes].sort((left, right) => left.index - right.index).map((episode) => episode.seed);
   const expectedHash = REVIEW_SEED_HASHES[record.task];
@@ -598,9 +606,12 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  if (action === "reviewer_configure_scoring") return reviewConfigureScoring_(payload);
+  if (action === "reviewer_submission_window") return reviewSubmissionWindow_(payload);
   if (action === "reviewer_issue_upload_access") return reviewIssueUploadAccess_(payload);
   if (action === "reviewer_configure_storage") return archiveConfigure_(payload);
   if (action === "reviewer_storage_status") return archiveStatus_(payload);
+  if (action === "reviewer_upload_health") return archiveUploadHealth_(payload);
   if (action === "reviewer_start_evidence_upload") return archiveStart_(payload);
   if (action === "reviewer_verify_evidence_upload") return archiveDownload_(payload);
   if (action === "reviewer_finish_evidence_upload") return archiveFinish_(payload);

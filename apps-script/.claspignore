@@ -3,4 +3,6 @@
 !Reviewer.gs
 !ReviewResponse.gs
 !ArchiveUpload.gs
+!SubmissionWindow.gs
+!Scoring.gs
 !appsscript.json
