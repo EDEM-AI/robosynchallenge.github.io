@@ -67,6 +67,15 @@ async function main() {
       else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
     }
     assert.equal(await evaluate("document.querySelector('.reviewer-progress progress').value"), 0, "Demo must not count toward real progress");
+    const codeJob = JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.find(job => job.code_bundle_commit && !job.bundle_commit);
+    if (codeJob) {
+      await evaluate(`document.querySelector('[data-review-job="${codeJob.evaluation_id}"]').click()`);
+      await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(codeJob.evaluation_id)}`);
+      assert.equal(await evaluate("document.querySelector('.reviewer-automatic-status .success')?.textContent.includes('Code composed automatically')"), true);
+      assert.equal(await evaluate("document.querySelector('.reviewer-automatic-status a')?.textContent"), "Open private validation branch");
+      assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') !== null"), true);
+      assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Validation code must not bypass the checkpoint gate");
+    }
     await evaluate("document.querySelector('[data-review-job=eval_3b7f6832eca94f]').click()");
     await until("document.querySelector('[data-evaluation-id]').textContent === 'eval_3b7f6832eca94f'");
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-links a').length"), 20, "Each submitted repository and checkpoint must have its own readable link");
@@ -74,7 +83,9 @@ async function main() {
     assert.equal(await evaluate("document.body.innerText.includes('local preview')"), false);
     assert.equal(await evaluate("document.querySelector('[data-review-action=demo-code]') === null"), true, "Real requests must never show sample code preparation");
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 2, "Automatic preparation is status, not a reviewer step");
-    await evaluate("document.querySelectorAll('.reviewer-job')[1].click()");
+    const flowJob = codeJob || JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.find(job => !job.local_walkthrough && job.preparation_status !== "failed");
+    assert(flowJob, "Use a non-failing request for the simulated five-stage fixture");
+    await evaluate(`document.querySelector('[data-review-job="${flowJob.evaluation_id}"]').click()`);
     await until("document.querySelector('[data-evaluation-id]').textContent !== 'eval_LOCALWALKTHROUGH'");
     await evaluate("document.fonts.ready.then(() => true)");
     const screenshot = async (name) => { const shot = await rpc("Page.captureScreenshot", { format: "png" }); fs.writeFileSync("/tmp/rsc-review-" + name + ".png", Buffer.from(shot.data, "base64")); };

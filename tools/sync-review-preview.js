@@ -5,6 +5,7 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 
 async function main() {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = "1";
   const [settingsFile, previewTokenFile] = process.argv.slice(2);
   if (!settingsFile || !previewTokenFile) throw new Error("Pass private preparer settings and the local preview token file.");
   const settings = JSON.parse(fs.readFileSync(settingsFile, "utf8"));
