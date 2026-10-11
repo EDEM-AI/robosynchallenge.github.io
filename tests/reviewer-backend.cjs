@@ -397,6 +397,14 @@ assert(sent.at(-1).body.includes("manual reviewer approval"));
 assert(!sent.at(-1).body.includes("rsc_action=review_response"), "No-legal-version email must not bypass manual argument approval");
 call("reviewApproveVersionException_", { ...credentials, evaluation_id: "eval_assigned", reason: "Participant timestamp evidence accepted", argument_reviewed: true });
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_assigned").version_generation, 1);
+const versionCutoff = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_assigned").version_cutoff_at;
+const versionReport = { code: { revision: "a".repeat(40), authored_at: "2026-10-01T00:00:00Z", committed_at: "2026-10-01T00:00:00Z", cutoff_at: versionCutoff },
+  hf: Object.fromEntries(taskNames.map(task => [task, { ...hfReport[task], committed_at: "2026-10-01T00:00:00Z", cutoff_at: versionCutoff }])) };
+call("reviewVersionCheck_", { ...credentials, evaluation_id: "eval_assigned", status: "final", report: versionReport });
+assert.throws(() => call("reviewVersionCheck_", { ...credentials, evaluation_id: "eval_assigned", status: "final", report: {
+  ...versionReport, hf: { ...versionReport.hf, click_bell: { ...versionReport.hf.click_bell, committed_at: versionCutoff } },
+} }), /timestamps must precede/);
+assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_assigned").version_status, "final");
 const audit = call("reviewAuditSubmissionLinks_", credentials);
 assert.equal(audit.issues.length, 0);
 assert.throws(() => call("reviewAuditSubmissionLinks_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token }), /Organizer access/);
