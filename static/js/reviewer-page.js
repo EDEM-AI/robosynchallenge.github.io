@@ -73,21 +73,24 @@
     if (!state.drafts.has(draftKey(job))) state.drafts.set(draftKey(job), { ...flow(job).stages[state.stage].checks, machine_id: flow(job).machine_id || job.machines?.find((machine) => machine.status === "passed")?.machine_id || "" });
     const values = state.drafts.get(draftKey(job));
     // Preparation is a script-owned status, not a reviewer checklist item.
-    if (state.stage === 0) values.repository_access = Boolean(job.bundle_commit && job.bundle_url);
+    if (state.stage === 0) values.repository_access = codeVerified(job);
     return values;
   };
   const versionSuffix = (job) => `${job.preparation_attempt ? "-correction" + job.preparation_attempt : ""}${job.version_generation ? "-exception" + job.version_generation : ""}`;
   const cloneCommand = (job) => `git clone --single-branch --branch submissions/${job.evaluation_id}${versionSuffix(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} checkout --detach ${job.bundle_commit}`;
   const cloneDirectory = (job) => `"$HOME/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}"`;
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
+  const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
     if (LOCAL && job.local_walkthrough) return "";
     const checks = draft(job);
-    if (Object.keys(STAGES[state.stage].checks).some((key) => checks[key] !== true)) return "Complete the reviewer checklist";
     if (state.stage === 0 && job.coverage_status === "legacy_unverified") return "Record a checkpoint URL for each of the 10 tasks";
-    if (job.version_status === "provisional") return "Validation only; formal versions will be frozen after the deadline";
-    if (state.stage <= 1 && !job.bundle_commit) return "Prepared code required";
+    if (state.stage === 0 && !codeVerified(job)) return "Automatic code preparation must succeed before continuing";
+    if (state.stage === 1 && !job.bundle_commit) return job.version_status === "provisional"
+      ? "Submission checks passed. The formal evaluation branch will be prepared automatically after the submission deadline; no participant correction is needed."
+      : "The formal evaluation branch is not available yet. Check automatic preparation status.";
     if (state.stage === 0 && job.hf_check_status !== "passed" && !TASKS.every(task => job.hf_access?.[task]?.accessible && job.hf_access[task].url === job.task_checkpoint_links?.[task])) return "Automatic HF access checks must pass for all 10 task URLs";
+    if (Object.keys(STAGES[state.stage].checks).some((key) => checks[key] !== true)) return "Complete the reviewer checklist";
     if (state.stage === 3 && TASKS.some((task) => !job.task_commands?.[task])) return "Record all 10 actual evaluation commands";
     if (state.stage === 3 && TASKS.some((task) => !["submitted", "checked"].includes(resultFor(job, task)?.status))) return "Upload all 10 task results";
     if (state.stage === 4 && TASKS.some((task) => resultFor(job, task)?.status !== "checked")) return "Accept all 10 task results";
@@ -165,6 +168,7 @@
       if (action === "reviewer_complete_stage") {
         if (Object.keys(STAGES[fields.stage].checks).some((key) => fields.checks?.[key] !== true)) throw new Error("Complete every checklist item.");
         if (fields.stage === 0 && job.coverage_status === "legacy_unverified") throw new Error("Verify the checkpoint URL for each of the 10 tasks first.");
+        if (fields.stage === 0 && (!codeVerified(job) || job.hf_check_status !== "passed")) throw new Error("Automatic code and checkpoint access checks must pass first.");
         if (fields.stage === 1 && !job.bundle_commit) throw new Error("Prepared code is missing.");
         if (fields.stage === 3 && TASKS.some((task) => !["submitted", "checked"].includes(resultFor(job, task)?.status))) throw new Error("Upload all ten results first.");
         if (fields.stage === 4 && TASKS.some((task) => resultFor(job, task)?.status !== "checked")) throw new Error("Accept all ten task results first.");
@@ -223,7 +227,8 @@
   }
   function checks(job) {
     const values = draft(job);
-    return `${state.stage === 4 ? scoreSummary(job) : ""}<div class="reviewer-checks"><h4>Completion checklist</h4>${Object.entries(STAGES[state.stage].checks).filter(([key]) => key !== "repository_access").map(([key, text]) => `<label class="reviewer-check"><input type="checkbox" data-stage-check="${key}" ${values[key] ? "checked" : ""} ${flow(job).stages[state.stage].done ? "disabled" : ""}><span>${text}</span></label>`).join("")}</div>${admissionControls(job)}`;
+    const blocker = !flow(job).stages[state.stage].done && nextBlocker(job);
+    return `${state.stage === 4 ? scoreSummary(job) : ""}<div class="reviewer-checks"><h4>Completion checklist</h4>${Object.entries(STAGES[state.stage].checks).filter(([key]) => key !== "repository_access").map(([key, text]) => `<label class="reviewer-check"><input type="checkbox" data-stage-check="${key}" ${values[key] ? "checked" : ""} ${flow(job).stages[state.stage].done ? "disabled" : ""}><span>${text}</span></label>`).join("")}</div>${blocker ? notice("Next stage blocked: " + escape(blocker), false, "warning") : ""}${admissionControls(job)}`;
   }
   const notice = (text, success = false, severity = "info") => `<div class="reviewer-notice ${success ? "success" : severity}">${["warning", "error"].includes(severity) ? `<strong>${severity.toUpperCase()}:</strong> ` : ""}${text}</div>`;
   const step = (number, title, body) => `<section class="reviewer-instruction"><h4><span class="reviewer-instruction-number">${number}</span>${title}</h4>${body}</section>`;

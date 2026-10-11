@@ -140,6 +140,14 @@ async function main() {
       else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
     };
     const bundleCommit = "a".repeat(40);
+    await evaluate(`(() => { const key='rsc-reviewer-preview-workflow-v4'; const saved=JSON.parse(sessionStorage.getItem(key)); const job=saved.jobs.find(job=>job.evaluation_id===${JSON.stringify(evaluationId)}); job.code_bundle_commit='c'.repeat(40); job.code_bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/validation/test'; job.version_status='provisional'; job.hf_check_status='passed'; sessionStorage.setItem(key,JSON.stringify(saved)); })()`);
+    await rpc("Page.reload");
+    await until("!!document.querySelector('.reviewer-job')");
+    await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
+    await finishStage(0);
+    assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Only formal code handoff, not submission checks, waits for the deadline freeze");
+    assert.equal(await evaluate("document.body.innerText.includes('Next stage blocked: Submission checks passed.')"), true);
+    await evaluate(`(() => { const key='rsc-reviewer-preview-workflow-v4'; const saved=JSON.parse(sessionStorage.getItem(key)); const job=saved.jobs.find(job=>job.evaluation_id===${JSON.stringify(evaluationId)}); job.workflow.stages[0].done=false; job.version_status='final'; sessionStorage.setItem(key,JSON.stringify(saved)); })()`);
     await evaluate(`(() => { const key = 'rsc-reviewer-preview-workflow-v4'; const saved = JSON.parse(sessionStorage.getItem(key)); const job = saved.jobs.find(job => job.evaluation_id === ${JSON.stringify(evaluationId)}); job.bundle_commit = ${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; job.hf_check_status='passed'; job.hf_access=Object.fromEntries(Object.entries(job.task_checkpoint_links).map(([task,url])=>[task,{url,revision:'f'.repeat(40),accessible:true,files_checked:2}])); sessionStorage.setItem(key, JSON.stringify(saved)); })()`);
     await rpc("Page.reload");
     await until("!!document.querySelector('.reviewer-job')");

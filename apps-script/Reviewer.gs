@@ -718,11 +718,13 @@ function reviewUpdateStage_(payload, complete) {
     if (workflow.stages.slice(0, index).some((stage) => !stage.done)) throw new Error("Complete the previous stages first.");
     if (workflow.stages[index].done) return { ok: true, workflow };
     const checks = Object.fromEntries(REVIEW_STAGES[index].checks.map((key) => [key, payload.checks?.[key] === true]));
+    const current = index === 0 ? reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id) : null;
+    if (index === 0) checks.repository_access = Boolean(current?.bundle_commit && current.bundle_url || current?.code_bundle_commit && current.code_bundle_url);
     workflow.stages[index].checks = checks;
     if (complete) {
+      if (index === 0 && !checks.repository_access) throw new Error("Automatic code preparation must succeed before continuing.");
+      if (index === 0 && current.hf_check_status !== "passed") throw new Error("Automatic Hugging Face access checks must pass for the current 10 task URLs.");
       if (Object.values(checks).some((value) => !value)) throw new Error("Complete every required checklist item.");
-      if (index === 0 && (!run.bundle_commit || !run.bundle_url)) throw new Error("Automatic code preparation must succeed before continuing.");
-      if (index === 0 && reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_status !== "passed") throw new Error("Automatic Hugging Face access checks must pass for the current 10 task URLs.");
       if (index === 0 && !reviewTaskLinks_(parseJson_(job.submission.task_checkpoint_links_json, {})) &&
           !reviewTaskLinks_(parseJson_(run.task_checkpoint_links_json, {}))) throw new Error("All 10 task checkpoints must be declared or verified by an organizer.");
       if (index === 1 && (!run.bundle_commit || !run.bundle_url)) throw new Error("Prepared evaluation code is not available yet.");

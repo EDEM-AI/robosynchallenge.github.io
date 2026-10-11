@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import secrets
 import urllib.request
@@ -35,6 +36,9 @@ def main():
     member.add_argument("--inactive", action="store_true")
     invite = actions.add_parser("add")
     invite.add_argument("--email", required=True)
+    resend = actions.add_parser("resend")
+    resend.add_argument("--email", required=True)
+    resend.add_argument("--delivery-id", required=True, help="Stable invite_ followed by 32 hex digits; reuse when retrying")
     args = parser.parse_args()
     os.umask(0o077)
     settings = json.loads(private_read(args.settings))
@@ -61,6 +65,15 @@ def main():
         result = api("reviewer_set_pool", enabled=not args.pause, minimum_evaluators=args.minimum_evaluators)
     elif args.command == "member":
         result = api("reviewer_set_pool", email=args.email, active=not args.inactive)
+    elif args.command == "resend":
+        email = args.email.strip().lower()
+        if not re.fullmatch(r"[a-z0-9._+-]+@[a-z0-9.-]+", email) or not re.fullmatch(r"invite_[a-f0-9]{32}", args.delivery_id):
+            raise ValueError("Enter a valid email and stable invitation delivery ID")
+        ledger = json.loads(private_read(args.settings.parent / ("evaluator-invitation-" + email + ".json")))
+        if ledger["email"] != email:
+            raise ValueError("Invitation identity changed")
+        result = api("reviewer_send_invitation", email=email, eval_token=ledger["token"], invitation_id=args.delivery_id)
+        save(args.settings.parent / ("evaluator-redelivery-" + args.delivery_id + ".json"), result)
     else:
         email = args.email.strip().lower()
         if email.count("@") != 1 or not all(part and all(char.isalnum() or char in "._-+" for char in part) for part in email.split("@")):

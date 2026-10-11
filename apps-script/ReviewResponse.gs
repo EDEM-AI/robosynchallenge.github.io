@@ -37,22 +37,27 @@ function reviewActivateResponseLink_(run, messageId) {
     deadline_at: "", status: correction?.status || "awaiting", response_status: "awaiting", updated_at: now_() });
 }
 
-function requireReviewResponse_(params) {
+function requireReviewResponse_(params, allowUsed) {
   const token = String(params.token || "");
   if (!/^rsp_[a-f0-9]{64}$/.test(token)) throw new Error("Invalid response link.");
   const link = reviewRows_("ReviewResponseLinks").find((row) => row.evaluation_id === params.evaluation_id &&
-    row.status === "active" && row.token_hash === reviewerHash_(token));
+    (row.status === "active" || allowUsed && row.status === "used") && row.token_hash === reviewerHash_(token));
   const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === params.evaluation_id);
   if (!link || !correction) throw new Error("This response link is not active. Contact the organizers.");
   // Old sent links remain valid after their historical deadline; answered links do not.
-  if (!correction.response_status && ["confirmed", "corrected"].includes(correction.status)) throw new Error("This response has already been recorded. Use the next issue email's form.");
+  if (link.status !== "used" && !correction.response_status && ["confirmed", "corrected"].includes(correction.status)) throw new Error("This response has already been recorded. Use the next issue email's form.");
   const job = reviewJob_(params.evaluation_id), run = reviewRun_(params.evaluation_id);
   if (!run || normalizeEmail_(job.submission.email) !== normalizeEmail_(correction.participant_email)) throw new Error("The response does not match the registered participant.");
   return { correction, job, run, link };
 }
 
+function reviewResponseRecorded_(link) {
+  return html_("Response recorded", `<p>Your response has already been recorded for <strong>${escapeHtml_(link.evaluation_id)}</strong>${link.responded_at ? ` at ${escapeHtml_(link.responded_at)} (UTC)` : ""}. No new evaluation request is needed.</p><p>This response link cannot change the saved reply. The system processes the recorded response automatically; use a new issue email's form only if the organizers request further changes.</p>`);
+}
+
 function handleReviewResponsePage_(params) {
-  const { correction, job } = requireReviewResponse_(params);
+  const { correction, job, link } = requireReviewResponse_(params, true);
+  if (link.status === "used") return reviewResponseRecorded_(link);
   const links = reviewTaskLinks_(parseJson_(correction.status === "corrected" ? correction.task_checkpoint_links_json : job.submission.task_checkpoint_links_json, {})) || {};
   return html_("Evaluation response", `<p><strong>${escapeHtml_(job.user.team_name || job.user.full_name)}</strong></p>
     <p>Use this issue email's form to confirm your submission or provide corrected code and checkpoints for all 10 tasks. There is no 24-hour deadline or overall correction limit. A further issue email opens another response round. Team details cannot be changed.</p>
@@ -73,8 +78,16 @@ function handleReviewResponsePage_(params) {
 
 function handleReviewResponseSubmit_(params) {
   return withReviewLock_(() => {
-    const { correction, run, link } = requireReviewResponse_(params);
+    const { correction, run, link } = requireReviewResponse_(params, true);
     const notes = requiredString_(params.notes, "Response notes");
+    if (link.status === "used") {
+      const saved = parseJson_(link.response_json, {});
+      const same = link.response_kind === params.response_kind && saved.notes === notes &&
+        (params.response_kind !== "correct" || saved.code_link === params.code_link && Object.keys(REVIEW_TASK_STEPS).every(task =>
+          saved.task_checkpoint_links?.[task] === params["checkpoint_" + task]));
+      if (!same) throw new Error("This response has already been recorded. No new changes were saved. Use the next issue email's form.");
+      return reviewResponseRecorded_(link);
+    }
     if (params.response_kind === "confirm") {
       reviewWrite_("ReviewCorrections", correction._rowNumber, { evaluation_id: run.evaluation_id,
         status: correction.status === "corrected" ? "corrected" : "confirmed", response_status: "confirmed", notes,

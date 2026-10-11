@@ -245,7 +245,7 @@ assert.equal(validationJob.code_bundle_commit, validation.bundle_commit);
 assert.equal(validationJob.bundle_commit, "");
 assert.equal(validationJob.coverage_status, "legacy_unverified");
 assert.throws(() => call("reviewCompleteStage_", { ...credentials, evaluation_id: "eval_legacy", stage: 0,
-  checks: { repository_access: true, checkpoint_access: true, ten_tasks: true } }), /10 tasks|prepared|preparation/);
+  checks: { repository_access: true, checkpoint_access: true, ten_tasks: true } }), /10 task|prepared|preparation/);
 assert.throws(() => call("reviewCheckpointCredential_", { ...credentials, evaluation_id: "eval_legacy",
   bundle_commit: validation.bundle_commit }), /Private clone capability/);
 assert.throws(() => call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legacy",
@@ -281,6 +281,13 @@ assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_i
 const accessReport = Object.fromEntries(taskNames.map(task => [task, { url: taskLinks[task], revision: "f".repeat(40), accessible: true, files_checked: 2 }]));
 call("reviewAccessCheck_", { ...credentials, evaluation_id: "eval_legacy", report: accessReport });
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").hf_check_status, "passed");
+const validationFlowBefore = call("reviewWorkflow_", "eval_legacy");
+assert.equal(call("reviewCompleteStage_", { ...credentials, evaluation_id: "eval_legacy", stage: 0,
+  checks: { repository_access: false, checkpoint_access: true, ten_tasks: true } }).workflow.stages[0].done, true,
+  "Verified validation code and HF checks allow submission check before the deadline freeze; the script owns repository_access");
+assert.throws(() => call("reviewCompleteStage_", { ...credentials, evaluation_id: "eval_legacy", stage: 1,
+  checks: { commit_verified: true, policy_entrypoints: true, dependencies: true } }), /Prepared evaluation code/);
+vm.runInContext(`reviewStoreWorkflow_(reviewRun_("eval_legacy"), ${JSON.stringify(validationFlowBefore)})`, context);
 const changedLinks = { ...taskLinks, click_bell: "https://huggingface.co/test/changed" };
 const oldContext = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").hf_check_context;
 call("reviewVerifyCoverage_", { ...credentials, evaluation_id: "eval_legacy", coverage_confirmed: true, task_checkpoint_links: changedLinks });
@@ -369,7 +376,11 @@ const originalSnapshot = JSON.stringify(sheet("Submissions").cells);
 context.HtmlService = { createHtmlOutput: text => text };
 call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "The original code is correct." });
 assert.equal(JSON.stringify(sheet("Submissions").cells), originalSnapshot);
-assert.throws(() => call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "Second reply" }), /not active/);
+assert.throws(() => call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "Second reply" }), /already been recorded/);
+assert(call("handleReviewResponsePage_", responseParams).includes("already been recorded"));
+const confirmationState = JSON.stringify([sheet("ReviewCorrections").cells, sheet("ReviewProgress").cells]);
+assert(call("handleReviewResponseSubmit_", { ...responseParams, response_kind: "confirm", notes: "The original code is correct." }).includes("already been recorded"));
+assert.equal(JSON.stringify([sheet("ReviewCorrections").cells, sheet("ReviewProgress").cells]), confirmationState);
 vm.runInContext('reviewWrite_("ReviewCorrections", 2, {evaluation_id:"eval_new", deadline_at:"2020-01-01T00:00:00Z"})', context);
 context.MailApp.getRemainingDailyQuota = () => 10;
 call("reviewSendIssue_", { ...issue, message_id: "msg_" + "2".repeat(32) });
@@ -387,7 +398,11 @@ const correctionFields = { ...legacyParams, response_kind: "correct", code_link:
   ...Object.fromEntries(taskNames.map(task => ["checkpoint_" + task, taskLinks[task]])) };
 call("handleReviewResponseSubmit_", correctionFields);
 assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), beforeCorrection);
-assert.throws(() => call("handleReviewResponseSubmit_", correctionFields), /not active/);
+const correctionState = JSON.stringify([sheet("ReviewCorrections").cells, sheet("ReviewProgressBackups").cells, sheet("ReviewProgress").cells]);
+assert(call("handleReviewResponseSubmit_", correctionFields).includes("already been recorded"));
+assert.equal(JSON.stringify([sheet("ReviewCorrections").cells, sheet("ReviewProgressBackups").cells, sheet("ReviewProgress").cells]), correctionState, "Identical form retries do not reset progress or create another correction round");
+assert.throws(() => call("handleReviewResponseSubmit_", { ...correctionFields, code_link: "https://github.com/example/policy/tree/" + "8".repeat(40) }), /No new changes were saved/);
+assert.throws(() => call("handleReviewResponsePage_", { ...legacyParams, token: "rsp_" + "0".repeat(64) }), /not active/);
 assert.throws(() => call("reviewUploadContext_", { evaluation_id: "eval_legacy", upload_token: legacyAccess.upload_token }), /Invalid or expired/);
 const correctedJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
 assert.equal(correctedJob.code_bundle_commit, "", "A correction must not display the old validation branch");
