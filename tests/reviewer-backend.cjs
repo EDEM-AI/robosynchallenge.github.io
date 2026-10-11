@@ -753,7 +753,7 @@ assert.throws(()=>dispatch("reviewer_evidence_status",{...statusClone,upload_tok
 const capabilityBeforeMaintenance = JSON.stringify(call("reviewRows_","ReviewUploadAccess"));
 const progressBeforeMaintenance = JSON.stringify(call("reviewWorkflow_","eval_accessfollow"));
 vm.runInContext('reviewWrite_("ReviewRuns", reviewRun_("eval_accessfollow")._rowNumber, {evaluation_id:"eval_accessfollow",bundle_commit:"b".repeat(40)}); originalMaintenanceQueue = reviewQueue_; reviewQueue_ = () => ({jobs:[{evaluation_id:"eval_accessfollow",bundle_commit:"b".repeat(40),code_base_commit:"8".repeat(40),version_report:{},preparation_attempt:0,version_generation:0}]});', context);
-assert.equal(call("reviewUpgradeTools_", {...toolsFields,base_commit:"8".repeat(40),expected_bundle_commit:"b".repeat(40)}).state,"already_current");
+assert.equal(call("reviewUpgradeTools_", {...toolsFields,base_commit:"8".repeat(40),expected_bundle_commit:""}).state,"already_current","A worker that already prepared the current base needs no stale maintenance reset");
 vm.runInContext('reviewQueue_ = originalMaintenanceQueue', context);
 assert.equal(JSON.stringify(call("reviewRows_","ReviewUploadAccess")),capabilityBeforeMaintenance,"Already-current code retains its upload capability");
 assert.equal(JSON.stringify(call("reviewWorkflow_","eval_accessfollow")),progressBeforeMaintenance,"Already-current code retains progress");
