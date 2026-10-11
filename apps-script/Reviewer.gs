@@ -71,6 +71,33 @@ function reviewRows_(name, workbook) {
   }).filter((row) => headers.some((header) => row[header] !== ""));
 }
 
+function reviewReadTables_(workbook, names) {
+  // Read one fresh snapshot, not a cross-user cache. Authentication is checked separately.
+  if (typeof workbook.getId === "function") {
+    const query = names.map(name => "ranges=" + encodeURIComponent("'" + name + "'")).join("&");
+    let response;
+    try {
+      response = UrlFetchApp.fetch("https://sheets.googleapis.com/v4/spreadsheets/" + encodeURIComponent(workbook.getId()) +
+        "/values:batchGet?majorDimension=ROWS&valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING&" + query,
+        { headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() }, muteHttpExceptions: true });
+    } catch (error) { /* Fall back when the Sheets REST API is unavailable. */ }
+    if (response?.getResponseCode() === 200) {
+      const ranges = JSON.parse(response.getContentText()).valueRanges;
+      if (!Array.isArray(ranges) || ranges.length !== names.length) throw new Error("Incomplete evaluation snapshot; refresh again.");
+      return { mode: "batch", rows: Object.fromEntries(names.map((name, index) => {
+        const headers = REVIEW_TABLES[name] || SHEETS[name];
+        const values = ranges[index].values || [];
+        if (headers.some((header, column) => values[0]?.[column] !== header)) throw new Error(name + " headers changed; review before reading.");
+        return [name, values.slice(1).map((cells, offset) => Object.fromEntries([
+          ["_rowNumber", offset + 2], ...headers.map((header, column) => [header, cells[column] ?? ""]),
+        ])).filter(row => headers.some(header => row[header] !== ""))];
+      })) };
+    }
+  }
+  return { mode: "spreadsheet", rows: Object.fromEntries(names.map(name => [name,
+    REVIEW_TABLES[name] ? reviewRows_(name, workbook) : rows_(name, workbook)])) };
+}
+
 function reviewWrite_(name, rowNumber, values) {
   const sheet = reviewTable_(name);
   const headers = REVIEW_TABLES[name];
@@ -188,12 +215,13 @@ function reviewSendInvitation_(payload) {
   });
 }
 
-function latestReviewSubmissions_(workbook, submissionWindows) {
-  const users = new Map(rows_("Users", workbook).map((row) => [normalizeEmail_(row.email), row]));
-  const evaluations = new Map(rows_("Evaluations", workbook).map((row) => [String(row.submission_id), row]));
+function latestReviewSubmissions_(workbook, submissionWindows, snapshot) {
+  const read = name => snapshot ? snapshot[name] : rows_(name, workbook);
+  const users = new Map(read("Users").map((row) => [normalizeEmail_(row.email), row]));
+  const evaluations = new Map(read("Evaluations").map((row) => [String(row.submission_id), row]));
   const latest = new Map();
   const windows = submissionWindows || reviewRows_("ReviewSubmissionWindows", workbook);
-  rows_("Submissions", workbook).forEach((submission) => {
+  read("Submissions").forEach((submission) => {
     const email = normalizeEmail_(submission.email);
     const created = new Date(submission.created_at).getTime();
     if (!email || !users.has(email) || !isTruthy_(submission.is_ranked) || !submissionWasAdmitted_(submission, windows)) return;
@@ -310,10 +338,14 @@ function reviewTaskLinks_(links) {
 }
 
 function reviewQueue_(payload, organizer) {
+  const started = Date.now();
   const workbook = spreadsheet_();
-  const read = name => reviewRows_(name, workbook);
   const viewer = reviewerIdentity_(payload, workbook);
   if (organizer && viewer.role !== "admin") throw new Error("Organizer access required.");
+  const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "ReviewRuns", "ReviewTaskResults",
+    "ReviewProgress", "ReviewMachines", "ReviewMessages", "ReviewPreparation", "ReviewCodePreparations", "ReviewCorrections",
+    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows"]);
+  const read = name => snapshot.rows[name];
   const runs = new Map(read("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
   const tasks = read("ReviewTaskResults");
   const progress = read("ReviewProgress");
@@ -330,7 +362,7 @@ function reviewQueue_(payload, organizer) {
   const versionDecisions = new Map(read("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
   const windows = read("ReviewSubmissionWindows");
   const submissionWindows = new Map(windows.map(row => [row.window_id, row]));
-  return { ok: true, reviewer: viewer, jobs: latestReviewSubmissions_(workbook, windows).filter(({ evaluation }) => {
+  const jobs = latestReviewSubmissions_(workbook, windows, snapshot.rows).filter(({ evaluation }) => {
     const owner = runs.get(String(evaluation.evaluation_id))?.reviewer_email;
     return organizer || ["admin", "observer"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {
@@ -397,7 +429,10 @@ function reviewQueue_(payload, organizer) {
       messages: messages.filter((row) => String(row.evaluation_id) === String(evaluation.evaluation_id))
         .map((row) => ({ message_id: row.message_id, stage: row.stage, status: row.status, subject: row.subject, sent_at: row.sent_at })),
       results };
-  }) };
+  });
+  return { ok: true, reviewer: viewer, jobs,
+    ...(payload.include_mail_status === true ? { messages: reviewMailMessages_(viewer, snapshot.rows) } : {}),
+    refresh: { read_mode: snapshot.mode, server_ms: Date.now() - started } };
 }
 
 function reviewResultSummary_(record) {
@@ -780,6 +815,9 @@ function reviewSendIssue_(payload) {
 function handleReviewerAction_(action, payload) {
   if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).role === "observer") throw new Error("Read-only access: observers cannot modify evaluations.");
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
+  if (action === "reviewer_pool") return reviewPool_(payload);
+  if (action === "reviewer_set_pool") return reviewSetPool_(payload);
+  if (action === "reviewer_balance_pool") return reviewBalancePool_(payload);
   if (action === "reviewer_provision_account") return reviewProvisionAccount_(payload);
   if (action === "reviewer_send_invitation") return reviewSendInvitation_(payload);
   if (action === "reviewer_release_assignments") return reviewReleaseAssignments_(payload);
@@ -834,11 +872,16 @@ function handleReviewerAction_(action, payload) {
 
 function reviewMailStatus_(payload) {
   const viewer = reviewerIdentity_(payload);
+  return { ok: true, reviewer: viewer, messages: reviewMailMessages_(viewer) };
+}
+
+function reviewMailMessages_(viewer, snapshot) {
+  const read = name => snapshot ? snapshot[name] : REVIEW_TABLES[name] ? reviewRows_(name) : rows_(name);
   const global = ["admin", "observer"].includes(viewer.role);
-  const assigned = new Set(reviewRows_("ReviewRuns").filter(row => normalizeEmail_(row.reviewer_email) === viewer.email).map(row => row.evaluation_id));
-  const users = new Map(rows_("Users").map(row => [normalizeEmail_(row.email), row]));
+  const assigned = new Set(read("ReviewRuns").filter(row => normalizeEmail_(row.reviewer_email) === viewer.email).map(row => row.evaluation_id));
+  const users = new Map(read("Users").map(row => [normalizeEmail_(row.email), row]));
   const mailbox = config_("CONTACT_EMAIL", "robosynchallenge@gmail.com");
-  const messages = reviewRows_("ReviewMessages").filter(row => global || assigned.has(row.evaluation_id)).map(row => {
+  return read("ReviewMessages").filter(row => global || assigned.has(row.evaluation_id)).map(row => {
     const email = normalizeEmail_(row.recipient);
     const query = `in:sent to:${email} subject:"${String(row.subject || "").replace(/["\\]/g, " ")}"`;
     return { evaluation_id: row.evaluation_id, message_id: row.message_id,
@@ -847,5 +890,4 @@ function reviewMailStatus_(payload) {
       created_at: row.created_at, sent_at: row.sent_at,
       gmail_url: `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#search/${encodeURIComponent(query)}` };
   }).sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
-  return { ok: true, reviewer: viewer, messages };
 }

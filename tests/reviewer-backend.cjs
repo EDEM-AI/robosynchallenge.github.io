@@ -38,7 +38,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 function insert(name, row) {
   const headers = vm.runInContext(`SHEETS.${name}`, context);
@@ -512,4 +512,64 @@ const savedHeader = sheet("ReviewRuns").cells[0][0];
 sheet("ReviewRuns").cells[0][0] = "wrong_header";
 assert.throws(() => call("reviewQueue_", observerCredentials), /headers changed/);
 sheet("ReviewRuns").cells[0][0] = savedHeader;
+const includedMail = call("reviewQueue_", { ...observerCredentials, include_mail_status: true });
+assert.equal(JSON.stringify(includedMail.messages), JSON.stringify(globalMail));
+assert(!JSON.stringify(includedMail).includes("hf_synthetic"));
+// A fresh authenticated batch replaces seventeen separate data reads.
+workbook.getId = () => "workbook_test";
+context.ScriptApp.getOAuthToken = () => "synthetic-google";
+let batchCalls = 0;
+context.UrlFetchApp = { fetch(url, options) {
+  assert.equal(options.headers.Authorization, "Bearer synthetic-google");
+  const parsed = new URL(url);
+  assert.equal(parsed.hostname, "sheets.googleapis.com");
+  batchCalls += 1;
+  const valueRanges = parsed.searchParams.getAll("ranges").map(range => {
+    const name = range.match(/^'([^']+)'/)[1];
+    const values = sheet(name).cells.map(row => [...row]);
+    return { values };
+  });
+  return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ valueRanges }) };
+} };
+assert.equal(call("reviewQueue_", observerCredentials).refresh.read_mode, "batch");
+assert.equal(batchCalls, 1);
+assert.throws(() => call("reviewQueue_", { ...observerCredentials, reviewer_token: "act_" + "0".repeat(64) }), /credentials/);
+assert.equal(batchCalls, 1, "Failed authentication must not trigger a bulk read");
+sheet("ReviewRuns").cells[0][0] = "bad";
+assert.throws(() => call("reviewQueue_", observerCredentials), /headers changed/);
+sheet("ReviewRuns").cells[0][0] = savedHeader;
+context.UrlFetchApp = { fetch: () => ({ getResponseCode: () => 403 }) };
+assert.equal(call("reviewQueue_", observerCredentials).refresh.read_mode, "spreadsheet");
+delete workbook.getId;
+// Pool updates cannot activate an observer, change participant data, or move started work.
+assert.throws(() => dispatch("reviewer_pool", observerCredentials), /Read-only/);
+assert.throws(() => call("reviewPool_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token }), /Organizer/);
+assert.throws(() => call("reviewSetPool_", { ...credentials, email: observer.email, active: true }), /existing evaluator/);
+assert.equal(call("reviewBalancePool_", credentials).state, "disabled");
+call("reviewSetPool_", { ...credentials, enabled: true, minimum_evaluators: 2 });
+assert.equal(call("reviewBalancePool_", credentials).state, "waiting_evaluators");
+const secondEvaluator = vm.runInContext('provisionReviewer("second@example.com", "evaluator")', context);
+for (let index = 0; index < 7; index += 1) {
+  const email = `pool${index}@example.com`, id = `eval_pool${index}`, sub = `sub_pool${index}`;
+  insert("Users", { email, team_name: `Pool ${index}` });
+  insert("Submissions", { submission_id: sub, evaluation_id: id, email, is_ranked: "true", created_at: "2026-10-11T12:00:00Z" });
+  insert("Evaluations", { submission_id: sub, evaluation_id: id, email });
+}
+const participantData = JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]);
+const balanced = call("reviewBalancePool_", credentials);
+assert.equal(balanced.state, "balanced");
+assert.equal(balanced.unassigned, 0);
+assert(balanced.changed > 0);
+assert.equal(balanced.accounts.find(account => account.email === observer.email).assigned, 0);
+assert(Math.abs(balanced.accounts.find(account => account.email === evaluator.email).active_requests -
+  balanced.accounts.find(account => account.email === secondEvaluator.email).active_requests) <= 1);
+assert.equal(call("reviewBalancePool_", credentials).changed, 0, "Repeated polls must not churn assignments");
+const lockedRun = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_pool0");
+vm.runInContext(`reviewWrite_("ReviewProgress", null, {evaluation_id:"eval_pool0",stages_json:JSON.stringify([{},{checks:{commit_verified:true}}])})`, context);
+call("reviewSetPool_", { ...credentials, email: lockedRun.reviewer_email, active: false, minimum_evaluators: 1 });
+const rebalanced = call("reviewBalancePool_", credentials);
+assert.equal(rebalanced.locked_outside_pool, 1);
+assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_pool0").reviewer_email, lockedRun.reviewer_email);
+assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), participantData);
+assert(!JSON.stringify(balanced).includes("token_sha256"));
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");

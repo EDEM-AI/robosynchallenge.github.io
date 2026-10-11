@@ -1,6 +1,7 @@
 **/**
 !Code.gs
 !Reviewer.gs
+!ReviewerPool.gs
 !ReviewResponse.gs
 !ArchiveUpload.gs
 !CheckpointAccess.gs

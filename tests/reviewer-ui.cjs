@@ -37,7 +37,7 @@ async function main() {
     const until = async (expression) => { for (let index = 0; index < 100; index += 1) {
       if (await evaluate(expression)) return;
       await sleep(100);
-    } throw new Error("Timed out waiting for " + expression); };
+    } throw new Error("Timed out waiting for " + expression + "; page error: " + await evaluate("document.querySelector('.reviewer-error')?.textContent || 'none'")); };
     await rpc("Page.enable");
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/eval_backend/?review_preview=1" });
     await until("!!document.querySelector('[data-review-form=login]')");
