@@ -45,7 +45,7 @@ async function main() {
     assert.equal(await evaluate("[...document.querySelectorAll('[data-review-form=login] [required]')].every(input => input.getAttribute('aria-required') === 'true')"), true);
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-job').length"), 0);
     assert.equal(await evaluate("document.querySelector('.reviewer-login-media') === null && !/local preview|local reviewer preview|Simulation tasks/i.test(document.body.innerText)"), true);
-    assert.equal(await evaluate("document.documentElement.lang"), "zh-CN");
+    assert.equal(await evaluate("document.documentElement.lang"), "en");
     await evaluate(`document.querySelector('[name=token]').value = ${JSON.stringify("act_" + "0".repeat(64))}`);
     await evaluate("document.querySelector('[data-review-form=login]').requestSubmit()");
     await until("!!document.querySelector('.reviewer-error')");
@@ -59,7 +59,7 @@ async function main() {
       assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), false);
       await evaluate("document.querySelector('[data-review-action=next]').click()");
       if (index < 4) await until(`document.querySelector('[data-review-stage="${index+1}"]')?.classList.contains('active')`);
-      else await until("document.querySelector('.reviewer-state')?.textContent === '已完成'");
+      else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
     }
     assert.equal(await evaluate("document.querySelector('.reviewer-progress progress').value"), 0, "Demo must not count toward real progress");
     await evaluate("document.querySelector('[data-review-job=eval_3b7f6832eca94f]').click()");
@@ -90,12 +90,15 @@ async function main() {
     await evaluate("document.querySelector('[data-email-template]').value = 'blank'; document.querySelector('[data-email-template]').dispatchEvent(new Event('change', {bubbles:true}))");
     assert.equal(await evaluate("document.querySelector('[data-review-form=email] [name=body]').value"), "");
     await evaluate("document.querySelector('[data-review-form=email] [name=subject]').value='Local test'; document.querySelector('[data-review-form=email] [name=body]').value='A local preview message.'; document.querySelector('[data-review-form=email]').requestSubmit()");
-    await until("document.querySelector('.reviewer-toast')?.textContent.includes('未发送邮件')");
+    await until("document.querySelector('.reviewer-toast')?.textContent.includes('No email was sent')");
     assert.equal(await evaluate("document.querySelectorAll('[data-review-form=verify] input[type=url]').length"), 10);
     assert.equal(await evaluate("[...document.querySelectorAll('[data-review-form=verify] input[type=url]')].every(input => input.value === '')"), true);
     await evaluate("document.querySelectorAll('[data-review-form=verify] input[type=url]').forEach((input) => { input.value = 'https://huggingface.co/test/ckpt'; }); document.querySelector('[data-review-form=verify] [name=coverage_confirmed]').checked = true; document.querySelector('[data-review-form=verify]').requestSubmit()");
-    await until("document.querySelector('.reviewer-meta')?.textContent.includes('十任务 checkpoint 映射已记录')");
+    await until("document.querySelector('.reviewer-meta')?.textContent.includes('Checkpoint URLs recorded for all 10 tasks')");
     assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null && document.querySelector('[data-review-form=reassign]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[data-stage-check=repository_access]') === null"), true);
+    assert.equal(await evaluate("document.querySelector('[name=bundle_commit]') === null && document.querySelector('[name=policy_dirs]') === null"), true);
     const evaluationId = await evaluate("document.querySelector('[data-evaluation-id]').textContent.trim()");
     const submissionId = await evaluate("document.querySelectorAll('.reviewer-meta dd')[1].textContent.trim()");
     const finishStage = async (index) => {
@@ -103,7 +106,7 @@ async function main() {
       await until("!document.querySelector('[data-review-action=next]').disabled");
       await evaluate("document.querySelector('[data-review-action=next]').click()");
       if (index < 4) await until(`document.querySelector('[data-review-stage="${index+1}"]')?.classList.contains('active')`);
-      else await until("document.querySelector('.reviewer-state')?.textContent === '已完成'");
+      else await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
     };
     const bundleCommit = "a".repeat(40);
     await evaluate(`(() => { const key = 'rsc-reviewer-preview-workflow-v4'; const saved = JSON.parse(sessionStorage.getItem(key)); const job = saved.jobs.find(job => job.evaluation_id === ${JSON.stringify(evaluationId)}); job.bundle_commit = ${JSON.stringify(bundleCommit)}; job.bundle_url='https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/'+job.evaluation_id; job.policy_dirs=['policy/test']; sessionStorage.setItem(key, JSON.stringify(saved)); })()`);
@@ -117,11 +120,17 @@ async function main() {
     await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
     await until("!!document.querySelector('[data-review-action=retry-code]')");
     assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') !== null && document.querySelector('[data-review-form=admission] [name=participant_email]').readOnly && document.querySelector('[data-review-form=reassign]') === null"), true);
+    await evaluate("document.querySelector('[data-review-form=admission] [name=revoke]').checked=true; document.querySelector('[data-review-form=admission] [name=revoke]').dispatchEvent(new Event('change',{bubbles:true}))");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission] [name=expires_at]').disabled"), true);
+    await evaluate("document.querySelector('[data-review-form=admission] [name=revoke]').checked=false; document.querySelector('[data-review-form=admission] [name=revoke]').dispatchEvent(new Event('change',{bubbles:true}))");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission] [name=expires_at]').required"), true);
     await evaluate("document.querySelector('[data-review-action=email]').click()");
     assert.equal(await evaluate("document.querySelector('[data-review-form=email] [name=body]').value.includes('No deploy_policy.py')"), true);
     await screenshot("preparation-failed-desktop");
     await evaluate("document.querySelector('[data-review-action=close-email]').click(); document.querySelector('[data-review-action=retry-code]').click()");
     await until("!document.querySelector('[data-review-action=retry-code]')");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=admission]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-review-form=prepare]') === null && document.querySelector('[name=bundle_commit]') === null && document.querySelector('[name=policy_dirs]') === null"), true);
     assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
     await evaluate("document.querySelector('[data-review-action=demo-code]').click()");
@@ -148,7 +157,7 @@ async function main() {
     await screenshot("upload-desktop");
     await evaluate("document.querySelector('details.reviewer-notes').open=true");
     await evaluate("document.querySelectorAll('[data-review-form=commands] textarea').forEach(input => input.value='python run.py --task '+input.name.replace('command_', '')); document.querySelector('[data-review-form=commands]').requestSubmit()");
-    await until("document.querySelector('.reviewer-toast')?.textContent.includes('实际测评命令已保存')");
+    await until("document.querySelector('.reviewer-toast')?.textContent.includes('commands saved')");
     const seeds = Array.from({ length: 100 }, (_, index) => index);
     for (const task of taskNames) {
       const manifest = { schema: 1, evaluation_id: evaluationId, submission_id: submissionId,
@@ -157,18 +166,18 @@ async function main() {
         episodes: seeds.map((seed, index) => ({ index, seed, success: index < 30, action_steps: 100, inference_ms: 4 })),
         artifacts: { url: "https://tenant.sharepoint.com/test-evidence.zip", sha256: "b".repeat(64) } };
       await upload("result", "result_file", manifest);
-      await until(`document.querySelector('.reviewer-toast')?.textContent.includes(${JSON.stringify("结果 JSON 已上传并通过校验")})`);
+      await until(`document.querySelector('.reviewer-toast')?.textContent.includes(${JSON.stringify(task.replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()))})`);
     }
     await finishStage(3);
     for (const task of taskNames) {
       await evaluate(`(() => { const picker = document.querySelector('[data-task-picker]'); picker.value=${JSON.stringify(task)}; picker.dispatchEvent(new Event('change',{bubbles:true})); })()`);
       await evaluate("document.querySelectorAll('[data-review-form=accept] input[type=checkbox]').forEach(input => input.checked=true); document.querySelector('[data-review-form=accept]').requestSubmit()");
-      await until("document.querySelector('.reviewer-notice.success')?.textContent.includes('已复核并确认')");
+      await until("document.querySelector('.reviewer-notice.success')?.textContent.includes('accepted')");
     }
     await finishStage(4);
     await screenshot("completed-desktop");
     await rpc("Page.reload");
-    await until("document.querySelector('.reviewer-state')?.textContent === '已完成'");
+    await until("document.querySelector('.reviewer-state')?.textContent === 'Completed'");
     await evaluate("document.querySelector('[data-review-action=logout]').click()");
     await until("!!document.querySelector('[data-review-form=login]')");
     await screenshot("login-desktop");
