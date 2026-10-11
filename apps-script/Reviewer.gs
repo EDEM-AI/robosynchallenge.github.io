@@ -43,8 +43,8 @@ const REVIEW_SEED_HASHES = {
 const REVIEW_DEADLINE_MS = Date.parse("2026-10-12T12:00:00Z");
 const REVIEW_PRIVATE_REPO = "ZhaoRunyi/RoboSynChallenge_eval";
 
-function reviewTable_(name) {
-  const ss = spreadsheet_();
+function reviewTable_(name, workbook) {
+  const ss = workbook || spreadsheet_();
   const headers = REVIEW_TABLES[name];
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
@@ -58,10 +58,13 @@ function reviewTable_(name) {
   return sheet;
 }
 
-function reviewRows_(name) {
-  const sheet = reviewTable_(name);
+function reviewRows_(name, workbook) {
+  const ss = workbook || spreadsheet_();
+  const sheet = ss.getSheetByName(name) || reviewTable_(name, ss);
   const headers = REVIEW_TABLES[name];
-  return sheet.getDataRange().getValues().slice(1).map((cells, index) => {
+  const values = sheet.getDataRange().getValues();
+  if (headers.some((header, index) => values[0]?.[index] !== header)) throw new Error(name + " headers changed; review before reading.");
+  return values.slice(1).map((cells, index) => {
     const row = { _rowNumber: index + 2 };
     headers.forEach((header, column) => { row[header] = cells[column]; });
     return row;
@@ -116,11 +119,11 @@ function installFirstReviewerToken() {
   return { email: reviewer.email, role: reviewer.role };
 }
 
-function reviewerIdentity_(payload) {
+function reviewerIdentity_(payload, workbook) {
   const email = requiredEmail_(payload.reviewer_email);
   const token = String(payload.reviewer_token || "");
   if (!/^act_[0-9a-f]{64}$/i.test(token)) throw new Error("Invalid reviewer credentials.");
-  const row = reviewRows_("Reviewers").find((item) => normalizeEmail_(item.email) === email);
+  const row = reviewRows_("Reviewers", workbook).find((item) => normalizeEmail_(item.email) === email);
   const expected = String(row?.token_sha256 || "");
   const actual = reviewerHash_(token);
   let mismatch = expected.length !== actual.length ? 1 : 0;
@@ -185,12 +188,12 @@ function reviewSendInvitation_(payload) {
   });
 }
 
-function latestReviewSubmissions_() {
-  const users = new Map(rows_("Users").map((row) => [normalizeEmail_(row.email), row]));
-  const evaluations = new Map(rows_("Evaluations").map((row) => [String(row.submission_id), row]));
+function latestReviewSubmissions_(workbook, submissionWindows) {
+  const users = new Map(rows_("Users", workbook).map((row) => [normalizeEmail_(row.email), row]));
+  const evaluations = new Map(rows_("Evaluations", workbook).map((row) => [String(row.submission_id), row]));
   const latest = new Map();
-  const windows = reviewRows_("ReviewSubmissionWindows");
-  rows_("Submissions").forEach((submission) => {
+  const windows = submissionWindows || reviewRows_("ReviewSubmissionWindows", workbook);
+  rows_("Submissions", workbook).forEach((submission) => {
     const email = normalizeEmail_(submission.email);
     const created = new Date(submission.created_at).getTime();
     if (!email || !users.has(email) || !isTruthy_(submission.is_ranked) || !submissionWasAdmitted_(submission, windows)) return;
@@ -307,24 +310,27 @@ function reviewTaskLinks_(links) {
 }
 
 function reviewQueue_(payload, organizer) {
-  const viewer = reviewerIdentity_(payload);
+  const workbook = spreadsheet_();
+  const read = name => reviewRows_(name, workbook);
+  const viewer = reviewerIdentity_(payload, workbook);
   if (organizer && viewer.role !== "admin") throw new Error("Organizer access required.");
-  const runs = new Map(reviewRows_("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
-  const tasks = reviewRows_("ReviewTaskResults");
-  const progress = reviewRows_("ReviewProgress");
-  const machines = reviewRows_("ReviewMachines").filter((row) => normalizeEmail_(row.reviewer_email) === viewer.email)
+  const runs = new Map(read("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
+  const tasks = read("ReviewTaskResults");
+  const progress = read("ReviewProgress");
+  const machines = read("ReviewMachines").filter((row) => normalizeEmail_(row.reviewer_email) === viewer.email)
     .map((row) => ({ machine_id: row.machine_id, status: row.status, report_sha256: row.report_sha256, updated_at: row.updated_at }));
-  const messages = reviewRows_("ReviewMessages");
-  const preparation = new Map(reviewRows_("ReviewPreparation").map((row) => [String(row.evaluation_id), row]));
-  const codePreparations = new Map(reviewRows_("ReviewCodePreparations").map(row => [String(row.evaluation_id), row]));
-  const corrections = new Map(reviewRows_("ReviewCorrections").map((row) => [String(row.evaluation_id), row]));
-  const accessChecks = new Map(reviewRows_("ReviewAccessChecks").map((row) => [String(row.evaluation_id), row]));
-  const checkpointChecks = new Map(reviewRows_("ReviewCheckpointChecks").map(row => [String(row.evaluation_id), row]));
-  const commands = reviewRows_("ReviewTaskCommands");
-  const versionChecks = new Map(reviewRows_("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
-  const versionDecisions = new Map(reviewRows_("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
-  const submissionWindows = new Map(reviewRows_("ReviewSubmissionWindows").map(row => [row.window_id, row]));
-  return { ok: true, reviewer: viewer, jobs: latestReviewSubmissions_().filter(({ evaluation }) => {
+  const messages = read("ReviewMessages");
+  const preparation = new Map(read("ReviewPreparation").map((row) => [String(row.evaluation_id), row]));
+  const codePreparations = new Map(read("ReviewCodePreparations").map(row => [String(row.evaluation_id), row]));
+  const corrections = new Map(read("ReviewCorrections").map((row) => [String(row.evaluation_id), row]));
+  const accessChecks = new Map(read("ReviewAccessChecks").map((row) => [String(row.evaluation_id), row]));
+  const checkpointChecks = new Map(read("ReviewCheckpointChecks").map(row => [String(row.evaluation_id), row]));
+  const commands = read("ReviewTaskCommands");
+  const versionChecks = new Map(read("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
+  const versionDecisions = new Map(read("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
+  const windows = read("ReviewSubmissionWindows");
+  const submissionWindows = new Map(windows.map(row => [row.window_id, row]));
+  return { ok: true, reviewer: viewer, jobs: latestReviewSubmissions_(workbook, windows).filter(({ evaluation }) => {
     const owner = runs.get(String(evaluation.evaluation_id))?.reviewer_email;
     return organizer || ["admin", "observer"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {

@@ -77,15 +77,17 @@ async function main() {
     await rpc("Page.captureScreenshot", {format:"png"}).then(result => fs.writeFileSync("/tmp/rsc-observer-header.png", Buffer.from(result.data,"base64")));
     await evaluate("document.querySelector('[data-review-stage=\"4\"]').click()");
     await until("document.querySelector('[data-review-stage=\"4\"]').classList.contains('active')");
+    assert.equal(await evaluate("window.observerCalls.filter(action=>action==='reviewer_queue').length"), 1, "Browsing stages must not refetch the queue");
     await evaluate("const next=document.querySelector('[data-review-action=next]'); next.disabled=false; next.click(); const email=document.querySelector('[data-review-action=email]'); email.disabled=false; email.click()");
     assert.equal(await evaluate("document.querySelector('[data-mail-composer]')"), null);
     await evaluate("document.querySelector('[data-review-action=downloads]').click()");
     await until("document.querySelector('.reviewer-overview h2')?.textContent==='Download assigned checkpoints'");
     assert.equal(await evaluate("document.body.innerText.includes('download_assigned_checkpoints.py') && document.body.innerText.includes('symbolic link')"), true);
     assert.equal(await evaluate("document.body.innerText.includes('--token-file')"), false);
+    assert.equal(await evaluate("window.observerCalls.filter(action=>action==='reviewer_queue').length"), 1, "Opening download commands must be local");
     await rpc("Page.captureScreenshot", {format:"png"}).then(result => fs.writeFileSync("/tmp/rsc-batch-download.png", Buffer.from(result.data,"base64")));
     await evaluate("document.querySelector('[data-review-action=email-status]').click()");
-    await until("document.querySelector('.reviewer-overview h2')?.textContent==='Email status' && document.querySelector('.reviewer-mail-table tbody')");
+    await until("document.querySelector('.reviewer-overview h2')?.textContent==='Email status' && document.querySelectorAll('.reviewer-mail-table a[href^=\"https://mail.google.com/\"]').length>0");
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-mail-table a[href^=\"https://mail.google.com/\"]').length>0"), true);
     for (const width of [1280,1440,1920]) {
       await rpc("Emulation.setDeviceMetricsOverride", { width, height:1000, deviceScaleFactor:1, mobile:false });
@@ -94,6 +96,7 @@ async function main() {
     await rpc("Page.captureScreenshot", {format:"png"}).then(result => fs.writeFileSync("/tmp/rsc-email-status.png", Buffer.from(result.data,"base64")));
     await evaluate("document.querySelector('[data-review-action=workspace]').click()");
     await until("document.querySelectorAll('.reviewer-job').length>0");
+    assert.equal(await evaluate("window.observerCalls.filter(action=>action==='reviewer_queue').length"), 1, "Email status must load only mail metadata, not the entire queue");
     assert.equal(await evaluate("window.observerCalls.some(action=>![\"reviewer_login\",\"reviewer_queue\",\"reviewer_mail_status\"].includes(action))"), false);
     console.log(JSON.stringify({mode:live?"live":"mocked",visible_requests:await evaluate("document.querySelectorAll('.reviewer-job').length"),header_placement:"below artifact and email",readonly:"all stages browseable; no mutation requests",screenshot:"/tmp/rsc-observer-header.png"}));
   } finally {

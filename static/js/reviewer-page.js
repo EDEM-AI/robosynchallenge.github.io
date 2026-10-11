@@ -49,6 +49,8 @@
   ];
   const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "", view: ["#downloads", "#email-status"].includes(location.hash) ? location.hash.slice(1) : "workspace", mailStatus: [] };
   try { state.credentials = JSON.parse(sessionStorage.getItem(STORAGE) || "null"); } catch { /* Require sign-in. */ }
+  let saveChain = Promise.resolve();
+  const pendingSaves = new Map();
   const escape = (value) => String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   const label = (value) => String(value || "").replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
   const safeHref = (value) => { try { const url = new URL(String(value)); return url.protocol === "https:" ? url.href : "#"; } catch { return "#"; } };
@@ -95,7 +97,7 @@
   async function request(action, fields = {}) {
     if (LOCAL) return previewAction(action, fields);
     if (!API) throw new Error("Reviewer backend is not configured.");
-    const response = await fetch(API, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+    const response = await fetch(API, { method: "POST", keepalive: action === "reviewer_save_checks", headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify({ action, reviewer_email: state.credentials.email, reviewer_token: state.credentials.token, ...fields }) });
     const data = await response.json();
     if (!response.ok || data.ok === false) throw new Error(data.error || "Reviewer request failed.");
@@ -408,7 +410,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     if (state.busy) return;
     state.busy = true;
     root()?.querySelectorAll("button:not([data-review-job])").forEach((element) => { element.disabled = true; });
-    try { state.error = ""; await action(); await refresh(); }
+    try { state.error = ""; await saveChain; await action(); await refresh(); }
     catch (error) { if (!sessionStorage.getItem(STORAGE)) state.credentials = null; state.error = error.message || String(error); }
     finally {
       if (state.pendingSelection && state.jobs.some(job => job.evaluation_id === state.pendingSelection)) {
@@ -423,8 +425,42 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   function saveStage() {
     const job = selected();
     if (!canEdit(job) || flow(job).stages[state.stage].done || state.stage > firstOpen(job)) return Promise.resolve();
-    const values = draft(job);
-    return request("reviewer_save_checks", { evaluation_id: job.evaluation_id, stage: state.stage, checks: values, machine_id: values.machine_id || "" });
+    const stage = state.stage, credentials = state.credentials;
+    const values = { ...draft(job) };
+    const checks = Object.fromEntries(Object.keys(STAGES[stage].checks).map(key => [key, values[key] === true]));
+    const key = job.evaluation_id + ":" + stage;
+    const signature = JSON.stringify([checks, values.machine_id || ""]);
+    const persisted = JSON.stringify([Object.fromEntries(Object.keys(STAGES[stage].checks).map(key => [key, flow(job).stages[stage].checks[key] === true])), flow(job).machine_id || ""]);
+    const pending = pendingSaves.get(key);
+    if (signature === (pending?.signature || persisted)) return pending?.promise || Promise.resolve();
+    // Save captured checks in order while local navigation stays responsive.
+    const promise = saveChain.then(async () => {
+      if (state.credentials !== credentials) return;
+      await request("reviewer_save_checks", { evaluation_id: job.evaluation_id, stage, checks, machine_id: values.machine_id || "" });
+      flow(job).stages[stage].checks = checks;
+      flow(job).machine_id = values.machine_id || "";
+    });
+    saveChain = promise.catch(() => {});
+    const entry = { signature, promise };
+    pendingSaves.set(key, entry);
+    const clear = () => { if (pendingSaves.get(key) === entry) pendingSaves.delete(key); };
+    promise.then(clear, clear);
+    return promise;
+  }
+  function browse(change) {
+    const credentials = state.credentials;
+    const save = saveStage();
+    change(); paint();
+    save.catch(error => { if (state.credentials === credentials) { state.error = error.message || String(error); paint(); } });
+  }
+  async function loadMailStatus() {
+    const credentials = state.credentials;
+    try {
+      const response = await request("reviewer_mail_status");
+      if (state.credentials === credentials) { state.mailStatus = response.messages || []; if (state.view === "email-status") paint(); }
+    } catch (error) {
+      if (state.credentials === credentials) { state.error = error.message || String(error); paint(); }
+    }
   }
   function openEmail() {
     state.emailDraft ||= newEmail(selected());
@@ -441,25 +477,27 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       }
       const jobButton = event.target.closest("[data-review-job]");
       if (jobButton) {
-        state.pendingSelection = jobButton.dataset.reviewJob;
-        if (!state.busy) perform(async () => { await saveStage(); });
+        if (state.busy) { state.pendingSelection = jobButton.dataset.reviewJob; return; }
+        browse(() => { state.selected = jobButton.dataset.reviewJob; state.stage = firstOpen(selected()); state.emailDraft = null; state.toast = ""; });
         return;
       }
       const stageButton = event.target.closest("[data-review-stage]");
-      if (stageButton && !stageButton.disabled) { perform(async () => { await saveStage(); state.stage = Number(stageButton.dataset.reviewStage); state.emailDraft = null; state.toast = ""; }); return; }
+      if (stageButton && !stageButton.disabled && !state.busy) { browse(() => { state.stage = Number(stageButton.dataset.reviewStage); state.emailDraft = null; state.toast = ""; }); return; }
       const action = event.target.closest("[data-review-action]")?.dataset.reviewAction;
       if (!action || state.busy) return;
       if (!["logout", "refresh", "copy", "previous", "close-email", "downloads", "email-status", "workspace"].includes(action) && !canEdit(selected())) return;
       if (["downloads", "email-status", "workspace"].includes(action)) {
-        perform(async () => { await saveStage(); state.view = action; history.replaceState(null, "", location.pathname + location.search + (action === "workspace" ? "" : "#" + action)); }); return;
+        browse(() => { state.view = action; history.replaceState(null, "", location.pathname + location.search + (action === "workspace" ? "" : "#" + action)); });
+        if (action === "email-status") loadMailStatus();
+        return;
       }
-      if (action === "logout") { sessionStorage.removeItem(STORAGE); state.credentials = null; state.jobs = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
+      if (action === "logout") { sessionStorage.removeItem(STORAGE); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
       if (action === "refresh") perform(async () => { await saveStage(); });
       if (action === "copy") {
         const text = event.target.closest(".reviewer-command")?.querySelector("code")?.textContent || "";
         navigator.clipboard.writeText(text).then(() => { state.toast = "Command copied."; paint(); }).catch(() => { state.error = "Clipboard access unavailable. Select and copy the command."; paint(); });
       }
-      if (action === "previous" && state.stage > 0) perform(async () => { await saveStage(); state.stage -= 1; state.emailDraft = null; state.toast = ""; });
+      if (action === "previous" && state.stage > 0) browse(() => { state.stage -= 1; state.emailDraft = null; state.toast = ""; });
       if (action === "email") openEmail();
       if (action === "retry-code") perform(async () => { await request("reviewer_retry_preparation", { evaluation_id: selected().evaluation_id }); state.toast = "Preparation retry queued. Refresh after the organizer's script runs."; });
       if (action === "close-email") { state.emailDraft = null; paint(); }

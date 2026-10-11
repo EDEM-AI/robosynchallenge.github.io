@@ -55,7 +55,7 @@ async function main() {
     await until("document.querySelectorAll('.reviewer-job').length > 0");
     const count = await evaluate("document.querySelectorAll('.reviewer-job').length");
     assert.equal(await evaluate("document.querySelector('[data-evaluation-id]').textContent"), "eval_LOCALWALKTHROUGH");
-    const queueProbe = await evaluate("(() => { const queue = document.querySelector('.reviewer-queue'); queue.scrollTop=queue.scrollHeight; const items=[...queue.querySelectorAll('[data-review-job]')]; const last=items.at(-1); const other=items.at(-2); const scroll=queue.scrollTop; other.click(); last.click(); return {id:last.dataset.reviewJob, scroll}; })()");
+    const queueProbe = await evaluate("(() => { const queue = document.querySelector('.reviewer-queue'); queue.scrollTop=queue.scrollHeight; const items=[...queue.querySelectorAll('[data-review-job]')]; const id=items.at(-1).dataset.reviewJob; const scroll=queue.scrollTop; items.at(-2).click(); document.querySelector('[data-review-job=\"'+id+'\"]').click(); return {id, scroll}; })()");
     await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(queueProbe.id)}`);
     assert.equal(await evaluate(`Math.abs(document.querySelector('.reviewer-queue').scrollTop - ${queueProbe.scroll}) < 2`), true, "Rapid clicks must select the last requested job without resetting the queue scroll");
     await evaluate("document.querySelector('[data-review-job=eval_LOCALWALKTHROUGH]').click()");

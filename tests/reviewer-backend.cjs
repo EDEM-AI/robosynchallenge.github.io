@@ -23,10 +23,11 @@ function sheet(name) {
 const workbook = { getSheetByName: (name) => sheets.get(name), insertSheet: sheet };
 const cache = new Map();
 const properties = {};
+let workbookOpens = 0;
 const context = vm.createContext({
   console,
   ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/macros/s/test/exec" }) },
-  SpreadsheetApp: { getActive: () => workbook },
+  SpreadsheetApp: { getActive: () => { workbookOpens += 1; return workbook; } },
   PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || "", setProperty: (key, value) => { properties[key] = value; }, deleteProperty: key => { delete properties[key]; } }) },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value), remove: key => cache.delete(key) }) },
@@ -504,4 +505,11 @@ assert(globalMail.length > 0);
 assert(globalMail.every(message => message.gmail_url.startsWith("https://mail.google.com/mail/u/?authuser=")));
 assert(globalMail.every(message => !Object.hasOwn(message, "body") && !Object.hasOwn(message, "response_token")));
 assert.equal(call("reviewMailStatus_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token }).messages.length, 0);
+workbookOpens = 0;
+call("reviewQueue_", observerCredentials);
+assert.equal(workbookOpens, 1, "Queue reads share one workbook without caching authorization or stale rows");
+const savedHeader = sheet("ReviewRuns").cells[0][0];
+sheet("ReviewRuns").cells[0][0] = "wrong_header";
+assert.throws(() => call("reviewQueue_", observerCredentials), /headers changed/);
+sheet("ReviewRuns").cells[0][0] = savedHeader;
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");
