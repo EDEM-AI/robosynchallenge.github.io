@@ -111,13 +111,18 @@ async function main() {
     await until("document.querySelector('[data-evaluation-status]')?.textContent.includes('outcome is unknown')");
     assert.equal(await evaluate("window.submissionCalls.length"),1,"Timeout must not automatically retry a submission");
     assert.equal(await evaluate("document.querySelector('[data-form=evaluation] [type=submit]').disabled"),false);
+    await evaluate("document.querySelector('[data-form=evaluation]').requestSubmit()");
+    await until("window.submissionCalls.length===2");
+    assert.equal(await evaluate("window.submissionCalls[1].submission_key"),await evaluate("window.submissionCalls[0].submission_key"),"A user retry after timeout must reuse the durable submission identity");
     console.log("Submission UI: ten-task mapping, confirmation, visible errors, cutoff, extension, timeout and double-submit guard passed; no real API calls.");
   } finally {
-    socket?.close();
     const stopped = new Promise(resolve => chrome.once("exit", resolve));
-    chrome.kill();
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ id: 999999, method: "Browser.close" }));
+    else chrome.kill();
     await Promise.race([stopped, sleep(5000)]);
-    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+    socket?.close();
+    if (chrome.exitCode === null) chrome.kill();
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
   }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

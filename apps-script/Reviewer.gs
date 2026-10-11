@@ -17,6 +17,9 @@ const REVIEW_TABLES = {
   ReviewResponseLinks: ["evaluation_id", "message_id", "token_hash", "status", "created_at"],
   ReviewCorrections: ["evaluation_id", "participant_email", "deadline_at", "status", "code_link", "task_checkpoint_links_json", "notes", "responded_at", "previous_bundle_commit", "updated_at"],
   ReviewSubmissionWindows: ["window_id", "email", "token_hash", "status", "expires_at", "reason", "granted_by", "created_at"],
+  ReviewVersionChecks: ["evaluation_id", "status", "report_json", "checked_at"],
+  ReviewVersionDecisions: ["evaluation_id", "cutoff_at", "reason", "approved_by", "approved_at", "generation"],
+  ReviewAssignments: ["evaluation_id", "previous_reviewer", "reviewer_email", "reason", "changed_by", "changed_at"],
 };
 const REVIEW_TASK_STEPS = {
   click_bell: 361, drawer_open_place: 900, mixer_operating: 500, table_rearrangement: 361,
@@ -231,12 +234,17 @@ function reviewQueue_(payload, organizer) {
   const corrections = new Map(reviewRows_("ReviewCorrections").map((row) => [String(row.evaluation_id), row]));
   const accessChecks = new Map(reviewRows_("ReviewAccessChecks").map((row) => [String(row.evaluation_id), row]));
   const commands = reviewRows_("ReviewTaskCommands");
+  const versionChecks = new Map(reviewRows_("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
+  const versionDecisions = new Map(reviewRows_("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
+  const submissionWindows = new Map(reviewRows_("ReviewSubmissionWindows").map(row => [row.window_id, row]));
   return { ok: true, reviewer: viewer, jobs: latestReviewSubmissions_().filter(({ evaluation }) => {
     const owner = runs.get(String(evaluation.evaluation_id))?.reviewer_email;
     return organizer || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {
     const run = runs.get(String(evaluation.evaluation_id));
     const correction = corrections.get(String(evaluation.evaluation_id));
+    const decision = versionDecisions.get(String(evaluation.evaluation_id));
+    const versionCheck = versionChecks.get(String(evaluation.evaluation_id));
     const declaredLinks = reviewTaskLinks_(parseJson_(submission.task_checkpoint_links_json, {}));
     const verifiedLinks = reviewTaskLinks_(parseJson_(run?.task_checkpoint_links_json, {}));
     const correctedLinks = correction?.status === "corrected" ? reviewTaskLinks_(parseJson_(correction.task_checkpoint_links_json, {})) : null;
@@ -251,6 +259,11 @@ function reviewQueue_(payload, organizer) {
       code_link: correction?.status === "corrected" ? correction.code_link : submission.code_link, checkpoint_link: submission.checkpoint_link,
       correction: correction ? { status: correction.status, deadline_at: correction.deadline_at, responded_at: correction.responded_at, notes: correction.notes } : null,
       preparation_attempt: correction?.status === "corrected" ? 1 : 0,
+      version_cutoff_at: correction?.status === "corrected" && (!decision || Date.parse(decision.approved_at) <= Date.parse(correction.responded_at)) ? correction.responded_at : decision?.cutoff_at ||
+        submissionWindows.get(submission.submission_window_id)?.expires_at || POLICY_SUBMISSION_CLOSE_AT,
+      version_exception: decision ? { reason: decision.reason, approved_by: decision.approved_by, approved_at: decision.approved_at } : null,
+      version_generation: Number(decision?.generation || 0), version_status: versionCheck?.status || "pending",
+      version_report: parseJson_(versionCheck?.report_json, {}),
       task_commands: run ? Object.fromEntries(commands.filter((row) => row.evaluation_id === run.evaluation_id && row.bundle_commit === run.bundle_commit).map((row) => [row.task, row.command])) : {},
       hf_access: parseJson_(accessChecks.get(String(evaluation.evaluation_id))?.report_json, {}),
       task_checkpoint_links: taskLinks,
@@ -262,6 +275,7 @@ function reviewQueue_(payload, organizer) {
       state: run?.state || "unassigned", bundle_url: run?.bundle_url || "",
       preparation_status: preparation.get(String(evaluation.evaluation_id))?.status || "pending",
       preparation_error: preparation.get(String(evaluation.evaluation_id))?.message || "",
+      preparation_updated_at: preparation.get(String(evaluation.evaluation_id))?.updated_at || "",
       bundle_commit: run?.bundle_commit || "", policy_dirs: parseJson_(run?.policy_dirs_json, []),
       workflow: reviewWorkflow_(evaluation.evaluation_id, progress),
       machines,
@@ -355,7 +369,8 @@ function reviewPrepare_(payload) {
         !Array.isArray(dirs) || !dirs.length || dirs.length > 30 ||
         dirs.some((dir) => !/^policy(?:\/[A-Za-z0-9_.-]+)*$/.test(dir) || dir.split("/").some((part) => [".", ".."].includes(part)))) throw new Error("Prepared code metadata is invalid.");
     const corrected = reviewRows_("ReviewCorrections").some((row) => row.evaluation_id === run.evaluation_id && row.status === "corrected");
-    if (url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (corrected ? "-correction1" : "")) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
+    const decision = reviewRows_("ReviewVersionDecisions").find(row => row.evaluation_id === run.evaluation_id);
+    if (url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (corrected ? "-correction1" : "") + (decision ? "-exception" + decision.generation : "")) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
     reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_url: url,
       bundle_commit: commit, policy_dirs_json: JSON.stringify([...new Set(dirs)]),
       state: "ready", updated_at: now_() });
@@ -436,15 +451,19 @@ function reviewSubmitResult_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewUploadContext_(payload);
     if (reviewWorkflow_(run.evaluation_id).stages.slice(0, 3).some((stage) => !stage.done)) throw new Error("Complete submission, code, and environment checks before uploading results.");
-    if (run.state !== "ready" && run.state !== "reviewing") throw new Error("Prepared code is not ready.");
     const result = reviewValidatedResult_(payload, run);
     const existing = reviewTaskRows_(run.evaluation_id).find((row) => row.task === result.task);
-    if (existing?.status === "checked") throw new Error("Checked result cannot be replaced.");
     const upload = reviewRows_("ReviewArchiveUploads").find((row) => row.evaluation_id === run.evaluation_id && row.task === result.task);
     if (upload && ["uploading", "verified"].includes(upload.status) &&
         (upload.status !== "verified" || upload.expected_sha256 !== result.artifacts.sha256)) throw new Error("Finish verifying the current evidence ZIP before registering its JSON.");
-    if (payload.upload_token && (!upload || upload.status !== "verified")) throw new Error("Upload capability requires a verified ZIP session.");
-    if (upload?.status === "verified" && upload.record_hash !== archiveRecordHash_(result)) throw new Error("Result JSON differs from the verified archive manifest.");
+    if (payload.upload_token && (!upload || !["verified", "completed"].includes(upload.status))) throw new Error("Upload capability requires a verified ZIP session.");
+    if (upload && (upload.status === "verified" || payload.upload_token) && upload.record_hash !== archiveRecordHash_(result)) throw new Error("Result JSON differs from the verified archive manifest.");
+    if (existing && ["submitted", "checked"].includes(existing.status) && archiveRecordHash_(parseJson_(existing.result_json, {})) === archiveRecordHash_(result)) {
+      if (upload?.status === "verified") reviewWrite_("ReviewArchiveUploads", upload._rowNumber, { evaluation_id: run.evaluation_id, status: "completed", updated_at: now_() });
+      return { ok: true, task: result.task, duplicate: true, summary: reviewResultSummary_(result) };
+    }
+    if (run.state !== "ready" && run.state !== "reviewing") throw new Error("Prepared code is not ready.");
+    if (existing?.status === "checked") throw new Error("Checked result cannot be replaced.");
     reviewWrite_("ReviewTaskResults", existing?._rowNumber, { evaluation_id: run.evaluation_id,
       submission_id: run.submission_id, task: result.task, reviewer_email: viewer.email,
       result_json: JSON.stringify(result), status: "submitted", review_note: "", updated_at: now_() });
@@ -590,11 +609,14 @@ function reviewSendIssue_(payload) {
     reviewWrite_("ReviewMessages", null, { evaluation_id: run.evaluation_id, message_id: messageId,
       reviewer_email: viewer.email, stage, recipient, subject, body, status: "sending", created_at: now_() });
     const row = reviewRows_("ReviewMessages").find((item) => item.message_id === messageId);
-    const response = stage === 2 ? null : reviewCreateResponseLink_(run, messageId);
+    const preparation = reviewRows_("ReviewPreparation").find(item => item.evaluation_id === run.evaluation_id);
+    const needsArgument = stage === 0 && String(preparation?.message || "").includes("NO_LEGAL_VERSION");
+    const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId);
     const responseText = response ? `\n\nConfirm or submit your single code correction: ${response.url}\nDeadline (UTC): ${response.deadline}\nOne code correction is allowed within 24 hours of the first issue notification. The original team and submission identity cannot be changed.` : "";
     try {
-      MailApp.sendEmail({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText,
-        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${response ? `<p><a href="${escapeHtml_(response.url)}">Confirm or submit a correction</a></p><p>Deadline (UTC): <strong>${escapeHtml_(response.deadline)}</strong>. Only one code correction is permitted, within 24 hours of the first issue notification.</p>` : ""}`) });
+      const argumentText = needsArgument ? "\n\nNo eligible pre-deadline code or checkpoint version was found. Reply to this email with your explanation and evidence. Rebuilding requires manual reviewer approval; this message does not grant a code-correction exception." : "";
+      MailApp.sendEmail({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText + argumentText,
+        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${response ? `<p><a href="${escapeHtml_(response.url)}">Confirm or submit a correction</a></p><p>Deadline (UTC): <strong>${escapeHtml_(response.deadline)}</strong>. Only one code correction is permitted, within 24 hours of the first issue notification.</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
       if (response) reviewActivateResponseLink_(run, messageId, response.deadline);
       reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "sent", sent_at: now_() });
       return { ok: true, status: "sent" };
@@ -606,6 +628,10 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  if (action === "reviewer_audit_submission_links") return reviewAuditSubmissionLinks_(payload);
+  if (action === "reviewer_reassign") return reviewReassign_(payload);
+  if (action === "reviewer_version_check") return reviewVersionCheck_(payload);
+  if (action === "reviewer_approve_version_exception") return reviewApproveVersionException_(payload);
   if (action === "reviewer_configure_scoring") return reviewConfigureScoring_(payload);
   if (action === "reviewer_submission_window") return reviewSubmissionWindow_(payload);
   if (action === "reviewer_issue_upload_access") return reviewIssueUploadAccess_(payload);

@@ -46,6 +46,7 @@ function reviewScoredSummary_(record) {
     average_steps: count ? average(episodes.map(ep => Number(ep.action_steps || 0))) : null,
     inference_ms: totalsReady ? totalMs / calls : count ? average(episodes.map(ep => ep.inference_ms)) : null,
     total_inference_seconds: totalsReady ? totalMs / 1000 : null,
+    inference_per_episode_ms: totalsReady ? totalMs / count : null,
     action_efficiency: actionEfficiency, inference_efficiency: inferenceEfficiency,
     weighted_score: scored ? 0.75 * successRate + 0.20 * actionEfficiency + 0.05 * inferenceEfficiency : null,
     score_status: scored ? published ? "published_act_reference" : "calibrated" : totalsReady ? "awaiting_5090_act_reference" : "missing_inference_totals",
@@ -59,6 +60,7 @@ function reviewOverallSummary_(results) {
     ? summaries.reduce((sum, row) => sum + row[key], 0) / 10 : null;
   return { completed_tasks: summaries.filter(Boolean).length, success_rate: average("success_rate"),
     average_steps: average("average_steps"), inference_ms: average("inference_ms"),
+    inference_per_episode_ms: average("inference_per_episode_ms"),
     weighted_score: average("weighted_score"), score_status: complete && summaries.every(row => Number.isFinite(row.weighted_score)) ? summaries[0].score_status : "pending" };
 }
 

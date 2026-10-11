@@ -22,11 +22,12 @@ function sheet(name) {
 }
 const workbook = { getSheetByName: (name) => sheets.get(name), insertSheet: sheet };
 const cache = new Map();
+const properties = {};
 const context = vm.createContext({
   console,
   ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/macros/s/test/exec" }) },
   SpreadsheetApp: { getActive: () => workbook },
-  PropertiesService: { getScriptProperties: () => ({ getProperty: () => "" }) },
+  PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || "", setProperty: (key, value) => { properties[key] = value; }, deleteProperty: key => { delete properties[key]; } }) },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value), remove: key => cache.delete(key) }) },
   Utilities: {
@@ -36,7 +37,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ArchiveUpload.gs", "ReviewResponse.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 function insert(name, row) {
   const headers = vm.runInContext(`SHEETS.${name}`, context);
@@ -134,6 +135,7 @@ vm.runInContext(`reviewWrite_("ReviewArchiveUploads", 2, {evaluation_id:"eval_ne
 assert.equal(call("reviewSubmitResult_", { evaluation_id: "eval_new", upload_token: capability.upload_token, result }).ok, true);
 assert.equal(sheet("ReviewArchiveUploads").cells[1][5], "completed");
 const graphCalls = [];
+context.UrlFetchApp = { fetch: () => ({ getResponseCode: () => 200, getContentText: () => JSON.stringify({ nextExpectedRanges: ["0-"], expirationDateTime: new Date(Date.now() + 3600000).toISOString() }) }) };
 const originalGraph = context.archiveGraph_;
 const originalConfig = context.config_;
 context.config_ = (key, fallback) => ({ ARCHIVE_MS_DRIVE_ID: "private-drive", ARCHIVE_MS_ROOT_ITEM_ID: "private-folder" })[key] || fallback;
@@ -151,15 +153,24 @@ assert.throws(() => call("archiveStatus_", {}), /Email is required/);
 context.archiveGraph_ = originalGraph;
 context.config_ = originalConfig;
 vm.runInContext('reviewWrite_("Reviewers", reviewRows_("Reviewers").find(row => row.email === "storage@example.com")._rowNumber, { active: "false" })', context);
+let cloudManifest;
 context.archiveGraph_ = (path, method, body) => {
   graphCalls.push({ path, method, body });
+  if (path.endsWith("result.json:/content")) { cloudManifest = JSON.parse(body); return {id:"json"}; }
+  if (path.endsWith("/json/content")) return cloudManifest;
   if (path.endsWith("createUploadSession")) return {uploadUrl:"https://upload.example/session", expirationDateTime:new Date(Date.now()+3600000).toISOString()};
   if (path.endsWith("evidence.zip")) return {size:123,webUrl:"https://tenant.sharepoint.com/latest/evidence.zip","@microsoft.graph.downloadUrl":"https://download.example/file"};
   return {id:"json"};
 };
 context.archiveTarget_ = (run, task) => "/drives/test/items/" + run.evaluation_id + "-" + task + "-latest";
 const uploadPayload = {evaluation_id:"eval_new",upload_token:capability.upload_token,result,size:123};
+// The prior completed registration is recovered rather than silently overwritten.
+cloudManifest = result;
+vm.runInContext(`reviewWrite_("ReviewArchiveUploads",2,{evaluation_id:"eval_new",status:"completed",record_hash:archiveRecordHash_(${JSON.stringify(result)})})`, context);
+assert.equal(call("archiveStart_", uploadPayload).phase, "register");
+vm.runInContext('reviewWrite_("ReviewArchiveUploads",2,{evaluation_id:"eval_new",status:"superseded"})', context);
 const uploadSession = call("archiveStart_", uploadPayload);
+cache.delete("archive-session:" + uploadSession.upload_id);
 assert.equal(call("archiveStart_", uploadPayload).upload_id, uploadSession.upload_id, "Same active upload reused, never create a second overwrite session");
 assert.throws(() => call("archiveStart_", {...uploadPayload,result:{...result,artifacts:{...result.artifacts,sha256:"c".repeat(64)}}}), /Another upload/);
 assert.throws(() => call("archiveFinish_", {...uploadPayload,upload_id:uploadSession.upload_id,verified_sha256:"wrong"}), /checksum/);
@@ -180,7 +191,7 @@ assert.throws(() => call("reviewCheckResult_", { ...credentials, evaluation_id: 
 for (const task of taskNames) assert.equal(call("reviewCheckResult_", { ...credentials, evaluation_id: "eval_new", task, decision: "checked", checks: { video: true, trajectory: true, checksum: true } }).status, "checked");
 stage(4, { videos_checked: true, trajectories_checked: true, hashes_checked: true });
 assert.equal(call("reviewWorkflow_", "eval_new").stages.filter((item) => item.done).length, 5);
-assert.throws(() => call("archiveStart_", uploadPayload), /Accepted results are locked/);
+assert.equal(call("archiveStart_", uploadPayload).phase, "register", "Already accepted identical evidence is recoverable without rewriting it");
 assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), before);
 queue = call("reviewQueue_", credentials);
 assert.equal(queue.jobs[0].results[0].status, "checked");
@@ -229,6 +240,38 @@ const created = call("handleSubmitPolicy_", { session_id: "x", submission: {
 } });
 assert.equal(Object.keys(created.submission.task_checkpoint_links).length, 10);
 assert.equal(created.submission.task_checkpoint_links.item_assembly, taskLinks.item_assembly);
+const stablePayload = { session_id: "x", submission_key: "stable_retry_00000001", submission: { ...submission, title: "Retry test", all_tasks_confirmed: true } };
+const countBeforeRetry = sheet("Submissions").cells.length;
+context.MailApp.sendEmail = () => { throw new Error("Daily quota exhausted"); };
+const stableFirst = call("handleSubmitPolicy_", stablePayload);
+assert.equal(stableFirst.ok, true, "Mail failure does not invalidate stored submission");
+assert.equal(stableFirst.notification_status, "needs_review");
+assert.equal(call("handleSubmitPolicy_", stablePayload).submission.id, stableFirst.submission.id);
+assert.equal(sheet("Submissions").cells.length, countBeforeRetry + 1);
+assert.throws(() => call("handleSubmitPolicy_", { ...stablePayload, submission: { ...stablePayload.submission, title: "Changed" } }), /different content/);
+const originalAppend = context.appendRow_;
+let failEvaluation = true;
+context.appendRow_ = (name, values) => {
+  if (name === "Evaluations" && failEvaluation) { failEvaluation = false; throw new Error("Temporary Sheet write failure"); }
+  return originalAppend(name, values);
+};
+const interrupted = { ...stablePayload, submission_key: "interrupted_00000001", submission: { ...stablePayload.submission, title: "Interrupted" } };
+assert.throws(() => call("handleSubmitPolicy_", interrupted), /Temporary Sheet/);
+const halfWritten = sheet("Submissions").cells.length;
+const recovered = call("handleSubmitPolicy_", interrupted);
+assert.equal(recovered.ok, true);
+assert.equal(sheet("Submissions").cells.length, halfWritten, "Missing evaluation is repaired without a second submission");
+context.appendRow_ = originalAppend;
+context.MailApp = { getRemainingDailyQuota: () => 0, sendEmail: () => { throw new Error("No send expected"); } };
+const quotaPayload = { ...stablePayload, submission_key: "quota_pending_00000001", submission: { ...stablePayload.submission, title: "Quota pending" } };
+assert.equal(call("handleSubmitPolicy_", quotaPayload).notification_status, "pending");
+let queuedMail = 0;
+context.MailApp = { getRemainingDailyQuota: () => 10, sendEmail: () => { queuedMail += 1; } };
+call("processPendingPolicyNotifications_");
+assert.equal(queuedMail, 1);
+assert.equal(call("handleSubmitPolicy_", quotaPayload).notification_status, "sent");
+call("processPendingPolicyNotifications_");
+assert.equal(queuedMail, 1, "Scheduled notification retry does not send twice");
 const sent = [];
 context.MailApp = { getRemainingDailyQuota: () => 10, sendEmail: (message) => sent.push(message) };
 const issue = { ...credentials, evaluation_id: "eval_new", stage: 0, message_id: "msg_" + "d".repeat(32), subject: "Review question", body: "Please clarify the task mapping.", recipient: "attacker@example.com" };
@@ -285,9 +328,8 @@ const assignedJob = call("reviewQueue_", { reviewer_email: evaluator.email, revi
 assert.equal(assignedJob.coverage_verified_by, evaluator.email);
 assert.equal(assignedJob.coverage_status, "verified_all_10");
 assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]), assignedSnapshot);
-const properties = {};
 context.PropertiesService = { getScriptProperties: () => ({ getProperty: key => properties[key] || "",
-  setProperty: (key, value) => { properties[key] = value; } }) };
+  setProperty: (key, value) => { properties[key] = value; }, deleteProperty: key => { delete properties[key]; } }) };
 context.config_ = (key, fallback) => properties[key] || fallback;
 const closing = Date.parse("2026-10-12T12:00:00Z");
 assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing - 1}).allowed`, context), true);
@@ -307,7 +349,8 @@ call("reviewSubmissionWindow_", { ...credentials, participant_email: "one@exampl
 assert.equal(vm.runInContext(`submissionAdmission_({email:"one@example.com",token:"existing"},${closing + 1000}).allowed`, context), false);
 vm.runInContext(`savedClock = Date.now; Date.now = () => ${closing + 1000}`, context);
 const countBeforeClosed = sheet("Submissions").cells.length;
-assert.throws(() => call("handleSubmitPolicy_", { session_id: "x", submission: { ...submission, all_tasks_confirmed: true } }), /closed/i);
+assert.throws(() => call("handleSubmitPolicy_", { session_id: "x", submission_key: "new_after_cutoff_key", submission: { ...submission, all_tasks_confirmed: true } }), /closed/i);
+assert.equal(call("handleSubmitPolicy_", { session_id: "x", submission: { ...submission, all_tasks_confirmed: true } }).submission.id, created.submission.id, "Accepted retry remains idempotent after cutoff");
 assert.equal(sheet("Submissions").cells.length, countBeforeClosed);
 vm.runInContext("Date.now = savedClock", context);
 
@@ -342,4 +385,19 @@ assert.equal(ownOutcome.task_results.length,10);
 assert(ownOutcome.task_results.every(row=>row.eval_command && row.archive_sha256));
 assert(!JSON.stringify(ownOutcome).includes('"seed"'));
 assert.equal(call("reviewParticipantOutcome_", {evaluation_id:"eval_new",submission_id:"sub_new",email:"attacker@example.com"}).task_results.length,0);
+assert.equal(scored.inference_per_episode_ms, 15000);
+assert.throws(() => call("reviewReassign_", { ...credentials, evaluation_id: "eval_new", assign_to: evaluator.email, reason: "Too late" }), /locked/);
+call("reviewReassign_", { ...credentials, evaluation_id: "eval_assigned", assign_to: reviewer.email, reason: "Before local handoff" });
+assert.equal(call("reviewQueue_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token }).jobs.length, 0);
+assert.equal(sheet("ReviewAssignments").cells[1][1], evaluator.email);
+call("reviewPreparationFailed_", { ...credentials, evaluation_id: "eval_assigned", message: "NO_LEGAL_VERSION: checkpoint missing before deadline" });
+assert.throws(() => call("reviewApproveVersionException_", { ...credentials, evaluation_id: "eval_assigned", reason: "Evidence reviewed" }), /Confirm/);
+call("reviewSendIssue_", { ...issue, evaluation_id: "eval_assigned", message_id: "msg_" + "1".repeat(32) });
+assert(sent.at(-1).body.includes("manual reviewer approval"));
+assert(!sent.at(-1).body.includes("rsc_action=review_response"), "No-legal-version email must not bypass manual argument approval");
+call("reviewApproveVersionException_", { ...credentials, evaluation_id: "eval_assigned", reason: "Participant timestamp evidence accepted", argument_reviewed: true });
+assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_assigned").version_generation, 1);
+const audit = call("reviewAuditSubmissionLinks_", credentials);
+assert.equal(audit.issues.length, 0);
+assert.throws(() => call("reviewAuditSubmissionLinks_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token }), /Organizer access/);
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");

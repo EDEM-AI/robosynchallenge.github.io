@@ -10,15 +10,19 @@
     }
     return hasher.digest("hex");
   }
-  async function upload({ file, record, request, progress = () => {} }) {
+  async function upload({ file, record, request, restart = false, progress = () => {} }) {
     if (!file?.size || !/^eval_[A-Za-z0-9]+$/.test(record.evaluation_id)) throw new Error("Select a task ZIP and matching JSON.");
     const expected = record.artifacts?.sha256;
     if (await hashBlob(file, value => progress("Checking local ZIP", value)) !== expected) throw new Error("Selected ZIP does not match the JSON SHA256.");
     const fields = { evaluation_id: record.evaluation_id, result: record };
-    const session = await request("reviewer_start_evidence_upload", { ...fields, size: file.size });
+    const session = await request("reviewer_start_evidence_upload", { ...fields, size: file.size, restart });
+    if (session.phase === "register") return session.result;
+    const resumeOffset = session.next_offset || 0;
+    if (!Number.isSafeInteger(resumeOffset) || resumeOffset < 0 || resumeOffset >= file.size || resumeOffset % (320 * 1024)) throw new Error("Invalid upload resume offset.");
+    if (session.phase !== "verify") {
     if (!session.upload_url?.startsWith("https://")) throw new Error("Invalid archive upload session.");
     let complete = false;
-    for (let offset = 0; offset < file.size; offset += CHUNK) {
+    for (let offset = resumeOffset; offset < file.size; offset += CHUNK) {
       const end = Math.min(file.size, offset + CHUNK);
       // The session URL is pre-authenticated; never attach reviewer or Graph credentials.
       const response = await fetch(session.upload_url, { method: "PUT",
@@ -30,6 +34,7 @@
       progress("Uploading ZIP", end / file.size);
     }
     if (!complete) throw new Error("ZIP upload is incomplete.");
+    }
     const identity = { ...fields, upload_id: session.upload_id };
     const verification = await request("reviewer_verify_evidence_upload", identity);
     if (!verification.download_url?.startsWith("https://")) throw new Error("No archive verification URL.");

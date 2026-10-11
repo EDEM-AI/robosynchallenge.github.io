@@ -146,7 +146,7 @@ function doGet(e) {
     if (action === "review_response") return handleReviewResponsePage_(e.parameter);
     if (action === "access_decision") return handleAccessDecisionPage_(e.parameter);
     return json_({ ok: true, service: "RoboSynChallenge backend", time: new Date().toISOString(),
-      reviewer_api_version: typeof handleReviewerAction_ === "function" && typeof archiveStart_ === "function" && typeof handleReviewResponseSubmit_ === "function" && typeof submissionAdmission_ === "function" && typeof reviewScoredSummary_ === "function" ? 5 : 0 });
+      reviewer_api_version: typeof handleReviewerAction_ === "function" && typeof archiveStart_ === "function" && typeof reviewAuditSubmissionLinks_ === "function" && typeof reviewVersionCheck_ === "function" ? 6 : 0 });
   } catch (error) {
     if (action === "review_response") console.error(error);
     else recordError_("doGet", error);
@@ -220,6 +220,7 @@ function installBackendTriggers() {
 }
 
 function processLabeledRequests() {
+  processPendingPolicyNotifications_();
   initializeSheets();
   assertAccessRequestsIntegrity_();
   syncRequestedLabels_({ onlyPending: true, limit: REQUESTED_LABEL_SYNC_LIMIT });
@@ -628,16 +629,14 @@ function handleMySubmissions_(payload) {
 }
 
 function handleSubmitPolicy_(payload) {
+  return withReviewLock_(() => handleSubmitPolicyLocked_(payload));
+}
+
+function handleSubmitPolicyLocked_(payload) {
   const session = requireSession_(payload.session_id);
-  checkRateLimit_("submit_policy", session.email, 10, 60 * 60 * 1000);
   const user = findRow_("Users", "email", session.email);
   if (!user || user.token_status !== "active") throw new Error("User token is not active.");
   const admission = submissionAdmission_(user);
-  if (!admission.allowed) {
-    const error = new Error(`Preliminary submissions closed on October 11, 2026 at 23:59 AoE. Please contact ${admission.contact_email}; only organizers can grant a token-specific extension.`);
-    error.code = "SUBMISSIONS_CLOSED";
-    throw error;
-  }
   const submission = payload.submission || {};
   const artifactName = requiredString_(submission.artifact_name, "Artifact name");
   const title = requiredString_(submission.title, "Experiment name");
@@ -648,9 +647,27 @@ function handleSubmitPolicy_(payload) {
   const technicalNotes = requiredString_(submission.technical_notes, "Run and dependency notes");
   const checkedTaskLinks = submissionTaskLinks_(submission);
   const isRanked = isTruthy_(submission.is_ranked);
-  const submissionId = id_("sub");
-  const evaluationId = id_("eval");
-  const createdAt = now_();
+  const fingerprint = reviewerHash_(JSON.stringify([session.email, artifactName, title, shortDescription, codeLink,
+    checkpointLink, Object.keys(checkedTaskLinks).sort().map(key => [key, checkedTaskLinks[key]]), dataSourceText, technicalNotes, isRanked]));
+  const suppliedKey = String(payload.submission_key || "");
+  if (suppliedKey && !/^[A-Za-z0-9_-]{16,100}$/.test(suppliedKey)) throw new Error("Invalid submission retry key.");
+  const retryKey = reviewerHash_(session.email + ":" + (suppliedKey || fingerprint));
+  let receipt = policyReceipt_(retryKey);
+  if (receipt && receipt.fingerprint !== fingerprint) throw new Error("Submission retry key belongs to different content.");
+  if (!receipt && !admission.allowed) {
+    const error = new Error(`Preliminary submissions closed on October 11, 2026 at 23:59 AoE. Please contact ${admission.contact_email}; only organizers can grant a token-specific extension.`);
+    error.code = "SUBMISSIONS_CLOSED";
+    throw error;
+  }
+  if (!receipt) {
+    checkRateLimit_("submit_policy", session.email, 10, 60 * 60 * 1000);
+    policyReceiptWrite_(null, { retry_key: retryKey, fingerprint, email: session.email, submission_id: id_("sub"),
+      evaluation_id: id_("eval"), created_at: now_(), window_id: admission.window_id || "", notification_status: "pending" });
+    receipt = policyReceipt_(retryKey);
+  }
+  const submissionId = receipt.submission_id;
+  const evaluationId = receipt.evaluation_id;
+  const createdAt = receipt.created_at;
 
   const submissionRow = {
     submission_id: submissionId,
@@ -658,7 +675,7 @@ function handleSubmitPolicy_(payload) {
     email: session.email,
     task_checkpoint_links_json: Object.keys(checkedTaskLinks).length ? JSON.stringify(checkedTaskLinks) : "",
     token: user.token,
-    submission_window_id: admission.window_id,
+    submission_window_id: receipt.window_id,
     artifact_name: artifactName,
     title,
     short_description: shortDescription,
@@ -694,21 +711,44 @@ function handleSubmitPolicy_(payload) {
     result_status: "pending",
     result_sent_at: "",
   };
-  appendRow_("Submissions", submissionRow);
-  appendRow_("Evaluations", evaluationRow);
-  sendEvaluationRequestNotification_(submissionRow, evaluationRow);
-  MailApp.sendEmail({
+  const oldSubmission = findRow_("Submissions", "submission_id", submissionId);
+  const oldEvaluation = findRow_("Evaluations", "evaluation_id", evaluationId);
+  if (oldSubmission && (oldSubmission.evaluation_id !== evaluationId || normalizeEmail_(oldSubmission.email) !== session.email) ||
+      oldEvaluation && (oldEvaluation.submission_id !== submissionId || normalizeEmail_(oldEvaluation.email) !== session.email)) throw new Error("Submission receipt identity mismatch; no data overwritten.");
+  if (!oldSubmission) appendRow_("Submissions", submissionRow);
+  if (!oldEvaluation) appendRow_("Evaluations", evaluationRow);
+  notifyPolicyReceipt_(receipt, submissionRow, evaluationRow);
+  return {
+    ok: true,
+    already_recorded: Boolean(oldSubmission && oldEvaluation),
+    notification_status: policyReceipt_(retryKey).notification_status,
+    submission: publicSubmission_(submissionRow),
+    evaluation: publicEvaluation_(evaluationRow),
+  };
+}
+
+function notifyPolicyReceipt_(receipt, submissionRow, evaluationRow) {
+  if (receipt.notification_status === "pending") {
+    const admins = config_("ADMIN_EMAILS", "").split(",").filter(item => item.trim()).length;
+    if (MailApp.getRemainingDailyQuota && MailApp.getRemainingDailyQuota() < 2 + admins) return;
+    const retryKey = receipt.retry_key, session = { email: receipt.email }, artifactName = submissionRow.artifact_name;
+    const submissionId = receipt.submission_id, evaluationId = receipt.evaluation_id;
+    policyReceiptWrite_(receipt._rowNumber, { retry_key: retryKey, notification_status: "sending" });
+    try {
+      sendEvaluationRequestNotification_(submissionRow, evaluationRow);
+      MailApp.sendEmail({
     to: session.email,
     subject: `RoboSynChallenge policy submission received: ${artifactName}`,
     body: `Your policy submission has been recorded.\n\nSubmission ID: ${submissionId}\nEvaluation ID: ${evaluationId}`,
     htmlBody: `<p>Your policy submission has been recorded.</p><p><strong>Submission ID:</strong> ${submissionId}</p><p><strong>Evaluation ID:</strong> ${evaluationId}</p>`,
-  });
-  sendAdminDigest_("policy submission", { email: session.email, submission_id: submissionId });
-  return {
-    ok: true,
-    submission: publicSubmission_(submissionRow),
-    evaluation: publicEvaluation_(evaluationRow),
-  };
+      });
+      sendAdminDigest_("policy submission", { email: session.email, submission_id: submissionId });
+      policyReceiptWrite_(receipt._rowNumber, { retry_key: retryKey, notification_status: "sent", notification_error: "" });
+    } catch (error) {
+      policyReceiptWrite_(receipt._rowNumber, { retry_key: retryKey, notification_status: "needs_review", notification_error: String(error.message || error).slice(0, 1000) });
+      console.error("Submission recorded; notification requires organizer review: " + submissionId);
+    }
+  }
 }
 
 function submissionTaskLinks_(submission) {

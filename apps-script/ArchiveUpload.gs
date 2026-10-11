@@ -131,8 +131,27 @@ function archiveValidate_(payload) {
   if (reviewWorkflow_(run.evaluation_id).stages.slice(0, 3).some((stage) => !stage.done)) throw new Error("Complete the first three stages before uploading evidence.");
   const record = reviewValidatedResult_({ result: { ...payload.result,
     artifacts: { ...payload.result?.artifacts, url: payload.result?.artifacts?.url || "https://example.invalid/pending-upload" } } }, run);
-  if (reviewTaskRows_(run.evaluation_id).some((row) => row.task === record.task && row.status === "checked")) throw new Error("Accepted results are locked.");
   return { run, record };
+}
+
+function archiveSessionKey_(id) { return "ARCHIVE_SESSION_" + id; }
+
+function archiveSessionUrl_(id) {
+  return PropertiesService.getScriptProperties().getProperty(archiveSessionKey_(id)) ||
+    CacheService.getScriptCache().get("archive-session:" + id);
+}
+
+function archiveResume_(upload, url) {
+  const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  const code = response.getResponseCode();
+  if ([404, 410].includes(code)) return null;
+  if (code !== 200) throw new Error("Cannot confirm Microsoft upload offset (HTTP " + code + "). Retry without rerunning evaluation.");
+  const status = JSON.parse(response.getContentText());
+  const offset = Number(String(status.nextExpectedRanges?.[0] || "").split("-")[0]);
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset >= Number(upload.size) || !Number.isFinite(Date.parse(status.expirationDateTime))) throw new Error("Invalid Microsoft resume status.");
+  reviewWrite_("ReviewArchiveUploads", upload._rowNumber, { evaluation_id: upload.evaluation_id,
+    expires_at: status.expirationDateTime, updated_at: now_() });
+  return { ok: true, phase: "upload", upload_id: upload.upload_id, upload_url: url, next_offset: offset };
 }
 
 function archiveStart_(payload) {
@@ -142,13 +161,36 @@ function archiveStart_(payload) {
     if (!Number.isSafeInteger(size) || size < 1 || size > 250 * 1024 ** 3) throw new Error("Invalid evidence ZIP size.");
     const rows = reviewRows_("ReviewArchiveUploads");
     const previous = rows.find((row) => row.evaluation_id === run.evaluation_id && row.task === record.task);
-    if (previous && ["uploading", "verified"].includes(previous.status) && new Date(previous.expires_at).getTime() > Date.now()) {
+    if (previous && ["uploading", "verified", "completed"].includes(previous.status)) {
       if (String(previous.expected_sha256) !== record.artifacts.sha256 || Number(previous.size) !== size) throw new Error("Another upload is active for this task. Finish it or wait for its session to expire.");
-      const url = CacheService.getScriptCache().get("archive-session:" + previous.upload_id);
-      if (url && previous.status === "uploading") return { ok: true, upload_id: previous.upload_id, upload_url: url };
-      if (previous.status === "verified") throw new Error("This ZIP is already verified; finish registering its result JSON before another upload.");
-      throw new Error("The upload session cache expired. Wait for the Microsoft session to expire before replacing it.");
+      if (["verified", "completed"].includes(previous.status)) {
+        const ready = archiveGraph_(archiveTarget_(run, record.task) + ":/result.json");
+        const content = archiveGraph_("/drives/" + encodeURIComponent(config_("ARCHIVE_MS_DRIVE_ID", "")) + "/items/" + encodeURIComponent(ready.id) + "/content");
+        const expected = { ...record, artifacts: { ...record.artifacts, url: content.artifacts?.url } };
+        if (archiveRecordHash_(content) !== previous.record_hash || archiveRecordHash_(expected) !== previous.record_hash) throw new Error("Recovery manifest differs from verified evidence.");
+        return { ok: true, phase: "register", upload_id: previous.upload_id, result: content };
+      }
+      const url = archiveSessionUrl_(previous.upload_id);
+      if (!url && Date.parse(previous.expires_at) > Date.now()) throw new Error("Upload session URL is unavailable. Wait until the recorded session expiry before restarting; do not create competing overwrite sessions.");
+      if (url && !isTruthy_(payload.restart)) {
+        const resumed = archiveResume_(previous, url);
+        if (resumed) return resumed;
+        const base = archiveTarget_(run, record.task);
+        // A lost final PUT reply may leave a complete ZIP even though the session is gone.
+        try {
+          const item = archiveGraph_(base + ":/evidence.zip");
+          if (Number(item.size) === size) return { ok: true, phase: "verify", upload_id: previous.upload_id };
+        } catch (error) {
+          if (!String(error.message).includes("HTTP 404")) throw error;
+        }
+      }
+      if (url && isTruthy_(payload.restart)) {
+        const response = UrlFetchApp.fetch(url, { method: "delete", muteHttpExceptions: true });
+        if (![200, 204, 404, 410].includes(response.getResponseCode())) throw new Error("Could not cancel the old upload session.");
+      }
+      PropertiesService.getScriptProperties().deleteProperty(archiveSessionKey_(previous.upload_id));
     }
+    if (reviewTaskRows_(run.evaluation_id).some(row => row.task === record.task && row.status === "checked")) throw new Error("Accepted results are locked.");
     const quota = archiveGraph_("/drives/" + encodeURIComponent(config_("ARCHIVE_MS_DRIVE_ID", "")) + "?$select=quota").quota;
     if (Number.isFinite(quota?.remaining) && size > quota.remaining) throw new Error("OneDrive storage is insufficient for this ZIP. Local evidence must be retained; contact the organizer before retrying upload.");
     const base = archiveTarget_(run, record.task);
@@ -159,15 +201,15 @@ function archiveStart_(payload) {
     reviewWrite_("ReviewArchiveUploads", previous?._rowNumber, { evaluation_id: run.evaluation_id, task: record.task,
       upload_id: id, expected_sha256: record.artifacts.sha256, size, status: "uploading", expires_at: session.expirationDateTime, updated_at: now_(), record_hash: "" });
     CacheService.getScriptCache().put("archive-session:" + id, session.uploadUrl, 21600);
-    return { ok: true, upload_id: id, upload_url: session.uploadUrl };
+    PropertiesService.getScriptProperties().setProperty(archiveSessionKey_(id), session.uploadUrl);
+    return { ok: true, phase: "upload", upload_id: id, upload_url: session.uploadUrl, next_offset: 0 };
   });
 }
 
 function archiveCompletedItem_(payload) {
   const { run, record } = archiveValidate_(payload);
   const upload = reviewRows_("ReviewArchiveUploads").find((row) => row.evaluation_id === run.evaluation_id && row.task === record.task && row.upload_id === payload.upload_id);
-  if (!upload || !["uploading", "verified"].includes(upload.status) || upload.expected_sha256 !== record.artifacts.sha256 ||
-      !Number.isFinite(new Date(upload.expires_at).getTime()) || new Date(upload.expires_at).getTime() <= Date.now()) throw new Error("Upload identity does not match this task or its session expired.");
+  if (!upload || !["uploading", "verified", "completed"].includes(upload.status) || upload.expected_sha256 !== record.artifacts.sha256) throw new Error("Upload identity does not match this task.");
   const base = archiveTarget_(run, record.task);
   const item = archiveGraph_(base + ":/evidence.zip");
   if (Number(item.size) !== Number(upload.size)) throw new Error("ZIP upload is not complete.");
@@ -189,6 +231,7 @@ function archiveFinish_(payload) {
     if (!/^https:\/\//.test(String(item.webUrl || ""))) throw new Error("No valid archive link is available.");
     archiveGraph_(base + ":/result.json:/content", "put", JSON.stringify(ready), true);
     reviewWrite_("ReviewArchiveUploads", upload._rowNumber, { evaluation_id: record.evaluation_id, task: record.task, status: "verified", updated_at: now_(), record_hash: archiveRecordHash_(ready) });
+    PropertiesService.getScriptProperties().deleteProperty(archiveSessionKey_(upload.upload_id));
     return { ok: true, result: ready };
   });
 }

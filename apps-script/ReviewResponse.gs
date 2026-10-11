@@ -62,7 +62,7 @@ function handleReviewResponseSubmit_(params) {
       const code = requiredString_(params.code_link, "Immutable GitHub commit URL");
       if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/tree\/[a-f0-9]{40}\/?$/i.test(code)) throw new Error("Use a GitHub tree URL with a full 40-character commit SHA.");
       const links = Object.fromEntries(Object.keys(REVIEW_TASK_STEPS).map((task) => [task, requiredHuggingFaceUrl_(params["checkpoint_" + task])]));
-      if (reviewWorkflow_(run.evaluation_id).stages[4].done || reviewTaskRows_(run.evaluation_id).some((row) => row.status === "checked")) throw new Error("Accepted results are locked. Contact the organizers.");
+      if (reviewWorkflow_(run.evaluation_id).stages[4].done) throw new Error("Completed evaluation is locked. Contact the organizers.");
       const uploads = reviewRows_("ReviewArchiveUploads").filter((row) => row.evaluation_id === run.evaluation_id);
       if (uploads.some((row) => row.status === "uploading" && Date.parse(row.expires_at) > Date.now())) throw new Error("An evidence upload is in progress. Ask the evaluator to finish it before submitting a correction.");
       reviewWrite_("ReviewCorrections", correction._rowNumber, { evaluation_id: run.evaluation_id,
@@ -70,8 +70,10 @@ function handleReviewResponseSubmit_(params) {
         responded_at: now_(), previous_bundle_commit: run.bundle_commit, updated_at: now_() });
       reviewTaskRows_(run.evaluation_id).forEach((row) => reviewWrite_("ReviewTaskResults", row._rowNumber,
         { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() }));
-      uploads.forEach((row) => reviewWrite_("ReviewArchiveUploads", row._rowNumber,
-        { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() }));
+      uploads.forEach((row) => {
+        PropertiesService.getScriptProperties().deleteProperty(archiveSessionKey_(row.upload_id));
+        reviewWrite_("ReviewArchiveUploads", row._rowNumber, { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() });
+      });
       const access = reviewRows_("ReviewUploadAccess").find((row) => row.evaluation_id === run.evaluation_id);
       if (access) reviewWrite_("ReviewUploadAccess", access._rowNumber, { evaluation_id: run.evaluation_id, revoked: "true" });
       reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_commit: "", bundle_url: "",
