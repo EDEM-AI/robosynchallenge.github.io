@@ -76,6 +76,15 @@ async function main() {
       assert.equal(await evaluate("document.querySelector('[data-review-form=verify]') !== null"), true);
       assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Validation code must not bypass the checkpoint gate");
     }
+    const warningJobs = JSON.parse(fs.readFileSync(path.join(__dirname, "../static/reviewer-preview.json"), "utf8")).jobs.filter(job => job.code_selection?.preparation_warnings?.length);
+    for (const job of warningJobs) {
+      await evaluate(`document.querySelector('[data-review-job="${job.evaluation_id}"]').click()`);
+      await until(`document.querySelector('[data-evaluation-id]').textContent === ${JSON.stringify(job.evaluation_id)}`);
+      for (const warning of job.code_selection.preparation_warnings) {
+        assert.equal(await evaluate(`document.body.innerText.includes(${JSON.stringify(warning)})`), true, "Deferred dependency warnings must remain visible");
+      }
+      assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Code-only dependency warnings must not bypass formal checkpoint gates");
+    }
     await evaluate("document.querySelector('[data-review-job=eval_3b7f6832eca94f]').click()");
     await until("document.querySelector('[data-evaluation-id]').textContent === 'eval_3b7f6832eca94f'");
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-links a').length"), 20, "Each submitted repository and checkpoint must have its own readable link");

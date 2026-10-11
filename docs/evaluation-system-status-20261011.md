@@ -14,6 +14,11 @@ fields, with no separate common checkpoint input. Shared checkpoints may be repe
 A representative URL is derived for the existing backend column, preserving legacy
 submissions without changing participant identities or publishing the reviewer UI.
 
+Separately authorized issue reminders have been sent: six code-preparation notices
+and four HF-access notices. Both the backend's sent records and Gmail Sent were
+verified. These use the existing one-correction / 24-hour response workflow;
+deployment and acceptance tests themselves still send no participant mail.
+
 ## Integration
 
 The evaluator frontend is part of this website repository: eval_backend/, static/js/reviewer-page.js, static/js/reviewer-onedrive.js and static/css/reviewer.css. It uses the same static assets/configuration and the existing Apps Script/Google Sheet backend. No production application server is introduced. The public submission form and FAQ are published separately; evaluator UI remains on a non-Pages work branch and local preview until approved.

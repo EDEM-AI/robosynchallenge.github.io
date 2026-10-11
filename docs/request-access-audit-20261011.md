@@ -147,3 +147,18 @@ confirm the ten-task mapping, correct weight selection, or runtime compatibility
 Only reviewer-confirmed task mappings become formal task access receipts. The
 persistent preparer repeats access/version checks for changed mappings and the
 final cutoff, without requiring an agent.
+
+## Authorized Participant Notices
+
+Ten separate English HTML notices were sent through the existing
+`reviewer_send_issue` workflow and independently found in Gmail Sent on October 11:
+
+- Code/layout/access: 115, Kaelio, Team Turbo, Robo, SEU MAI and Vulcan Dynamics.
+- HF checkpoint access: smallzhangiscodeing, wangwangdui, Praxis and Owen.
+
+Each notice has a durable message ID and a Sheet delivery record. It includes the
+existing confirmation/single-correction form and its first-notice 24-hour deadline;
+subsequent notices do not extend that window. RobotQQ and luminbot received no
+false-positive fault notice. The private runtime ledger records exact recipients,
+subjects and API outcomes without publishing participant response tokens. Gmail
+Sent confirms outgoing messages, not that recipients have read or received them.
