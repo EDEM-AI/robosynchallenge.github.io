@@ -147,7 +147,8 @@ function doGet(e) {
     if (action === "access_decision") return handleAccessDecisionPage_(e.parameter);
     return json_({ ok: true, service: "RoboSynChallenge backend", time: new Date().toISOString(),
       reviewer_api_version: typeof handleReviewerAction_ === "function" && typeof archiveStart_ === "function" && typeof reviewAuditSubmissionLinks_ === "function" && typeof reviewVersionCheck_ === "function" ? 6 : 0,
-      reviewer_shared_hf: typeof reviewCheckpointCredential_ === "function" });
+      reviewer_shared_hf: typeof reviewCheckpointCredential_ === "function",
+      reviewer_code_preparation: typeof reviewPrepareCode_ === "function" });
   } catch (error) {
     if (action === "review_response") console.error(error);
     else recordError_("doGet", error);

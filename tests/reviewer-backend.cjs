@@ -222,6 +222,23 @@ call("reviewPreparationFailed_", { ...credentials, evaluation_id: "eval_legacy",
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").preparation_status, "failed");
 call("reviewRetryPreparation_", { ...credentials, evaluation_id: "eval_legacy" });
 assert.equal(call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy").preparation_status, "pending");
+const validation = { ...credentials, evaluation_id: "eval_legacy", bundle_commit: "c".repeat(40),
+  participant_commit: "d".repeat(40), private_base_commit: "e".repeat(40), policy_dirs: ["policy/custom/nested"],
+  bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/validation/eval_legacy-" + "d".repeat(12) + "-" + "e".repeat(12),
+  selection: { revision: "d".repeat(40), authored_at: "2020-01-01T00:00:00Z", committed_at: "2020-01-01T00:00:00Z",
+    cutoff_at: new Date(Math.min(Date.now() - 10000, Date.parse("2026-10-12T12:00:00Z"))).toISOString().replace(".000Z", "Z") } };
+// Validation alone must never grant formal evaluation or shared-account access.
+assert.throws(() => call("reviewPrepareCode_", { ...validation, bundle_url: validation.bundle_url + "-wrong" }), /does not match/);
+assert.throws(() => call("reviewPrepareCode_", { ...validation, policy_dirs: ["policy/../tools"] }), /metadata/);
+assert.equal(call("reviewPrepareCode_", validation).status, "code_ready");
+let validationJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(validationJob.code_bundle_commit, validation.bundle_commit);
+assert.equal(validationJob.bundle_commit, "");
+assert.equal(validationJob.coverage_status, "legacy_unverified");
+assert.throws(() => call("reviewCompleteStage_", { ...credentials, evaluation_id: "eval_legacy", stage: 0,
+  checks: { repository_access: true, checkpoint_access: true, ten_tasks: true } }), /10 tasks|prepared|preparation/);
+assert.throws(() => call("reviewCheckpointCredential_", { ...credentials, evaluation_id: "eval_legacy",
+  bundle_commit: validation.bundle_commit }), /Private clone capability/);
 assert.throws(() => call("reviewPrepare_", { ...credentials, evaluation_id: "eval_legacy",
   bundle_commit: bundleCommit, bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_legacy",
   policy_dirs: ["policy/act"] }), /Verify all 10 tasks/);
@@ -322,6 +339,7 @@ assert.equal(JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, s
 assert.throws(() => call("handleReviewResponseSubmit_", correctionFields), /already been submitted/);
 assert.throws(() => call("reviewUploadContext_", { evaluation_id: "eval_legacy", upload_token: legacyAccess.upload_token }), /Invalid or expired/);
 const correctedJob = call("reviewQueue_", credentials).jobs.find(job => job.evaluation_id === "eval_legacy");
+assert.equal(correctedJob.code_bundle_commit, "", "A correction must not display the old validation branch");
 assert.equal(correctedJob.code_link, correctedLink);
 assert.equal(correctedJob.preparation_attempt, 1);
 assert.equal(correctedJob.bundle_commit, "");

@@ -10,6 +10,7 @@ const REVIEW_TABLES = {
   ReviewMachines: ["reviewer_email", "machine_id", "report_json", "report_sha256", "status", "updated_at"],
   ReviewMessages: ["evaluation_id", "message_id", "reviewer_email", "stage", "recipient", "subject", "body", "status", "created_at", "sent_at"],
   ReviewPreparation: ["evaluation_id", "status", "message", "updated_at"],
+  ReviewCodePreparations: ["evaluation_id", "submission_id", "code_link", "participant_commit", "private_base_commit", "bundle_url", "bundle_commit", "policy_dirs_json", "selection_json", "attempt", "generation", "updated_at"],
   ReviewUploadAccess: ["evaluation_id", "token_hash", "expires_at", "revoked", "created_at"],
   ReviewArchiveUploads: ["evaluation_id", "task", "upload_id", "expected_sha256", "size", "status", "expires_at", "updated_at", "record_hash"],
   ReviewTaskCommands: ["evaluation_id", "task", "bundle_commit", "command", "reviewer_email", "updated_at"],
@@ -231,6 +232,7 @@ function reviewQueue_(payload, organizer) {
     .map((row) => ({ machine_id: row.machine_id, status: row.status, report_sha256: row.report_sha256, updated_at: row.updated_at }));
   const messages = reviewRows_("ReviewMessages");
   const preparation = new Map(reviewRows_("ReviewPreparation").map((row) => [String(row.evaluation_id), row]));
+  const codePreparations = new Map(reviewRows_("ReviewCodePreparations").map(row => [String(row.evaluation_id), row]));
   const corrections = new Map(reviewRows_("ReviewCorrections").map((row) => [String(row.evaluation_id), row]));
   const accessChecks = new Map(reviewRows_("ReviewAccessChecks").map((row) => [String(row.evaluation_id), row]));
   const commands = reviewRows_("ReviewTaskCommands");
@@ -249,6 +251,10 @@ function reviewQueue_(payload, organizer) {
     const verifiedLinks = reviewTaskLinks_(parseJson_(run?.task_checkpoint_links_json, {}));
     const correctedLinks = correction?.status === "corrected" ? reviewTaskLinks_(parseJson_(correction.task_checkpoint_links_json, {})) : null;
     const taskLinks = correctedLinks || declaredLinks || verifiedLinks || {};
+    const codeLink = correction?.status === "corrected" ? correction.code_link : submission.code_link;
+    const savedCode = codePreparations.get(String(evaluation.evaluation_id));
+    const code = savedCode?.submission_id === submission.submission_id && savedCode?.code_link === codeLink &&
+      Number(savedCode.attempt) === (correction?.status === "corrected" ? 1 : 0) && Number(savedCode.generation) === Number(decision?.generation || 0) ? savedCode : null;
     const results = tasks.filter(row => String(row.evaluation_id) === String(evaluation.evaluation_id) && row.status !== "superseded")
       .map(row => ({ task: row.task, status: row.status, note: row.review_note,
         artifacts: parseJson_(row.result_json, {}).artifacts || {}, command: parseJson_(row.result_json, {}).eval_command || "",
@@ -277,6 +283,9 @@ function reviewQueue_(payload, organizer) {
       preparation_error: preparation.get(String(evaluation.evaluation_id))?.message || "",
       preparation_updated_at: preparation.get(String(evaluation.evaluation_id))?.updated_at || "",
       bundle_commit: run?.bundle_commit || "", policy_dirs: parseJson_(run?.policy_dirs_json, []),
+      code_bundle_url: code?.bundle_url || "", code_bundle_commit: code?.bundle_commit || "",
+      code_participant_commit: code?.participant_commit || "", code_base_commit: code?.private_base_commit || "",
+      code_policy_dirs: parseJson_(code?.policy_dirs_json, []), code_selection: parseJson_(code?.selection_json, {}),
       workflow: reviewWorkflow_(evaluation.evaluation_id, progress),
       machines,
       messages: messages.filter((row) => String(row.evaluation_id) === String(evaluation.evaluation_id))
@@ -376,6 +385,36 @@ function reviewPrepare_(payload) {
       state: "ready", updated_at: now_() });
     reviewPreparationStatus_(run.evaluation_id, "ready", "");
     return { ok: true, evaluation_id: run.evaluation_id };
+  });
+}
+
+function reviewPrepareCode_(payload) {
+  return withReviewLock_(() => {
+    const { viewer, run } = reviewOwnedRun_(payload, true);
+    if (viewer.role !== "admin") throw new Error("Only the organizer preparer can attach validation code.");
+    if (run.bundle_commit || reviewWorkflow_(run.evaluation_id).stages[1].done) throw new Error("Formal code has already been handed off.");
+    const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    const selection = payload.selection || {};
+    const dirs = payload.policy_dirs;
+    if (![payload.bundle_commit, payload.participant_commit, payload.private_base_commit].every(value => /^[a-f0-9]{40}$/.test(String(value || ""))) ||
+        selection.revision !== payload.participant_commit || JSON.stringify(selection).length > 4000 ||
+        !Number.isFinite(Date.parse(selection.cutoff_at)) ||
+        ![selection.authored_at, selection.committed_at].every(value => Number.isFinite(Date.parse(value)) && Date.parse(value) < Date.parse(selection.cutoff_at)) ||
+        Date.parse(selection.cutoff_at) > Math.min(Date.now(), Date.parse(job.version_cutoff_at)) ||
+        (Date.now() >= Date.parse(job.version_cutoff_at) && selection.cutoff_at !== job.version_cutoff_at) ||
+        !Array.isArray(dirs) || !dirs.length || dirs.length > 30 || dirs.some(dir => !/^policy(?:\/[A-Za-z0-9_.-]+)*$/.test(dir) || dir.split("/").some(part => [".", ".."].includes(part)))) {
+      throw new Error("Validation code metadata or selected version is invalid.");
+    }
+    const suffix = (job.preparation_attempt ? "-correction1" : "") + (job.version_generation ? "-exception" + job.version_generation : "");
+    const branch = "validation/" + run.evaluation_id + suffix + "-" + payload.participant_commit.slice(0, 12) + "-" + payload.private_base_commit.slice(0, 12);
+    if (payload.bundle_url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/" + branch) throw new Error("Validation branch does not match this request and selected code.");
+    const old = reviewRows_("ReviewCodePreparations").find(row => row.evaluation_id === run.evaluation_id);
+    reviewWrite_("ReviewCodePreparations", old?._rowNumber, { evaluation_id: run.evaluation_id, submission_id: run.submission_id,
+      code_link: job.code_link, participant_commit: payload.participant_commit, private_base_commit: payload.private_base_commit,
+      bundle_url: payload.bundle_url, bundle_commit: payload.bundle_commit, policy_dirs_json: JSON.stringify([...new Set(dirs)]),
+      selection_json: JSON.stringify(selection), attempt: job.preparation_attempt, generation: job.version_generation, updated_at: now_() });
+    reviewPreparationStatus_(run.evaluation_id, "code_ready", "");
+    return { ok: true, evaluation_id: run.evaluation_id, status: "code_ready" };
   });
 }
 
@@ -628,6 +667,7 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  if (action === "reviewer_prepare_code") return reviewPrepareCode_(payload);
   if (action === "reviewer_configure_checkpoint_access") return reviewConfigureCheckpointAccess_(payload);
   if (action === "reviewer_checkpoint_credential") return reviewCheckpointCredential_(payload);
   if (action === "reviewer_audit_submission_links") return reviewAuditSubmissionLinks_(payload);

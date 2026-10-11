@@ -14,10 +14,10 @@ const token = fs.readFileSync(tokenPath, "utf8").trim();
 if (!/^act_[0-9a-f]{64}$/.test(token)) throw new Error("Invalid local reviewer token file.");
 const tokenSha256 = crypto.createHash("sha256").update(token).digest("hex");
 const snapshot = JSON.parse(fs.readFileSync(source, "utf8"));
-const users = new Map(snapshot.users.map((user) => [String(user.email).toLowerCase(), user]));
+const users = new Map((snapshot.users || []).map((user) => [String(user.email).toLowerCase(), user]));
 const latest = new Map();
 const deadline = Date.parse("2026-10-12T12:00:00Z");
-for (const submission of snapshot.submissions) {
+for (const submission of snapshot.submissions || []) {
   const email = String(submission.email || "").toLowerCase();
   const user = users.get(email);
   const created = Date.parse(submission.created_at);
@@ -27,7 +27,7 @@ for (const submission of snapshot.submissions) {
   if (!previous || created > Date.parse(previous.created_at) ||
       (created === Date.parse(previous.created_at) && submission.submission_id > previous.submission_id)) latest.set(email, submission);
 }
-const jobs = [...latest.values()].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((submission) => {
+const jobs = snapshot.jobs ? snapshot.jobs.filter(job => !job.local_walkthrough) : [...latest.values()].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((submission) => {
   const user = users.get(String(submission.email).toLowerCase());
   return {
     evaluation_id: submission.evaluation_id, submission_id: submission.submission_id,
