@@ -74,6 +74,7 @@ const SHEETS = {
     "is_ranked",
     "status",
     "created_at",
+    "task_checkpoint_links_json",
   ],
   Evaluations: [
     "evaluation_id",
@@ -138,32 +139,39 @@ const FULL_NAME_UPDATE_DAYS = 14;
 const FULL_NAME_UPDATE_TEST_EMAIL = "224040356@link.cuhk.edu.cn";
 
 function doGet(e) {
+  const action = String(e?.parameter?.rsc_action || e?.parameter?.action || "");
   try {
-    const action = String(e?.parameter?.rsc_action || e?.parameter?.action || "");
     if (action === "full_name_update") return handleFullNameUpdatePage_(e.parameter);
+    if (action === "review_response") return handleReviewResponsePage_(e.parameter);
     if (action === "access_decision") return handleAccessDecisionPage_(e.parameter);
-    return json_({ ok: true, service: "RoboSynChallenge backend", time: new Date().toISOString() });
+    return json_({ ok: true, service: "RoboSynChallenge backend", time: new Date().toISOString(),
+      reviewer_api_version: typeof handleReviewerAction_ === "function" && typeof archiveStart_ === "function" && typeof handleReviewResponseSubmit_ === "function" ? 4 : 0 });
   } catch (error) {
-    recordError_("doGet", error);
+    if (action === "review_response") console.error(error);
+    else recordError_("doGet", error);
     return html_("RoboSynChallenge action failed", `<p>${escapeHtml_(error.message || error)}</p>`);
   }
 }
 
 function doPost(e) {
+  let action = "";
   try {
     const payload = parsePayload_(e);
-    const action = String(payload.rsc_action || payload.action || "");
+    action = String(payload.rsc_action || payload.action || "");
     if (action === "health") return json_({ ok: true, time: new Date().toISOString() });
     if (action === "request_access") return json_(handleRequestAccess_(payload));
     if (action === "send_access_notification") return handleSendAccessNotification_(payload);
     if (action === "update_full_name") return handleFullNameUpdateSubmit_(payload);
     if (action === "login") return json_(handleLogin_(payload));
     if (action === "my_submissions") return json_(handleMySubmissions_(payload));
+    if (action === "review_response_submit") return handleReviewResponseSubmit_(payload);
     if (action === "submit_policy") return json_(handleSubmitPolicy_(payload));
     if (action === "leaderboard") return json_(handleLeaderboard_());
+    if (action.startsWith("reviewer_")) return json_(handleReviewerAction_(action, payload));
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
-    recordError_("doPost", error);
+    if (action.startsWith("reviewer_") || action === "review_response_submit") console.error(error);
+    else recordError_("doPost", error);
     return json_({ ok: false, error: String(error.message || error) });
   }
 }
@@ -630,6 +638,7 @@ function handleSubmitPolicy_(payload) {
   const checkpointLink = requiredHuggingFaceUrl_(submission.checkpoint_link);
   const dataSourceText = requiredString_(submission.data_source_text, "Data source");
   const technicalNotes = requiredString_(submission.technical_notes, "Run and dependency notes");
+  const checkedTaskLinks = submissionTaskLinks_(submission);
   const isRanked = isTruthy_(submission.is_ranked);
   const submissionId = id_("sub");
   const evaluationId = id_("eval");
@@ -639,6 +648,7 @@ function handleSubmitPolicy_(payload) {
     submission_id: submissionId,
     evaluation_id: evaluationId,
     email: session.email,
+    task_checkpoint_links_json: Object.keys(checkedTaskLinks).length ? JSON.stringify(checkedTaskLinks) : "",
     token: user.token,
     artifact_name: artifactName,
     title,
@@ -690,6 +700,23 @@ function handleSubmitPolicy_(payload) {
     submission: publicSubmission_(submissionRow),
     evaluation: publicEvaluation_(evaluationRow),
   };
+}
+
+function submissionTaskLinks_(submission) {
+  // The published legacy form stays usable; review coverage remains blocked until verified.
+  if (!Object.prototype.hasOwnProperty.call(submission, "all_tasks_confirmed") &&
+      !Object.prototype.hasOwnProperty.call(submission, "task_checkpoint_links")) return {};
+  if (!isTruthy_(submission.all_tasks_confirmed)) throw new Error("Confirm that this request covers all 10 tasks.");
+  const taskLinks = submission.task_checkpoint_links;
+  const taskNames = Object.keys(REVIEW_TASK_STEPS);
+  if (!taskLinks || typeof taskLinks !== "object" || Array.isArray(taskLinks) ||
+      Object.keys(taskLinks).length !== taskNames.length ||
+      taskNames.some((task) => !Object.prototype.hasOwnProperty.call(taskLinks, task))) {
+    throw new Error("Provide a checkpoint mapping for all 10 tasks.");
+  }
+  const checkedTaskLinks = {};
+  taskNames.forEach((task) => { checkedTaskLinks[task] = requiredHuggingFaceUrl_(taskLinks[task]); });
+  return checkedTaskLinks;
 }
 
 function handleLeaderboard_() {
@@ -1559,6 +1586,7 @@ function publicSubmission_(row, evaluation = null) {
     display_name: row.artifact_name,
     artifact_name: row.artifact_name,
     checkpoint_link: row.checkpoint_link,
+    task_checkpoint_links: parseJson_(row.task_checkpoint_links_json, {}),
     code_link: row.code_link,
     title: row.title,
     short_description: row.short_description,

@@ -1,3 +1,6 @@
 **/**
 !Code.gs
+!Reviewer.gs
+!ReviewResponse.gs
+!ArchiveUpload.gs
 !appsscript.json

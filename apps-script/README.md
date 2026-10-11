@@ -63,7 +63,7 @@ SPREADSHEET_ID=1AbCdEfGhIjKlMnOpQrStUvWxYz1234567890
 1. 在刚创建的 Google Sheet 页面里，点击顶部菜单 **Extensions** / **扩展程序**。
 2. 点击 **Apps Script**。
 3. 删除默认生成的代码。
-4. 把本仓库里的 `apps-script/Code.gs` 全部复制进去。
+4. 同时部署 `Code.gs`、`Reviewer.gs`、`ArchiveUpload.gs` 和 `ReviewResponse.gs`。测评者登录、受限网盘上传、参赛者单次修复表单依赖这四个文件。
 5. 如果 Apps Script 编辑器左侧能看到 `appsscript.json` manifest 文件，就把本仓库里的 `apps-script/appsscript.json` 内容也复制进去。
 6. 保存项目，建议项目名也叫 `RoboSynChallenge Backend`。
 
@@ -74,6 +74,8 @@ SPREADSHEET_ID=1AbCdEfGhIjKlMnOpQrStUvWxYz1234567890
 3. 回到编辑器左侧，打开 `appsscript.json` 并粘贴本仓库对应内容。
 
 ## 设置 Script Properties
+
+2026-10-11 已在原 Web App 部署测评 API v4，独立 Review 表已初始化，管理员为 `1070055979@qq.com`。服务器只存 token 哈希；本地主办方凭据位于 Git 外 `evaluation_system/.runtime/organizer-reviewer-token.txt`，不要上传到仓库。旧官网请求仍可提交，但未声明十任务映射的请求须由已分配测评者或管理员补齐，记录保存在 ReviewRuns，不覆盖原提交记录。官网测评者页面仍仅本地验收。
 
 Script Properties 是后端私有配置，应该写在 Apps Script 项目里，不要写进网站前端代码。
 
