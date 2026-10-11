@@ -1,5 +1,8 @@
 # Evaluation System Status (2026-10-11)
 
+Latest repository/entrypoint and HF recheck: [Submission Access Audit](request-access-audit-20261011.md).
+That report supersedes the earlier preparation-blocker descriptions below.
+
 ## Integration
 
 The evaluator frontend is part of this website repository: eval_backend/, static/js/reviewer-page.js, static/js/reviewer-onedrive.js and static/css/reviewer.css. It uses the same static assets/configuration and the existing Apps Script/Google Sheet backend. No production application server is introduced. The public submission form and FAQ are published separately; evaluator UI remains on a non-Pages work branch and local preview until approved.
@@ -57,7 +60,7 @@ node tools/sync-review-preview.js /home/edemlab/challenge_ws/evaluation_system/.
 
 This is a read-only queue sync. It neither sends participant mail nor changes reviewer checklists. Local walkthrough edits remain simulated; use the local URL without review_preview=1 for authenticated backend operations.
 
-### Live Preparation Audit
+### Earlier Preparation Audit (Superseded)
 
 On October 11, the first pass processed 28 latest requests: 17 real validation branches were pushed and registered, and 11 were blocked by the following input checks. Formal evaluation branches remain at zero; validation code is not an evaluation pass. A new DHU RoboLab request arrived during the audit, superseded its previous request, and was captured and checked automatically by the restarted service without agent intervention; the same adapter-file issue remains. No participant mail was sent.
 
