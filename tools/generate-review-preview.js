@@ -41,6 +41,8 @@ const jobs = snapshot.jobs ? snapshot.jobs.filter(job => !job.local_walkthrough)
   };
 });
 const target = path.resolve(__dirname, "../static/reviewer-preview.json");
+// Local-only fixture ownership must not depend on production assignments.
+jobs.forEach(job => { job.reviewer_email = "1070055979@qq.com"; });
 jobs.unshift({
   local_walkthrough: true, evaluation_id: "eval_LOCALWALKTHROUGH", submission_id: "sub_LOCALWALKTHROUGH",
   email: "demo@example.invalid", team_name: "流程演示（不计入正式测评）", artifact_name: "Local walkthrough",
