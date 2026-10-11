@@ -688,3 +688,9 @@ API_BASE_URL=https://script.google.com/macros/s/AKfycbwg9Ee-ZK9eNiMeJGsjzjxF8D6T
 ```
 
 `SPREADSHEET_ID` 没有写进前端配置；它只应该写在 Apps Script Properties 和部署文档里。`API_BASE_URL` 已经写进 `static/config.js`，因此网站登录和提交功能会连到这次部署的真实 Apps Script Web App。
+
+## 测评存储验收（2026-10-11）
+
+原 Web App 第 39 版包含仅管理员可调用的 `reviewer_storage_status`。它用私密 Script Properties 刷新 Microsoft 授权，核对指定文件夹并返回容量；不返回 access token、refresh token、应用密钥或文件夹 ID。普通测评者和未登录者不能调用。
+
+拥有者 OneDrive 授权已由常驻准备服务自动安装，后台目录访问验收通过。100 MiB 上传回读 SHA256 一致，实测约 1.70 MiB/s 上传、10.27 MiB/s 下载，总容量 100 GiB。测速不等于正式请求的 GPU/ZIP 全流程验收。测评者只用 clone 附带的任务限定上传能力或已登录网页，不需要 Microsoft 登录；测评前端本次仍未发布。

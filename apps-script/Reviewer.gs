@@ -600,6 +600,7 @@ function reviewSendIssue_(payload) {
 function handleReviewerAction_(action, payload) {
   if (action === "reviewer_issue_upload_access") return reviewIssueUploadAccess_(payload);
   if (action === "reviewer_configure_storage") return archiveConfigure_(payload);
+  if (action === "reviewer_storage_status") return archiveStatus_(payload);
   if (action === "reviewer_start_evidence_upload") return archiveStart_(payload);
   if (action === "reviewer_verify_evidence_upload") return archiveDownload_(payload);
   if (action === "reviewer_finish_evidence_upload") return archiveFinish_(payload);

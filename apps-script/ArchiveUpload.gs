@@ -76,6 +76,21 @@ function archiveGraph_(path, method, body, raw) {
   return status === 204 ? null : JSON.parse(response.getContentText());
 }
 
+function archiveStatus_(payload) {
+  if (reviewerIdentity_(payload).role !== "admin") throw new Error("Organizer access required.");
+  const drive = config_("ARCHIVE_MS_DRIVE_ID", ""), root = config_("ARCHIVE_MS_ROOT_ITEM_ID", "");
+  if (!drive || !root) throw new Error("Organizer archive folder is not configured.");
+  const base = "/drives/" + encodeURIComponent(drive);
+  const folder = archiveGraph_(base + "/items/" + encodeURIComponent(root) + "?$select=name,folder");
+  if (!folder.folder) throw new Error("Configured archive target is not a folder.");
+  const info = archiveGraph_(base + "?$select=quota");
+  const quota = info.quota || {};
+  return { ok: true, accessible: true, folder_name: folder.name, quota: {
+    total: quota.total ?? null, remaining: quota.remaining ?? null,
+    used: quota.used ?? null, deleted: quota.deleted ?? null, state: quota.state || "unknown",
+  }, checked_at: now_() };
+}
+
 function archiveFolder_(drive, parent, name) {
   const base = "/drives/" + encodeURIComponent(drive) + "/items/" + encodeURIComponent(parent);
   // Listing only the dedicated parent avoids treating arbitrary provider failures as missing folders.

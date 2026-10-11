@@ -134,6 +134,23 @@ vm.runInContext(`reviewWrite_("ReviewArchiveUploads", 2, {evaluation_id:"eval_ne
 assert.equal(call("reviewSubmitResult_", { evaluation_id: "eval_new", upload_token: capability.upload_token, result }).ok, true);
 assert.equal(sheet("ReviewArchiveUploads").cells[1][5], "completed");
 const graphCalls = [];
+const originalGraph = context.archiveGraph_;
+const originalConfig = context.config_;
+context.config_ = (key, fallback) => ({ ARCHIVE_MS_DRIVE_ID: "private-drive", ARCHIVE_MS_ROOT_ITEM_ID: "private-folder" })[key] || fallback;
+context.archiveGraph_ = (path) => path.includes("/items/")
+  ? { name: "RoboSynChallenge_eval", folder: {} }
+  : { quota: { total: 100, remaining: 90, used: 10, deleted: 0, state: "normal" }, secret: "never-return-this" };
+const storageStatus = call("archiveStatus_", credentials);
+assert.equal(storageStatus.accessible, true);
+assert.equal(storageStatus.quota.remaining, 90);
+assert(!JSON.stringify(storageStatus).includes("private-drive"));
+assert(!JSON.stringify(storageStatus).includes("never-return-this"));
+const storageReviewer = vm.runInContext('provisionReviewer("storage@example.com", "evaluator")', context);
+assert.throws(() => call("archiveStatus_", { reviewer_email: storageReviewer.email, reviewer_token: storageReviewer.token }), /Organizer access/);
+assert.throws(() => call("archiveStatus_", {}), /Email is required/);
+context.archiveGraph_ = originalGraph;
+context.config_ = originalConfig;
+vm.runInContext('reviewWrite_("Reviewers", reviewRows_("Reviewers").find(row => row.email === "storage@example.com")._rowNumber, { active: "false" })', context);
 context.archiveGraph_ = (path, method, body) => {
   graphCalls.push({ path, method, body });
   if (path.endsWith("createUploadSession")) return {uploadUrl:"https://upload.example/session", expirationDateTime:new Date(Date.now()+3600000).toISOString()};
