@@ -98,6 +98,37 @@ async function main() {
     await until("document.querySelectorAll('.reviewer-job').length>0");
     assert.equal(await evaluate("window.observerCalls.filter(action=>action==='reviewer_queue').length"), 1, "Email status must load only mail metadata, not the entire queue");
     assert.equal(await evaluate("window.observerCalls.some(action=>![\"reviewer_login\",\"reviewer_queue\",\"reviewer_mail_status\"].includes(action))"), false);
+    if (!live) {
+      await evaluate(`
+        window.navigationCalls=[]; window.navigationSaves=[];
+        const assigned=${JSON.stringify(jobs)}.map(job=>({...job,reviewer_email:'1070055979@qq.com'}));
+        window.fetch=async function(url,options) {
+          const payload=JSON.parse(options.body); window.navigationCalls.push(payload.action);
+          if(payload.action==='reviewer_save_checks') {
+            await new Promise(resolve=>setTimeout(resolve,400));
+            window.navigationSaves.push(payload);
+            return new Response(JSON.stringify({ok:true}));
+          }
+          if(payload.action!=='reviewer_queue') throw new Error('Unexpected navigation operation');
+          return new Response(JSON.stringify({ok:true,reviewer:{email:'1070055979@qq.com',role:'evaluator'},jobs:assigned}));
+        };
+        document.querySelector('[data-review-action=refresh]').click();
+      `);
+      await until("document.querySelector('fieldset.reviewer-readonly')?.disabled===false");
+      const ids = await evaluate("[...document.querySelectorAll('[data-review-job]')].slice(0,2).map(button=>button.dataset.reviewJob)");
+      await evaluate(`document.querySelector('[data-review-job="${ids[0]}"]').click()`);
+      const switchResult = await evaluate(`(() => {
+        const check=document.querySelector('[data-stage-check=ten_tasks]'); check.checked=true; check.dispatchEvent(new Event('input',{bubbles:true}));
+        document.querySelector('[data-review-job="${ids[1]}"]').click();
+        return document.querySelector('[data-evaluation-id]').textContent;
+      })()`);
+      assert.equal(switchResult, ids[1], "Navigation must render before the delayed save finishes");
+      await until("window.navigationCalls.includes('reviewer_save_checks')");
+      await evaluate(`document.querySelector('[data-review-job="${ids[0]}"]').click(); const check=document.querySelector('[data-stage-check=ten_tasks]'); check.checked=false; check.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('[data-review-job="${ids[1]}"]').click()`);
+      await until("window.navigationSaves.length===2");
+      assert.deepEqual(await evaluate("window.navigationSaves.map(row=>row.checks.ten_tasks)"), [true,false], "Background saves must retain the final checklist state in order");
+      assert.equal(await evaluate("window.navigationCalls.filter(action=>action==='reviewer_queue').length"), 1);
+    }
     console.log(JSON.stringify({mode:live?"live":"mocked",visible_requests:await evaluate("document.querySelectorAll('.reviewer-job').length"),header_placement:"below artifact and email",readonly:"all stages browseable; no mutation requests",screenshot:"/tmp/rsc-observer-header.png"}));
   } finally {
     const stopped = new Promise(resolve => chrome.once("exit",resolve));
