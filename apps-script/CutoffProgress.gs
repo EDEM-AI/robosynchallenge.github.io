@@ -27,6 +27,13 @@ function reviewUpgradeTools_(payload) {
     if (previous?.base_commit === base) return {ok: true, state: "already_queued", backup_id: previous.backup_id};
     if (String(payload.expected_bundle_commit || "") !== String(run.bundle_commit || "")) throw new Error("Prepared code changed; refresh before maintenance.");
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    if (job.bundle_commit && job.code_base_commit === base) {
+      reviewWrite_("ReviewToolUpgrades", previous?._rowNumber, {evaluation_id: run.evaluation_id, base_commit: base,
+        previous_bundle_commit: run.bundle_commit, selection_json: JSON.stringify({...job.version_report,
+          preparation_attempt: job.preparation_attempt, version_generation: job.version_generation}),
+        backup_id: "", updated_at: now_()});
+      return {ok: true, state: "already_current", backup_id: ""};
+    }
     const reason = "Official recording/upload tools upgraded. Use the new clone; prior evidence and progress are backed up.";
     const backupId = reviewBackupProgress_(run, reason);
     const workflow = reviewWorkflow_(run.evaluation_id);
