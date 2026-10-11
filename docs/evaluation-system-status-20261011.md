@@ -39,6 +39,8 @@ Submission retries now use a durable SubmissionReceipts row and a script lock, w
 
 Code-only validation branches use validation/{evaluation_id}-{participant_sha12}-{official_sha12}, with correction/exception suffixes when applicable. They contain no checkpoint receipt or upload capability and cannot unlock formal evaluation or retrieve the organizer HF credential. The first review stage shows the real code result even while checkpoint mapping is incomplete. A correction or approved version exception invalidates the old displayed code record. Retries reuse an existing matching branch and never force-push it.
 
+The private evaluation repository was rechecked through GitHub API: private=true, visibility=private. For real request eval_65821972c17441, the validation branch's policy Git tree hash exactly matches the participant commit; every root entry outside policy/ and the generated bundle manifest matches the official base. It contains neither evaluation-upload.json nor an HF receipt. All 43 offline Python tests, backend/upload tests and the five-stage desktop browser flow passed, including real validation-status display while the checkpoint gate remains blocked.
+
 To refresh the local-only walkthrough with live preparation status:
 
 ```bash
@@ -46,6 +48,26 @@ node tools/sync-review-preview.js /home/edemlab/challenge_ws/evaluation_system/.
 ```
 
 This is a read-only queue sync. It neither sends participant mail nor changes reviewer checklists. Local walkthrough edits remain simulated; use the local URL without review_preview=1 for authenticated backend operations.
+
+### Live Preparation Audit
+
+On October 11, the first pass processed 28 latest requests: 17 real validation branches were pushed and registered, and 11 were blocked by the following input checks. Formal evaluation branches remain at zero; validation code is not an evaluation pass. A new DHU RoboLab request arrived during the audit, superseded its previous request, and was captured and checked automatically by the restarted service without agent intervention; the same adapter-file issue remains. No participant mail was sent.
+
+| Request | Team | Preparation blocker |
+| --- | --- | --- |
+| eval_43db939c249046 | 115 | Selected OpenPI upstream commit has no policy/ directory; verified through GitHub tree API. |
+| eval_1745e4e6bb874a | Vulcan Dynamics | Selected commit has no policy/ directory; verified through GitHub tree API. |
+| eval_1e815230feb54b | Kaelio | Submitted repository cannot be read using the official participant-read account. |
+| eval_21a30779b1b445 | Team Turbo | Submitted repository cannot be read using the official participant-read account. |
+| eval_6a78fd0ef86b40 | RobotQQ | Policy tree contains symlinks or submodules rejected by the safety guard. |
+| eval_770795218d0441 | luminbot | Policy tree contains symlinks or submodules rejected by the safety guard. |
+| eval_7c9414f1a05b4d | smallzhangiscodeing | policy/iaiicas/manipulate_pipette lacks at least one required eval.sh / deploy_policy.yml file. |
+| eval_7b8c2870df9444 | SZU-VCC Synapse | policy/sample_poseplan_v1/frozen/RoboSynChallenge/policy/act lacks at least one required adapter file. |
+| eval_c7b2a7e327ea4d | DHU RoboLab | policy/robosyn_team/runtime lacks at least one required adapter file. Supersedes eval_fb417a4736d345. |
+| eval_ed0b18afd0d445 | SEU MAI | policy/act lacks at least one required adapter file. |
+| eval_3b7f6832eca94f | Robo | Ten repository URLs were submitted instead of one complete policy/ repository URL. |
+
+These are code-preparation blockers, not measured policy-quality failures. Reviewers can inspect the recorded error in the first stage, send an issue notice deliberately and retry after participant follow-up. Safety guards and the separate formal evaluation gates were not relaxed to increase the success count.
 
 ## Remaining Acceptance
 
