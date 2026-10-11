@@ -49,14 +49,26 @@ function reviewTable_(name, workbook) {
   const ss = workbook || spreadsheet_();
   const headers = REVIEW_TABLES[name];
   let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-  } else {
-    const actual = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-    if (actual.join("\u0000") !== headers.join("\u0000")) throw new Error(name + " headers changed; review before writing.");
+  let actual = sheet?.getRange(1, 1, 1, headers.length).getValues()[0];
+  if (!sheet || actual.every(value => value === "")) {
+    // Concurrent queue reads may see a new tab before its header is committed.
+    const lock = LockService.getScriptLock();
+    const ownsLock = !lock.hasLock();
+    if (ownsLock) lock.waitLock(15000);
+    try {
+      sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+      actual = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+      if (actual.every(value => value === "") && sheet.getDataRange().getValues().length <= 1) {
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+        sheet.setFrozenRows(1);
+        SpreadsheetApp.flush();
+        actual = headers;
+      }
+    } finally {
+      if (ownsLock) lock.releaseLock();
+    }
   }
+  if (actual.join("\u0000") !== headers.join("\u0000")) throw new Error(name + " headers changed; review before writing.");
   return sheet;
 }
 

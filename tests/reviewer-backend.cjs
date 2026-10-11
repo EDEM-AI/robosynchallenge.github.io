@@ -24,12 +24,16 @@ const workbook = { getSheetByName: (name) => sheets.get(name), insertSheet: shee
 const cache = new Map();
 const properties = {};
 let workbookOpens = 0;
+let scriptLocked = false;
+let lockWaitHook = null;
 const context = vm.createContext({
   console,
   ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/macros/s/test/exec" }) },
   SpreadsheetApp: { getActive: () => { workbookOpens += 1; return workbook; }, flush() {} },
   PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || "", setProperty: (key, value) => { properties[key] = value; }, deleteProperty: key => { delete properties[key]; } }) },
-  LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+  LockService: { getScriptLock: () => ({ hasLock: () => scriptLocked,
+    waitLock() { scriptLocked = true; if (lockWaitHook) lockWaitHook(); },
+    releaseLock() { scriptLocked = false; } }) },
   CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value), remove: key => cache.delete(key) }) },
   Utilities: {
     getUuid: () => crypto.randomUUID(),
@@ -40,6 +44,19 @@ const context = vm.createContext({
 const base = path.join(__dirname, "../apps-script");
 vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
+lockWaitHook = () => {
+  const target = sheet("ReviewToolUpgrades");
+  target.cells = [Array.from(vm.runInContext("REVIEW_TABLES.ReviewToolUpgrades", context))];
+};
+vm.runInContext('reviewTable_("ReviewToolUpgrades")', context);
+lockWaitHook = null;
+assert.equal(scriptLocked, false, "Lazy creation releases its own lock");
+sheet("ReviewProgress");
+vm.runInContext('withReviewLock_(() => { reviewTable_("ReviewProgress"); if (!LockService.getScriptLock().hasLock()) throw new Error("Outer lock released"); })', context);
+assert.equal(scriptLocked, false);
+sheet("ReviewTaskCommands").cells = [["unexpected"]];
+assert.throws(() => vm.runInContext('reviewTable_("ReviewTaskCommands")', context), /headers changed/);
+sheets.delete("ReviewTaskCommands");
 function insert(name, row) {
   const headers = vm.runInContext(`SHEETS.${name}`, context);
   const target = sheet(name);
