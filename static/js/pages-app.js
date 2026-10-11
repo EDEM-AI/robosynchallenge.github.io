@@ -403,6 +403,13 @@
       `,
     },
     {
+      question: "Which code and checkpoint versions will be evaluated?",
+      answer: `
+        <p>For preliminary evaluation, we use the latest reachable GitHub commit and Hugging Face checkpoint revision dated before October 11, 2026 at 23:59 AoE. Version selection is finalized after the deadline; earlier preparation is validation only. Keep the submitted branch and checkpoint history accessible. A specified commit or revision limits selection to its reachable history.</p>
+        <p>If no eligible version is available, evaluation pauses at the first stage. Reply to the issue email with your explanation and evidence; rebuilding requires an evaluator's explicit, recorded approval. Approved one-time corrections and individual submission extensions use their recorded cutoffs. Git commit timestamps alone do not prove when code was uploaded; rewritten or disputed history may require organizer review.</p>
+      `,
+    },
+    {
       question: "Can teams submit separate checkpoints for different tasks?",
       answer: `
         <p>Yes. Teams may provide task-specific checkpoints, but <strong>each evaluation request must cover all 10 tasks</strong>. Please submit one GitHub repository containing the evaluation code for all tasks, and list the corresponding Hugging Face checkpoints and run commands in the submission notes or README. A shared checkpoint is also allowed if its task coverage is clearly stated. Requests covering only a subset of tasks are not valid; do not split the tasks across separate requests.</p>
@@ -2825,8 +2832,16 @@
     if (submitButton) { submitButton.disabled = true; submitButton.textContent = "Submitting..."; }
     showStatus("Submitting your evaluation request. Please wait; do not submit again.");
     try {
+      const fingerprint = JSON.stringify([...formData.entries()].filter(([key]) => key !== "submission_key"));
+      let pending;
+      try { pending = JSON.parse(sessionStorage.getItem("rsc-policy-pending") || "null"); } catch { pending = null; }
+      if (!pending || pending.fingerprint !== fingerprint || pending.email !== user.email) {
+        pending = { fingerprint, email: user.email, key: crypto.randomUUID() };
+        sessionStorage.setItem("rsc-policy-pending", JSON.stringify(pending));
+      }
       const data = await apiRequest("submit_policy", {
         session_id: state.session.session_id,
+        submission_key: pending.key,
         submission: {
           artifact_name: artifactName,
           title,
@@ -2840,6 +2855,7 @@
           is_ranked: isRanked,
         },
       });
+      sessionStorage.removeItem("rsc-policy-pending");
       const submission = normalizeSubmission(data.submission || data);
       const evaluation = normalizeEvaluation(data.evaluation);
       if (submission) state.submissions.unshift(submission);
