@@ -1409,8 +1409,8 @@ function evaluationDigestRows_() {
   });
 }
 
-function getSheet_(name) {
-  const ss = spreadsheet_();
+function getSheet_(name, workbook) {
+  const ss = workbook || spreadsheet_();
   let sheet = ss.getSheetByName(name);
   if (!sheet) sheet = ss.insertSheet(name);
   const headers = SHEETS[name];
@@ -1420,8 +1420,8 @@ function getSheet_(name) {
   return sheet;
 }
 
-function rows_(name) {
-  const sheet = getSheet_(name);
+function rows_(name, workbook) {
+  const sheet = getSheet_(name, workbook);
   const values = sheet.getDataRange().getValues();
   const headers = SHEETS[name];
   return values.slice(1).map((row, index) => ({ row, rowNumber: index + 2 }))
