@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+    <title>Evaluation Review | RoboSynChallenge</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../static/css/site.css">
+    <link rel="stylesheet" href="../static/css/pages.css">
+    <link rel="stylesheet" href="../static/css/reviewer.css">
+    <script defer src="../static/config.js"></script>
+    <script defer src="../static/js/lucide.min.js"></script>
+    <script defer src="../static/js/sha256.umd.min.js"></script>
+    <script defer src="../static/js/reviewer-onedrive.js"></script>
+    <script defer src="../static/js/reviewer-page.js"></script>
+    <script>window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("app").innerHTML = window.RSCReviewer.render();
+      window.RSCReviewer.mount();
+    });</script>
+  </head>
+  <body>
+    <div class="site-chrome"></div>
+    <main id="app"></main>
+  </body>
+</html>
