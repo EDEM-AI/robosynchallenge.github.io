@@ -71,6 +71,11 @@ def main():
         batch = {'deadline':args.deadline, 'created_at':datetime.now(timezone.utc).isoformat(),
             'targets':[{ 'participant_email':job['email'], 'team_name':job['team_name'], 'status':'pending'} for job in jobs if problems(job)]}
         save()
+    for target in batch['targets']:
+        if target['status'] == 'sent':
+            target.pop('error_type', None)
+            target.pop('error_message', None)
+    save()
     if args.retry_unrecorded:
         messages = {row['message_id']:row for row in request('reviewer_mail_status')['messages']}
         for target in batch['targets']:
@@ -102,6 +107,8 @@ def main():
             result = request('reviewer_send_issue',evaluation_id=job['evaluation_id'],message_id=message_id,
                 stage=0,subject=subject,body=body,response_deadline_at=args.deadline)
             target.update(status=result['status'], response_deadline_at=result.get('response_deadline_at',''), duplicate=bool(result.get('duplicate')))
+            target.pop('error_type', None)
+            target.pop('error_message', None)
         except Exception as error:
             target.update(status='needs_delivery_verification',error_type=type(error).__name__,error_message=str(error).replace(token,'[redacted]')[:300])
         save()

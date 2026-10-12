@@ -15,3 +15,19 @@ Use `--once` for one pass. Settings and credential files remain private (mode 06
 Each pass checks legacy checkpoint source access independently of the still-required ten-task mapping, retries transient organizer transport failures with backoff, then invokes the existing queue preparer. Source access alone does not certify coverage of all ten tasks. Permission errors, missing model repositories and invalid policy trees remain visible for reviewer follow-up, not automatically guessed or repaired.
 
 Baseline changes rebuild already composed branches using the original pinned participant policy and checkpoint revisions. The backend backs up affected progress before invalidation; each current request keeps its canonical `eval_xxxx` branch. Installation uses the existing `rsc-prepare.service`, with this script as its ExecStart; after updating source or the unit, reload and restart the service.
+
+## Issue reminders
+
+Explicit organizer reminders can run without an agent:
+
+```bash
+python evaluation_tools/send_problem_reminders.py \
+  --private-root /path/to/private/RoboSynChallenge_eval \
+  --settings /path/to/private/prepare-settings.json \
+  --deadline 2026-10-12T12:00:00Z \
+  --batch /path/to/private/reminder-receipts.json
+```
+
+The deadline is UTC (the example means October 12, 20:00 Beijing time). The command rereads the latest request before each email, skips resolved issues, uses the standard backend template/button and activates a deadline-bound response round only after delivery. Reuse the same batch file for retries; `--retry-unrecorded` retries only absent or definitively rejected delivery records, never uncertain delivery.
+
+When MailApp's daily quota is exhausted, issue mail automatically uses the same organizer's Gmail API authorization. The Gmail advanced service is enabled in the manifest; existing Gmail scopes are reused. Gmail API/account limits still apply. A confirmed receipt stores the actual Gmail message ID for the workspace's email-history link. Ambiguous network failures require verification, not a fresh send ID.

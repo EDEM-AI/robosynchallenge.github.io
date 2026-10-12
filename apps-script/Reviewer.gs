@@ -990,11 +990,13 @@ function reviewMailMessages_(viewer, snapshot) {
   const mailbox = config_("CONTACT_EMAIL", "robosynchallenge@gmail.com");
   return read("ReviewMessages").filter(row => global || assigned.has(row.evaluation_id)).map(row => {
     const email = normalizeEmail_(row.recipient);
+    const gmailId = PropertiesService.getScriptProperties().getProperty("RSC_REVIEW_GMAIL_" + row.message_id);
     const query = `in:sent to:${email} subject:"${String(row.subject || "").replace(/["\\]/g, " ")}"`;
     return { evaluation_id: row.evaluation_id, message_id: row.message_id,
       team_name: users.get(email)?.team_name || users.get(email)?.full_name || email,
       recipient: email, stage: row.stage, subject: row.subject, status: row.status,
       created_at: row.created_at, sent_at: row.sent_at,
-      gmail_url: `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#search/${encodeURIComponent(query)}` };
+      gmail_url: gmailId && /^[a-f0-9]{16,32}$/.test(gmailId) ? `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#all/${gmailId}` :
+        `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(mailbox)}#search/${encodeURIComponent(query)}` };
   }).sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
 }
