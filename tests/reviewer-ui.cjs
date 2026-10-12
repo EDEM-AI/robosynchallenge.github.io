@@ -219,12 +219,18 @@ async function main() {
     assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"", "Task drafts cannot leak to another task");
     await evaluate("(() => { const picker=document.querySelector('[data-task-picker]'); picker.value='click_bell'; picker.dispatchEvent(new Event('change',{bubbles:true})); })()");
     assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"Unsaved bell command", "Switching tasks preserves unsaved command drafts");
+    await evaluate(`(() => { const other=[...document.querySelectorAll('[data-review-job]')].find(button=>button.dataset.reviewJob!==${JSON.stringify(evaluationId)} && !button.textContent.includes('Workflow demo')); other.click(); document.querySelector('[data-review-stage="3"]').click(); })()`);
+    assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"", "Command drafts belong to one request, not every participant");
+    await evaluate(`document.querySelector('[data-review-job="${evaluationId}"]').click()`);
+    assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"Unsaved bell command");
     for (const task of taskNames) {
       await evaluate(`(() => { const picker=document.querySelector('[data-task-picker]'); picker.value=${JSON.stringify(task)}; picker.dispatchEvent(new Event('change',{bubbles:true})); const input=document.querySelector('[data-task-command]'); input.value='python run.py --task '+${JSON.stringify(task)}; input.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('[data-review-form=commands]').requestSubmit(); })()`);
       await until("document.querySelector('.reviewer-toast')?.textContent.includes('command saved') && !document.querySelector('[data-review-form=commands] button').disabled");
       assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"python run.py --task "+task);
     }
     assert.equal(await evaluate("document.querySelector('.reviewer-task-command-actions').textContent.includes('10 / 10')"),true);
+    await evaluate("(() => { const pane=document.querySelector('.reviewer-stage-body'); pane.style.scrollBehavior='auto'; pane.scrollTop+=document.querySelector('[data-review-form=commands]').getBoundingClientRect().top-pane.getBoundingClientRect().top-80; })()");
+    await sleep(300);
     await screenshot("task-command-desktop");
     const seeds = Array.from({ length: 100 }, (_, index) => index);
     for (const task of taskNames) {

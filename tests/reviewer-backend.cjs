@@ -3,6 +3,10 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+class TestDate extends Date {
+  constructor(...args) { super(...(args.length ? args : [TestDate.now()])); }
+  static now() { return Date.parse("2026-10-12T11:00:00Z"); }
+}
 
 const sheets = new Map();
 function sheet(name) {
@@ -28,6 +32,7 @@ let scriptLocked = false;
 let lockWaitHook = null;
 const context = vm.createContext({
   console,
+  Date: TestDate,
   ScriptApp: { getService: () => ({ getUrl: () => "https://script.google.com/macros/s/test/exec" }) },
   SpreadsheetApp: { getActive: () => { workbookOpens += 1; return workbook; }, flush() {} },
   PropertiesService: { getScriptProperties: () => ({ getProperty: key => properties[key] || "", setProperty: (key, value) => { properties[key] = value; }, deleteProperty: key => { delete properties[key]; } }) },
@@ -260,7 +265,7 @@ const validation = { ...credentials, evaluation_id: "eval_legacy", bundle_commit
   participant_commit: "d".repeat(40), private_base_commit: "e".repeat(40), policy_dirs: ["policy/custom/nested"],
   bundle_url: "https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/validation/eval_legacy-" + "d".repeat(12) + "-" + "e".repeat(12),
   selection: { revision: "d".repeat(40), authored_at: "2020-01-01T00:00:00Z", committed_at: "2020-01-01T00:00:00Z",
-    cutoff_at: new Date(Math.min(Date.now() - 10000, Date.parse("2026-10-12T12:00:00Z"))).toISOString().replace(".000Z", "Z") } };
+    cutoff_at: new Date(Math.min(TestDate.now() - 10000, Date.parse("2026-10-12T12:00:00Z"))).toISOString() } };
 // Validation alone must never grant formal evaluation or shared-account access.
 assert.throws(() => call("reviewPrepareCode_", { ...validation, bundle_url: validation.bundle_url + "-wrong" }), /does not match/);
 assert.throws(() => call("reviewPrepareCode_", { ...validation, policy_dirs: ["policy/../tools"] }), /metadata/);
@@ -444,7 +449,7 @@ const reopenedParams = Object.fromEntries(new URL(sent.at(-1).body.match(/https:
 vm.runInContext('reviewWrite_("ReviewCorrections", 2, {evaluation_id:"eval_new", deadline_at:"2020-01-01T00:00:00Z"})', context);
 assert(call("requireReviewResponse_", reopenedParams), "An old 24-hour deadline no longer blocks the latest issue link");
 assert.throws(() => call("requireReviewResponse_", responseParams), /not active/);
-const explicitDeadline = new Date(Date.now() + 3600000).toISOString();
+const explicitDeadline = new Date(TestDate.now() + 3600000).toISOString();
 assert.throws(() => vm.runInContext(`reviewIssueDeadline_({response_deadline_at:${JSON.stringify(explicitDeadline)}}, {role:"evaluator"})`, context), /organizers/);
 assert.throws(() => vm.runInContext(`reviewIssueDeadline_({response_deadline_at:"2020-01-01T00:00:00Z"}, {role:"admin"})`, context), /future/);
 const deadlineMail = {...issue, message_id:"msg_"+"5".repeat(32), response_deadline_at:explicitDeadline};
@@ -846,4 +851,36 @@ assert.equal(call("reviewRun_","eval_accessfollow").bundle_url,"https://github.c
 assert.equal(call("reviewWorkflow_","eval_accessfollow").stages[0].done,true);
 assert.equal(call("reviewWorkflow_","eval_accessfollow").stages[1].done,false);
 assert.equal(dispatch("reviewer_migrate_bundle",migration).duplicate,true,"Retries must not reset new progress a second time");
+const closureIssue = {...issue,message_id:"msg_"+"b".repeat(32),response_deadline_at:"2026-10-12T12:00:00Z"};
+call("reviewSendIssue_",closureIssue);
+properties["RSC_REVIEW_GMAIL_"+closureIssue.message_id]="1a1234567890abce";
+const closureFields = {...credentials,original_message_id:closureIssue.message_id};
+assert.throws(()=>call("reviewSendDeadlineNotice_",closureFields),/deadline has not passed/);
+const beforeClosureLinks = sheet("ReviewResponseLinks").cells.length;
+const beforeClosureProgress = JSON.stringify([sheet("ReviewProgress").cells,sheet("ReviewCorrections").cells]);
+const closureFetcher = context.UrlFetchApp;
+let closureDeliveries = 0;
+context.UrlFetchApp = {fetch:(url,options)=>{
+  if(url.includes("?format=metadata")) return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({threadId:"1a1234567890abce",
+    payload:{headers:[{name:"Message-ID",value:"<original@example.test>"}]}})};
+  assert.equal(url,"https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
+  const payload=JSON.parse(options.payload);
+  assert.equal(payload.threadId,"1a1234567890abce");
+  const mime=Buffer.from(payload.raw,"base64url").toString("utf8");
+  assert(mime.includes("In-Reply-To: <original@example.test>"));
+  const body=Buffer.from(mime.match(/Content-Type: text\/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n([\s\S]*?)\r\n--/)[1],"base64").toString("utf8");
+  assert(body.includes("Please wait for that evaluator's follow-up email"));
+  assert(!body.includes("rsc_action=review_response"),"Closing notice must never offer a new response link");
+  closureDeliveries+=1;
+  return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({id:"1a1234567890abcf"})};
+}};
+vm.runInContext('var closureRealNow=Date.now; Date.now=()=>Date.parse("2026-10-12T12:00:00Z")',context);
+try {
+  assert.equal(dispatch("reviewer_send_deadline_notice",closureFields).status,"sent");
+  assert.equal(dispatch("reviewer_send_deadline_notice",closureFields).duplicate,true);
+  assert.equal(closureDeliveries,1);
+  assert.equal(sheet("ReviewResponseLinks").cells.length,beforeClosureLinks,"No new correction round is created");
+  assert.equal(call("reviewRows_","ReviewResponseLinks").find(row=>row.message_id===closureIssue.message_id).status,"expired");
+  assert.equal(JSON.stringify([sheet("ReviewProgress").cells,sheet("ReviewCorrections").cells]),beforeClosureProgress,"Closing cannot erase an earlier correction or evaluation progress");
+} finally { vm.runInContext('Date.now=closureRealNow',context); context.UrlFetchApp=closureFetcher; }
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");

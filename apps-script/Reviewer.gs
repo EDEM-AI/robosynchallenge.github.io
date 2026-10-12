@@ -817,7 +817,7 @@ function reviewSavePreflight_(payload) {
 }
 
 function reviewDeliverEmail_(message) {
-  if (MailApp.getRemainingDailyQuota() > 0) {
+  if (!message.threadId && MailApp.getRemainingDailyQuota() > 0) {
     MailApp.sendEmail(message);
     return {transport:"mailapp"};
   }
@@ -825,6 +825,7 @@ function reviewDeliverEmail_(message) {
   const encode = value => Utilities.base64Encode(String(value), Utilities.Charset.UTF_8);
   const encodeBody = value => encode(value).replace(/(.{76})/g, "$1\r\n");
   const mime = ["To: " + requiredEmail_(message.to), "Reply-To: " + requiredEmail_(message.replyTo),
+    ...(message.inReplyTo ? ["In-Reply-To: " + message.inReplyTo, "References: " + message.inReplyTo] : []),
     "Subject: =?UTF-8?B?" + encode(message.subject) + "?=", "MIME-Version: 1.0",
     'Content-Type: multipart/alternative; boundary="' + boundary + '"', "",
     "--" + boundary, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encodeBody(message.body),
@@ -833,7 +834,8 @@ function reviewDeliverEmail_(message) {
   const response = UrlFetchApp.fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method:"post", contentType:"application/json", muteHttpExceptions:true,
     headers:{Authorization:"Bearer " + ScriptApp.getOAuthToken()},
-    payload:JSON.stringify({raw:Utilities.base64EncodeWebSafe(mime, Utilities.Charset.UTF_8)})});
+    payload:JSON.stringify({raw:Utilities.base64EncodeWebSafe(mime, Utilities.Charset.UTF_8),
+      ...(message.threadId ? {threadId:message.threadId} : {})})});
   const status = response.getResponseCode();
   if (status < 200 || status >= 300) {
     const reason = parseJson_(response.getContentText(), {})?.error?.status || "";
@@ -844,6 +846,51 @@ function reviewDeliverEmail_(message) {
   const receipt = JSON.parse(response.getContentText());
   if (!/^[a-f0-9]{16,32}$/.test(receipt.id || "")) throw new Error("Gmail delivery receipt is missing.");
   return {transport:"gmail_api",gmail_message_id:receipt.id};
+}
+
+function reviewSendDeadlineNotice_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const original = reviewRows_("ReviewMessages").find(row => row.message_id === payload.original_message_id);
+    if (!original || original.status !== "sent") throw new Error("Use a confirmed, previously sent issue email.");
+    const link = reviewRows_("ReviewResponseLinks").find(row => row.message_id === original.message_id);
+    const deadline = reviewResponseDeadline_(link || {}) || String(payload.response_deadline_at || "");
+    if (!Number.isFinite(Date.parse(deadline)) || Date.now() < Date.parse(deadline)) throw new Error("The response deadline has not passed.");
+    const messageId = "msg_" + reviewerHash_("deadline_notice:" + original.message_id).slice(0, 32);
+    const previous = reviewRows_("ReviewMessages").find(row => row.message_id === messageId);
+    if (previous?.status === "sent") return {ok:true, status:"sent", duplicate:true, message_id:messageId};
+    if (previous && previous.status !== "not_sent") throw new Error("Delivery needs organizer verification before a retry.");
+    const gmailId = config_("RSC_REVIEW_GMAIL_" + original.message_id, "");
+    if (!/^[a-f0-9]{16,32}$/.test(gmailId)) throw new Error("Original Gmail receipt is required to reply in the same thread.");
+    const response = UrlFetchApp.fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/" + gmailId + "?format=metadata&metadataHeaders=Message-ID", {
+      muteHttpExceptions:true, headers:{Authorization:"Bearer " + ScriptApp.getOAuthToken()}});
+    if (response.getResponseCode() !== 200) throw new Error("Cannot read original Gmail thread; no notice sent.");
+    const metadata = JSON.parse(response.getContentText());
+    const inReplyTo = metadata.payload?.headers?.find(header => header.name.toLowerCase() === "message-id")?.value || "";
+    if (!/^[a-f0-9]{16,32}$/.test(metadata.threadId || "") || !/^<[^<>\s]+>$/.test(inReplyTo)) throw new Error("Original mail threading headers are invalid; no notice sent.");
+    const beijing = new Date(deadline).toLocaleString("en-GB", {timeZone:"Asia/Shanghai", year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit", hour12:false});
+    const body = `Dear team,\n\nThe correction deadline for this reminder has now passed (${beijing} Beijing time / ${new Date(deadline).toISOString()} UTC). The correction link in the earlier email is closed and must no longer be used.\n\nAny correction successfully submitted before the deadline remains recorded. Your assigned evaluator will review your submission and contact you separately if further action is needed. Please wait for that evaluator's follow-up email; no new evaluation request or repeated correction is required in response to this notice.\n\nBest regards,\nRoboSynChallenge Organizing Team`;
+    const subject = "Re: " + original.subject.replace(/^Re:\s*/i, "");
+    const recipient = requiredEmail_(original.recipient);
+    checkRateLimit_("reviewer_deadline_notice", viewer.email, 50, 60 * 60 * 1000);
+    // Never create a new response round; only retire this email's expired active link.
+    if (link?.status === "active") reviewWrite_("ReviewResponseLinks", link._rowNumber, {evaluation_id:original.evaluation_id, status:"expired"});
+    reviewWrite_("ReviewMessages", previous?._rowNumber, {evaluation_id:original.evaluation_id, message_id:messageId,
+      reviewer_email:viewer.email, stage:original.stage, recipient, subject, body, status:"sending", created_at:now_()});
+    const row = reviewRows_("ReviewMessages").find(item => item.message_id === messageId);
+    try {
+      const receipt = reviewDeliverEmail_({to:recipient, replyTo:config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"),
+        subject, body, threadId:metadata.threadId, inReplyTo,
+        htmlBody:htmlEmailShell_("Correction period closed", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(original.evaluation_id)}</td></tr></table>`)});
+      PropertiesService.getScriptProperties().setProperty("RSC_REVIEW_GMAIL_" + messageId, receipt.gmail_message_id);
+      reviewWrite_("ReviewMessages", row._rowNumber, {evaluation_id:original.evaluation_id, status:"sent", sent_at:now_()});
+      return {ok:true, status:"sent", message_id:messageId};
+    } catch (error) {
+      reviewWrite_("ReviewMessages", row._rowNumber, {evaluation_id:original.evaluation_id, status:error.delivery_not_sent ? "not_sent" : "delivery_unknown"});
+      throw new Error(error.delivery_not_sent ? "Notice rejected; the same message ID can be retried." : "Notice delivery needs organizer verification before retrying.");
+    }
+  });
 }
 
 function reviewSendIssue_(payload) {
@@ -914,6 +961,7 @@ function handleReviewerAction_(action, payload) {
     throw new Error("Read-only access: observers cannot modify evaluations.");
   }
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
+  if (action === "reviewer_send_deadline_notice") return reviewSendDeadlineNotice_(payload);
   if (action === "reviewer_migrate_response_schema") return reviewMigrateResponseSchema_(payload);
   if (action === "reviewer_reconcile_final_progress") return reviewReconcileFinalProgress_(payload);
   if (action === "reviewer_upgrade_tools") return reviewUpgradeTools_(payload);

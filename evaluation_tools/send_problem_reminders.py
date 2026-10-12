@@ -47,10 +47,13 @@ def main():
     parser.add_argument('--deadline', required=True, help='Explicit UTC ISO timestamp, ending in Z')
     parser.add_argument('--batch', type=Path, required=True, help='Private persistent delivery receipt; reuse it for retries')
     parser.add_argument('--retry-unrecorded', action='store_true', help='Retry failed calls only when their message ID has no backend delivery record')
+    parser.add_argument('--close', action='store_true', help='Reply to the saved batch after its deadline; never open a new correction round')
     args = parser.parse_args()
     deadline = datetime.fromisoformat(args.deadline.replace('Z', '+00:00'))
-    if not args.deadline.endswith('Z') or deadline <= datetime.now(timezone.utc):
-        parser.error('The response deadline must be a future UTC timestamp')
+    if not args.deadline.endswith('Z') or (not args.close and deadline <= datetime.now(timezone.utc)):
+        parser.error('The response deadline must be a future UTC timestamp unless closing a batch')
+    if args.close and (not args.batch.exists() or deadline > datetime.now(timezone.utc)):
+        parser.error('Closing requires an existing batch whose deadline has passed')
     sys.path.insert(0, str(args.private_root.resolve() / 'tools'))
     from process_queue import api
     os.umask(0o077)
@@ -76,6 +79,30 @@ def main():
             target.pop('error_type', None)
             target.pop('error_message', None)
     save()
+    if args.close:
+        receipts = {row['message_id']:row for row in request('reviewer_mail_status')['messages']}
+        for target in batch['targets']:
+            if target['status'] != 'sent':
+                continue
+            closure = target.setdefault('closure', {})
+            message_id = 'msg_' + hashlib.sha256(('deadline_notice:' + target['message_id']).encode()).hexdigest()[:32]
+            saved = receipts.get(message_id)
+            if saved and saved['status'] == 'sent':
+                closure.update(status='sent', message_id=message_id)
+                save(); continue
+            if saved and saved['status'] != 'not_sent':
+                closure.update(status='needs_delivery_verification', message_id=message_id)
+                save(); continue
+            try:
+                result = request('reviewer_send_deadline_notice', original_message_id=target['message_id'], response_deadline_at=args.deadline)
+                closure.update(status=result['status'], message_id=result['message_id'])
+                closure.pop('error', None)
+            except Exception as error:
+                closure.update(status='needs_delivery_verification', message_id=message_id, error=str(error).replace(token,'[redacted]')[:300])
+            save()
+            print(json.dumps({'team':target['team_name'], 'closure':closure['status']}),flush=True)
+        print(json.dumps({'targets':len(batch['targets']), 'closure_sent':sum(target.get('closure',{}).get('status')=='sent' for target in batch['targets'])}),flush=True)
+        return
     if args.retry_unrecorded:
         messages = {row['message_id']:row for row in request('reviewer_mail_status')['messages']}
         for target in batch['targets']:
