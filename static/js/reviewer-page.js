@@ -380,7 +380,7 @@
   }
   function participantResponse(job) {
     if (!job.correction) return "";
-    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Correction round: ${escape(job.correction.round || 0)}${job.correction.notes ? `<p>${escape(job.correction.notes)}</p>` : ""}</div>`;
+    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Correction round: ${escape(job.correction.round || 0)}${job.correction.deadline_at && job.correction.status === "awaiting" ? ` · Deadline (UTC): ${escape(job.correction.deadline_at)}` : ""}${job.correction.notes ? `<p>${escape(job.correction.notes)}</p>` : ""}</div>`;
   }
   function commandBlock(command) {
     return `<div class="reviewer-command"><code data-copy-command>${escape(command)}</code><button type="button" class="reviewer-icon" data-review-action="copy" title="Copy command" aria-label="Copy command">${icon("copy")}</button></div>`;
@@ -390,7 +390,7 @@
     if (state.view === "downloads") {
       const assigned = state.jobs.filter(job => !job.local_walkthrough && job.reviewer_email === state.credentials.email);
       const ready = assigned.filter(job => job.bundle_commit && ["provisional", "final"].includes(job.version_status)).length;
-      const setup = `git clone --single-branch --branch heldout/preliminary-2026 https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git "/path/to/RoboSynChallenge_eval_tools"\npython -m pip install huggingface_hub`;
+      const setup = `git clone --single-branch --branch main https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git "/path/to/RoboSynChallenge_eval_tools"\npython -m pip install huggingface_hub`;
       const run = `python "/path/to/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --api-url '${API}' --email '${state.credentials.email.replace(/'/g, "")}' --output /path/to/checkpoints`;
       const status = `python "/path/to/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --output /path/to/checkpoints --status`;
       return `<section class="reviewer-overview">${back}<h2>Download assigned checkpoints</h2><p class="reviewer-description">${assigned.length} assigned requests · ${ready} requests ready for download</p>${!assigned.length ? notice("No evaluation requests are assigned to this account.") : ""}<h3>1. Prepare the private download tools</h3>${commandBlock(setup)}<p>Replace <code>/path/to</code> with your chosen parent directory. Run this setup once. If the tools directory already exists, use <code>git -C "/path/to/RoboSynChallenge_eval_tools" pull --ff-only</code> instead.</p><h3>2. Download to your checkpoint directory</h3>${commandBlock(run)}<p>Replace <code>/path/to/checkpoints</code> with your destination. Enter your evaluation token when prompted. Your own HF token is not needed. Repeat the same command after interruption; completed files and partial downloads are retained. Identical repositories and frozen revisions share one copy; each task uses a symbolic link to its checkpoint.</p><h3>3. Check progress</h3>${commandBlock(status)}<pre class="reviewer-directory">checkpoints/\n  download-progress.json\n  models/OWNER/MODEL/FROZEN_REVISION/\n  evaluations/EVAL_ID/EVALUATION_COMMIT/\n    checkpoint-index.json\n    code/\n    tasks/TASK/\n      checkpoint -> shared model directory\n      checkpoint.json</pre></section>`;

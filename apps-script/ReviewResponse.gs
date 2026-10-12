@@ -20,10 +20,31 @@ function reviewMigrateResponseSchema_(payload) {
   });
 }
 
-function reviewCreateResponseLink_(run, messageId) {
+function reviewIssueDeadline_(payload, viewer) {
+  if (!payload.response_deadline_at) return "";
+  if (viewer.role !== "admin") throw new Error("Only organizers can set an issue response deadline.");
+  const value = String(payload.response_deadline_at);
+  const timestamp = Date.parse(value);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value) || !Number.isFinite(timestamp) || timestamp <= Date.now()) {
+    throw new Error("Response deadline must be a future UTC timestamp.");
+  }
+  return new Date(timestamp).toISOString();
+}
+
+function reviewResponseDeadline_(link) {
+  return parseJson_(link.response_json, {}).response_deadline_at || "";
+}
+
+function reviewResponsePolicy_(deadline) {
+  return deadline ? `Submit your confirmation or correction before ${deadline} (UTC). This deadline applies to this response round. A further issue email can open another round; use the latest email's form.` :
+    "There is no 24-hour deadline or overall correction limit. Each new issue email opens a new response round. Use the latest email's form.";
+}
+
+function reviewCreateResponseLink_(run, messageId, deadline) {
   const token = "rsp_" + Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
   reviewWrite_("ReviewResponseLinks", null, { evaluation_id: run.evaluation_id, message_id: messageId,
-    token_hash: reviewerHash_(token), status: "sending", created_at: now_() });
+    token_hash: reviewerHash_(token), status: "sending", created_at: now_(),
+    response_json: deadline ? JSON.stringify({response_deadline_at: deadline}) : "" });
   return { url: `${getWebAppUrl_()}?rsc_action=review_response&evaluation_id=${encodeURIComponent(run.evaluation_id)}&token=${encodeURIComponent(token)}` };
 }
 
@@ -34,7 +55,7 @@ function reviewActivateResponseLink_(run, messageId) {
   reviewWrite_("ReviewResponseLinks", link._rowNumber, { evaluation_id: run.evaluation_id, status: "active" });
   const correction = reviewRows_("ReviewCorrections").find(row => row.evaluation_id === run.evaluation_id);
   reviewWrite_("ReviewCorrections", correction?._rowNumber, { evaluation_id: run.evaluation_id, participant_email: run.participant_email,
-    deadline_at: "", status: correction?.status || "awaiting", response_status: "awaiting", updated_at: now_() });
+    deadline_at: reviewResponseDeadline_(link), status: correction?.status || "awaiting", response_status: "awaiting", updated_at: now_() });
 }
 
 function requireReviewResponse_(params, allowUsed) {
@@ -44,7 +65,9 @@ function requireReviewResponse_(params, allowUsed) {
     (row.status === "active" || allowUsed && row.status === "used") && row.token_hash === reviewerHash_(token));
   const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === params.evaluation_id);
   if (!link || !correction) throw new Error("This response link is not active. Contact the organizers.");
-  // Old sent links remain valid after their historical deadline; answered links do not.
+  // Only an explicit per-link deadline applies; historical 24-hour limits remain disabled.
+  const deadline = reviewResponseDeadline_(link);
+  if (link.status !== "used" && deadline && Date.now() >= Date.parse(deadline)) throw new Error("This response deadline has passed. Contact the organizers; no new response was saved.");
   if (link.status !== "used" && !correction.response_status && ["confirmed", "corrected"].includes(correction.status)) throw new Error("This response has already been recorded. Use the next issue email's form.");
   const job = reviewJob_(params.evaluation_id), run = reviewRun_(params.evaluation_id);
   if (!run || normalizeEmail_(job.submission.email) !== normalizeEmail_(correction.participant_email)) throw new Error("The response does not match the registered participant.");
@@ -60,7 +83,7 @@ function handleReviewResponsePage_(params) {
   if (link.status === "used") return reviewResponseRecorded_(link);
   const links = reviewTaskLinks_(parseJson_(correction.status === "corrected" ? correction.task_checkpoint_links_json : job.submission.task_checkpoint_links_json, {})) || {};
   return html_("Evaluation response", `<p><strong>${escapeHtml_(job.user.team_name || job.user.full_name)}</strong></p>
-    <p>Use this issue email's form to confirm your submission or provide corrected code and checkpoints for all 10 tasks. There is no 24-hour deadline or overall correction limit. A further issue email opens another response round. Team details cannot be changed.</p>
+    <p>Use this issue email's form to confirm your submission or provide corrected code and checkpoints for all 10 tasks. ${escapeHtml_(reviewResponsePolicy_(reviewResponseDeadline_(link)))} Team details cannot be changed.</p>
     <p>Checkpoint fields accept Hugging Face URLs or account/repository names. Preserve any documented revision/subdirectory. For restricted access, use gated models and grant the individual RoboSynChallenge user access; private-repository invitations and participant tokens are not supported.</p>
     <form method="post" action="${escapeHtml_(getWebAppUrl_())}">
       <input type="hidden" name="action" value="review_response_submit">

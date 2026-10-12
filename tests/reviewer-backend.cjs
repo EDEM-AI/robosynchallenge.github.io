@@ -420,6 +420,26 @@ const reopenedParams = Object.fromEntries(new URL(sent.at(-1).body.match(/https:
 vm.runInContext('reviewWrite_("ReviewCorrections", 2, {evaluation_id:"eval_new", deadline_at:"2020-01-01T00:00:00Z"})', context);
 assert(call("requireReviewResponse_", reopenedParams), "An old 24-hour deadline no longer blocks the latest issue link");
 assert.throws(() => call("requireReviewResponse_", responseParams), /not active/);
+const explicitDeadline = new Date(Date.now() + 3600000).toISOString();
+assert.throws(() => vm.runInContext(`reviewIssueDeadline_({response_deadline_at:${JSON.stringify(explicitDeadline)}}, {role:"evaluator"})`, context), /organizers/);
+assert.throws(() => vm.runInContext(`reviewIssueDeadline_({response_deadline_at:"2020-01-01T00:00:00Z"}, {role:"admin"})`, context), /future/);
+const deadlineMail = {...issue, message_id:"msg_"+"5".repeat(32), response_deadline_at:explicitDeadline};
+const deadlineResult = call("reviewSendIssue_", deadlineMail);
+assert.equal(deadlineResult.response_deadline_at, explicitDeadline);
+assert(sent.at(-1).body.includes(explicitDeadline));
+assert(!sent.at(-1).htmlBody.includes("There is no 24-hour deadline"));
+const deadlineParams = Object.fromEntries(new URL(sent.at(-1).body.match(/https:\/\/\S+rsc_action=review_response\S+/)[0]).searchParams);
+assert(call("handleReviewResponsePage_", deadlineParams).includes(explicitDeadline));
+assert.equal(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_new").correction.deadline_at,explicitDeadline);
+vm.runInContext(`var deadlineRealNow = Date.now; Date.now = () => Date.parse(${JSON.stringify(explicitDeadline)});`, context);
+try {
+  assert.throws(() => call("requireReviewResponse_",deadlineParams), /deadline has passed/);
+  assert.throws(() => call("handleReviewResponseSubmit_",{...deadlineParams,response_kind:"confirm",notes:"Too late"}), /deadline has passed/);
+} finally { vm.runInContext('Date.now = deadlineRealNow',context); }
+call("handleReviewResponseSubmit_",{...deadlineParams,response_kind:"confirm",notes:"Before the explicit deadline"});
+assert.equal(call("reviewSendIssue_",deadlineMail).duplicate,true,"Email retries preserve the already-sent deadline and do not send twice");
+call("reviewSendIssue_",{...issue,message_id:"msg_"+"6".repeat(32)});
+assert.equal(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_new").correction.deadline_at,"","A later ordinary issue email opens an unlimited response round");
 context.MailApp.getRemainingDailyQuota = () => 10;
 const legacyIssue = { ...issue, evaluation_id: "eval_legacy", message_id: "msg_" + "f".repeat(32) };
 call("reviewSendIssue_", legacyIssue);

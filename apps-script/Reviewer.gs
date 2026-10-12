@@ -422,7 +422,7 @@ function reviewQueue_(payload, organizer) {
       email: normalizeEmail_(submission.email), team_name: user.team_name || user.full_name,
       artifact_name: submission.artifact_name, created_at: submission.created_at,
       code_link: correction?.status === "corrected" ? correction.code_link : submission.code_link, checkpoint_link: submission.checkpoint_link,
-      correction: correction ? { status: correction.response_status || correction.status, responded_at: correction.response_at || correction.responded_at, notes: correction.notes, round: attempt } : null,
+      correction: correction ? { status: correction.response_status || correction.status, responded_at: correction.response_at || correction.responded_at, notes: correction.notes, round: attempt, deadline_at: correction.deadline_at || "" } : null,
       preparation_attempt: attempt,
       version_cutoff_at: cutoff,
       version_exception: decision ? { reason: decision.reason, approved_by: decision.approved_by, approved_at: decision.approved_at } : null,
@@ -830,6 +830,7 @@ function reviewSendIssue_(payload) {
     }
     const subject = requiredString_(payload.subject, "Subject");
     const body = requiredString_(payload.body, "Email body");
+    const deadline = reviewIssueDeadline_(payload, viewer);
     if (subject.length > 200 || /[\r\n]/.test(subject)) throw new Error("Invalid subject.");
     if (MailApp.getRemainingDailyQuota() < 1) throw new Error("Daily email quota exhausted. No email was sent.");
     checkRateLimit_("reviewer_mail", viewer.email, 20, 60 * 60 * 1000);
@@ -840,8 +841,9 @@ function reviewSendIssue_(payload) {
     const preparation = reviewRows_("ReviewPreparation").find(item => item.evaluation_id === run.evaluation_id);
     const checkpointError = reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_error || "";
     const needsArgument = stage === 0 && String((preparation?.message || "") + checkpointError).includes("NO_LEGAL_VERSION");
-    const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId);
-    const responseText = response ? `\n\nConfirm or submit a correction: ${response.url}\nThere is no 24-hour deadline or overall correction limit. Each new issue email opens a new response round. Use the latest email's form; team and submission identity cannot be changed.` : "";
+    const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId, deadline);
+    const responsePolicy = reviewResponsePolicy_(deadline);
+    const responseText = response ? `\n\nConfirm or submit a correction: ${response.url}\n${responsePolicy} Team and submission identity cannot be changed.` : "";
     const responseButton = response ? `
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;width:auto;margin:20px 0 8px">
         <tr>
@@ -853,10 +855,10 @@ function reviewSendIssue_(payload) {
     try {
       const argumentText = needsArgument ? "\n\nNo eligible pre-deadline code or checkpoint version was found. Reply to this email with your explanation and evidence. Rebuilding requires manual reviewer approval; this message does not grant a code-correction exception." : "";
       MailApp.sendEmail({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText + argumentText,
-        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${responseButton}${response ? `<p>Each new issue email opens a new response round, without a 24-hour deadline or overall correction limit. Use the latest email's form.</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
+        htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${responseButton}${response ? `<p>${escapeHtml_(responsePolicy)}</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
       if (response) reviewActivateResponseLink_(run, messageId);
       reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "sent", sent_at: now_() });
-      return { ok: true, status: "sent" };
+      return { ok: true, status: "sent", response_deadline_at: response ? deadline : "" };
     } catch (error) {
       reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "delivery_unknown" });
       throw new Error("Email delivery could not be confirmed. The organizer must check sent mail before retrying.");
