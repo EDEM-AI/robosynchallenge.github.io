@@ -37,7 +37,7 @@ async function main() {
     const until = async (expression) => { for (let index = 0; index < 100; index += 1) {
       if (await evaluate(expression)) return;
       await sleep(100);
-    } throw new Error("Timed out waiting for " + expression + "; page error: " + await evaluate("document.querySelector('.reviewer-error')?.textContent || 'none'")); };
+    } throw new Error("Timed out waiting for " + expression + "; page error: " + await evaluate("document.querySelector('.reviewer-error')?.textContent || document.body.innerText.slice(0, 500)")); };
     await rpc("Page.enable");
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/eval_backend/?review_preview=1" });
     await until("!!document.querySelector('[data-review-form=login]')");
@@ -196,21 +196,21 @@ async function main() {
     assert.equal(await evaluate("document.querySelector('.reviewer-command code').textContent.includes('python tools/check_environment.py')"), true);
     assert.equal(await evaluate("document.querySelectorAll('[data-stage-check]').length"), 0);
     assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), false);
-    assert.equal(await evaluate("document.body.textContent.includes('Rendering was not verified')"), true);
+    assert.equal(await evaluate("document.body.textContent.includes('A waiver does not certify rendering') && document.body.textContent.includes('0.945')"), true);
     assert.equal(await evaluate("document.body.textContent.includes('Participant setup instructions')"), false);
     await screenshot("environment-desktop");
     await finishStage(2);
     assert.equal(await evaluate("document.querySelectorAll('input[type=file]').length"), 0, "ZIP and JSON uploads must be CLI-only");
-    assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 4);
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 5);
     assert.equal(await evaluate("document.querySelectorAll('[data-review-form=commands]').length"),1);
-    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].some(el=>el.textContent.includes('run_evaluation.py') && el.textContent.includes('-- bash policy/YOUR_POLICY/eval.sh'))"),true);
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].some(el=>el.textContent.includes('run_evaluation.py') && el.textContent.includes('-- bash policy/path/to/xxx/eval.sh') && !el.textContent.includes('--seeds') && !el.textContent.includes('RSC_SEED_PACKET'))"),true);
     assert.equal(await evaluate("document.querySelector('[data-policy-picker]') === null"), true);
     assert.equal(await evaluate("document.body.textContent.includes('RSC_UPLOAD_OK') && document.body.textContent.includes('exit code')"), true);
     await evaluate("navigator.clipboard.writeText=async text=>{window.copiedCommand=text}; [...document.querySelectorAll('.reviewer-command')].find(el=>el.textContent.includes('check_upload.py')).querySelector('button').click()");
     await until("window.copiedCommand?.includes('check_upload.py')");
     assert.equal(await evaluate("window.copiedCommand.includes('run_evaluation.py')"),false);
     await screenshot("upload-desktop");
-    await evaluate("document.querySelector('[data-review-form=commands]').closest('details').open=true");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=commands]').closest('details')===null"),true,"Required command entry must be visible, not collapsed");
     await evaluate("document.querySelectorAll('[data-review-form=commands] textarea').forEach(input => input.value='python run.py --task '+input.name.replace('command_', '')); document.querySelector('[data-review-form=commands]').requestSubmit()");
     await until("document.querySelector('.reviewer-toast')?.textContent.includes('commands saved')");
     const seeds = Array.from({ length: 100 }, (_, index) => index);

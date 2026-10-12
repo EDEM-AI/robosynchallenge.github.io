@@ -166,6 +166,9 @@ const result = { schema: 1, evaluation_id: "eval_new", submission_id: "sub_new",
   task: "item_assembly", policy_dir: "policy/act", seed_list_sha256: seedHash, eval_command: "python tools/run_task_evaluation.py --task item_assembly",
   episodes: seedList.map((seed, index) => ({ index, seed, success: index < 30, action_steps: 500, inference_ms: 4.5 })),
   artifacts: { url: "https://tenant.sharepoint.com/evidence.zip", sha256: "b".repeat(64) } };
+assert.equal(vm.runInContext(`reviewValidatedResult_(${JSON.stringify({result: {...result, eval_command: "bash policy/team/eval.sh item_assembly"}})}, reviewRun_("eval_new"))`, context).task, "item_assembly",
+  "Reviewer-reported and automatically recorded commands need not match");
+assert.throws(() => call("reviewSaveCommand_", {evaluation_id:"eval_new", upload_token:capability.upload_token, task:"item_assembly", command:"python automatic.py"}), /never overwrite/);
 assert.throws(() => call("reviewSubmitResult_", { ...credentials, evaluation_id: "eval_new", result: { ...result, episodes: result.episodes.slice(1) } }), /100 episodes/);
 assert.throws(() => call("reviewSubmitResult_", { ...credentials, evaluation_id: "eval_new", result: {
   ...result, episodes: result.episodes.map((episode) => episode.index ? episode : { ...episode, seed: 999 }),
@@ -531,6 +534,7 @@ assert(Math.abs(publishedScore.inference_efficiency-(1-0.001/(2*publishedReferen
 const ownOutcome = call("reviewParticipantOutcome_", {evaluation_id:"eval_new",submission_id:"sub_new",email:"one@example.com"});
 assert.equal(ownOutcome.task_results.length,10);
 assert(ownOutcome.task_results.every(row=>row.eval_command && row.archive_sha256));
+assert(ownOutcome.task_results.every(row=>row.recorded_eval_command), "Publish automatic evidence commands separately from manual entries");
 assert(!JSON.stringify(ownOutcome).includes('"seed"'));
 assert.equal(call("reviewParticipantOutcome_", {evaluation_id:"eval_new",submission_id:"sub_new",email:"attacker@example.com"}).task_results.length,0);
 assert.equal(scored.inference_per_episode_ms, 15000);
@@ -766,4 +770,18 @@ assert.equal(call("reviewUpgradeTools_", {...toolsFields,base_commit:"8".repeat(
 vm.runInContext('reviewQueue_ = originalMaintenanceQueue', context);
 assert.equal(JSON.stringify(call("reviewRows_","ReviewUploadAccess")),capabilityBeforeMaintenance,"Already-current code retains its upload capability");
 assert.equal(JSON.stringify(call("reviewWorkflow_","eval_accessfollow")),progressBeforeMaintenance,"Already-current code retains progress");
+vm.runInContext(`reviewWrite_("ReviewCodePreparations", null, ${JSON.stringify({evaluation_id:"eval_accessfollow",participant_commit:"d".repeat(40),private_base_commit:"e".repeat(40),
+  bundle_commit:"b".repeat(40),bundle_url:"https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/submissions/eval_accessfollow",policy_dirs_json:JSON.stringify(["policy/act"])})})`, context);
+const migratingJob = call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_accessfollow");
+const migration = {...credentials,evaluation_id:"eval_accessfollow",expected_bundle_commit:"b".repeat(40),formal:true,
+  context_json:migratingJob.hf_check_context,bundle_commit:"9".repeat(40),private_base_commit:"6".repeat(40),
+  participant_commit:"d".repeat(40),policy_dirs:["policy/act"],scoped_upload_token:"upl_"+"f".repeat(64)};
+assert.throws(()=>dispatch("reviewer_migrate_bundle",{...migration,...supervisorCredentials}),/Organizer/);
+assert.throws(()=>dispatch("reviewer_migrate_bundle",{...migration,participant_commit:"0".repeat(40)}),/preserve/);
+const migrated = dispatch("reviewer_migrate_bundle",migration);
+assert(migrated.backup_id);
+assert.equal(call("reviewRun_","eval_accessfollow").bundle_url,"https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/eval_accessfollow");
+assert.equal(call("reviewWorkflow_","eval_accessfollow").stages[0].done,true);
+assert.equal(call("reviewWorkflow_","eval_accessfollow").stages[1].done,false);
+assert.equal(dispatch("reviewer_migrate_bundle",migration).duplicate,true,"Retries must not reset new progress a second time");
 console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");

@@ -72,6 +72,7 @@ function reviewParticipantOutcome_(evaluation) {
   const results = reviewTaskRows_(run.evaluation_id).filter(row => row.status === "checked").map(row => {
     const record = parseJson_(row.result_json, {});
     return { task: row.task, summary: reviewScoredSummary_(record), eval_command: commands[row.task] || "",
+      recorded_eval_command: record.eval_command || "",
       archive_sha256: record.artifacts?.sha256 || "" };
   });
   return { task_results: results, overall_summary: reviewOverallSummary_(results) };

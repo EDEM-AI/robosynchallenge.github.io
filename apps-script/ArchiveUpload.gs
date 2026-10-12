@@ -23,7 +23,8 @@ function reviewIssueUploadAccess_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin" || run.bundle_commit) throw new Error("Only the organizer preparer can issue a new bundle upload capability.");
-    const token = "upl_" + Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
+    const token = payload.resume_upload_token || "upl_" + Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
+    if (!/^upl_[a-f0-9]{64}$/.test(token)) throw new Error("Invalid upload capability.");
     const row = reviewRows_("ReviewUploadAccess").find((item) => item.evaluation_id === run.evaluation_id);
     reviewWrite_("ReviewUploadAccess", row?._rowNumber, { evaluation_id: run.evaluation_id, token_hash: reviewerHash_(token),
       expires_at: new Date(Date.now() + 60 * 86400000).toISOString(), revoked: "", created_at: now_() });

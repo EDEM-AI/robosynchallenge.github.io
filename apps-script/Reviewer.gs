@@ -280,14 +280,14 @@ function reviewTaskCommands_(run) {
 
 function reviewSaveCommand_(payload) {
   return withReviewLock_(() => {
-    const { viewer, run } = payload.upload_token ? reviewUploadContext_(payload) : reviewOwnedRun_(payload);
-    if (payload.upload_token && payload.bundle_commit !== run.bundle_commit) throw new Error("Upload command belongs to another prepared commit.");
+    if (payload.upload_token) throw new Error("Enter reviewer-reported commands in the evaluation workspace; uploads never overwrite them.");
+    const { viewer, run } = reviewOwnedRun_(payload);
     if (!run.bundle_commit || reviewWorkflow_(run.evaluation_id).stages.slice(0, 3).some((stage) => !stage.done)) throw new Error("Complete code and environment checks first.");
     if (!Object.prototype.hasOwnProperty.call(REVIEW_TASK_STEPS, payload.task)) throw new Error("Unknown task.");
     const command = reviewCommand_(payload.command);
-    if (reviewTaskRows_(run.evaluation_id).some((row) => row.task === payload.task)) {
+    if (reviewTaskRows_(run.evaluation_id).some((row) => row.task === payload.task && row.status === "checked")) {
       if (reviewTaskCommands_(run)[payload.task] === command) return { ok: true, duplicate: true };
-      throw new Error("The command is locked after its result upload.");
+      throw new Error("The reviewer-reported command is locked after result acceptance.");
     }
     const row = reviewRows_("ReviewTaskCommands").find((item) => item.evaluation_id === run.evaluation_id && item.task === payload.task && item.bundle_commit === run.bundle_commit);
     reviewWrite_("ReviewTaskCommands", row?._rowNumber, { evaluation_id: run.evaluation_id, task: payload.task, bundle_commit: run.bundle_commit, command, reviewer_email: run.reviewer_email || viewer.email, updated_at: now_() });
@@ -541,14 +541,15 @@ function reviewPrepare_(payload) {
     const url = String(payload.bundle_url || "").trim();
     const dirs = payload.policy_dirs;
     if (!/^[0-9a-f]{40}$/.test(commit) ||
-        !url.startsWith("https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/") ||
+        !url.startsWith("https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/") ||
         !Array.isArray(dirs) || !dirs.length || dirs.length > 30 ||
         dirs.some((dir) => !/^policy(?:\/[A-Za-z0-9_.-]+)*$/.test(dir) || dir.split("/").some((part) => [".", ".."].includes(part)))) throw new Error("Prepared code metadata is invalid.");
     const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === run.evaluation_id);
     const attempt = reviewCorrectionAttempt_(correction);
     const decision = reviewRows_("ReviewVersionDecisions").find(row => row.evaluation_id === run.evaluation_id);
     const expected = "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/submissions/" + run.evaluation_id + (attempt ? "-correction" + attempt : "") + (decision ? "-exception" + decision.generation : "");
-    if (url !== expected && !(url.startsWith(expected + "-snapshot") && /^[a-f0-9]{16}$/.test(url.slice((expected + "-snapshot").length)))) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
+    const canonical = "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/" + run.evaluation_id;
+    if (url !== canonical && url !== expected && !(url.startsWith(expected + "-snapshot") && /^[a-f0-9]{16}$/.test(url.slice((expected + "-snapshot").length)))) throw new Error("Prepared branch does not match evaluation_id and correction attempt.");
     if (payload.context_json && payload.context_json !== reviewCheckpointContext_(reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id))) throw new Error("Participant inputs changed during preparation. Retry with the latest correction.");
     reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, bundle_url: url,
       bundle_commit: commit, policy_dirs_json: JSON.stringify([...new Set(dirs)]),
@@ -578,7 +579,8 @@ function reviewPrepareCode_(payload) {
     }
     const suffix = (job.preparation_attempt ? "-correction" + job.preparation_attempt : "") + (job.version_generation ? "-exception" + job.version_generation : "");
     const branch = "validation/" + run.evaluation_id + suffix + "-" + payload.participant_commit.slice(0, 12) + "-" + payload.private_base_commit.slice(0, 12);
-    if (payload.bundle_url !== "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/" + branch) throw new Error("Validation branch does not match this request and selected code.");
+    const prefix = "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/";
+    if (payload.bundle_url !== prefix + run.evaluation_id && payload.bundle_url !== prefix + branch) throw new Error("Validation branch does not match this request and selected code.");
     const old = reviewRows_("ReviewCodePreparations").find(row => row.evaluation_id === run.evaluation_id);
     reviewWrite_("ReviewCodePreparations", old?._rowNumber, { evaluation_id: run.evaluation_id, submission_id: run.submission_id,
       code_link: job.code_link, participant_commit: payload.participant_commit, private_base_commit: payload.private_base_commit,
@@ -623,8 +625,7 @@ function reviewValidatedResult_(payload, run) {
       record.evaluation_id !== run.evaluation_id || record.submission_id !== run.submission_id ||
       record.bundle_commit !== run.bundle_commit || !Object.prototype.hasOwnProperty.call(REVIEW_TASK_STEPS, record.task)) throw new Error("Result identity is invalid.");
   if (!parseJson_(run.policy_dirs_json, []).includes(record.policy_dir)) throw new Error("Policy directory is not in the prepared bundle.");
-  const command = reviewCommand_(record.eval_command);
-  if (reviewTaskCommands_(run)[record.task] !== command) throw new Error("Save the actual task evaluation command first; the result must contain that exact command.");
+  reviewCommand_(record.eval_command);
   if (!Array.isArray(record.episodes) || record.episodes.length !== 100) throw new Error("Exactly 100 episodes are required for this task.");
   const horizon = REVIEW_TASK_STEPS[record.task];
   const seen = new Set();
@@ -917,6 +918,7 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_save_checks") return reviewSaveChecks_(payload);
   if (action === "reviewer_preflight") return reviewSavePreflight_(payload);
   if (action === "reviewer_send_issue") return reviewSendIssue_(payload);
+  if (action === "reviewer_migrate_bundle") return reviewMigrateBundle_(payload);
   if (action === "reviewer_save_command") return reviewSaveCommand_(payload);
   if (action === "reviewer_access_check") return reviewAccessCheck_(payload);
   if (action === "reviewer_checkpoint_check") return reviewCheckpointCheck_(payload);

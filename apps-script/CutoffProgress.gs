@@ -17,6 +17,50 @@ function reviewBackupProgress_(run, reason) {
 }
 
 /** Repeatable organizer maintenance: preserve submitted versions, not a new participant revision. */
+function reviewMigrateBundle_(payload) {
+  return withReviewLock_(() => {
+    const {viewer, run} = reviewOwnedRun_(payload, true);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
+    const formal = Boolean(run.bundle_commit);
+    const previous = run.bundle_commit || job.code_bundle_commit;
+    const code = reviewRows_("ReviewCodePreparations").find(row => row.evaluation_id === run.evaluation_id);
+    if (payload.bundle_commit === previous && payload.private_base_commit === code?.private_base_commit) return {ok:true, duplicate:true};
+    if (payload.context_json !== reviewCheckpointContext_(job) || payload.formal !== formal || payload.expected_bundle_commit !== previous) {
+      throw new Error("Prepared request changed during organizer upgrade; retry with fresh inputs.");
+    }
+    if (![payload.bundle_commit, payload.private_base_commit, payload.participant_commit].every(value => /^[a-f0-9]{40}$/.test(String(value || ""))) ||
+        payload.participant_commit !== code?.participant_commit || !Array.isArray(payload.policy_dirs) || !payload.policy_dirs.length ||
+        JSON.stringify([...payload.policy_dirs].sort()) !== JSON.stringify(parseJson_(code.policy_dirs_json, []).sort()) ||
+        (formal && !/^upl_[a-f0-9]{64}$/.test(payload.scoped_upload_token || ""))) throw new Error("Organizer upgrade must preserve the pinned participant policy.");
+    const reason = "Official evaluation tools/reference upgraded; participant code and checkpoints unchanged. Previous progress and evidence backed up; clone the updated eval branch.";
+    const backupId = reviewBackupProgress_(run, reason);
+    if (formal) {
+      const workflow = reviewWorkflow_(run.evaluation_id);
+      const version = reviewRows_("ReviewVersionChecks").find(row => row.evaluation_id === run.evaluation_id);
+      const access = reviewRows_("ReviewAccessChecks").find(row => row.evaluation_id === run.evaluation_id);
+      const checkpoint = reviewRows_("ReviewCheckpointChecks").find(row => row.evaluation_id === run.evaluation_id);
+      reviewResetParticipantProgress_(run, job.task_checkpoint_links, reason);
+      const reset = reviewWorkflow_(run.evaluation_id);
+      reset.stages[0] = workflow.stages[0];
+      reviewStoreWorkflow_(run, reset);
+      if (version) reviewWrite_("ReviewVersionChecks", version._rowNumber, version);
+      if (access) reviewWrite_("ReviewAccessChecks", access._rowNumber, access);
+      if (checkpoint) reviewWrite_("ReviewCheckpointChecks", checkpoint._rowNumber, checkpoint);
+      const capability = reviewRows_("ReviewUploadAccess").find(row => row.evaluation_id === run.evaluation_id);
+      reviewWrite_("ReviewUploadAccess", capability?._rowNumber, {evaluation_id:run.evaluation_id,
+        token_hash:reviewerHash_(payload.scoped_upload_token), expires_at:new Date(Date.now()+60*86400000).toISOString(), revoked:"", created_at:now_()});
+    }
+    const url = "https://github.com/" + REVIEW_PRIVATE_REPO + "/tree/" + run.evaluation_id;
+    reviewWrite_("ReviewCodePreparations", code._rowNumber, {...code, bundle_url:url,
+      bundle_commit:payload.bundle_commit, private_base_commit:payload.private_base_commit, updated_at:now_()});
+    if (formal) reviewWrite_("ReviewRuns", run._rowNumber, {evaluation_id:run.evaluation_id, bundle_url:url,
+      bundle_commit:payload.bundle_commit, policy_dirs_json:JSON.stringify(payload.policy_dirs), state:"ready", updated_at:now_()});
+    reviewPreparationStatus_(run.evaluation_id, formal ? "ready" : "code_ready", "");
+    return {ok:true, state:"upgraded", backup_id:backupId};
+  });
+}
+
 function reviewUpgradeTools_(payload) {
   return withReviewLock_(() => {
     const {viewer, run} = reviewOwnedRun_(payload, true);
