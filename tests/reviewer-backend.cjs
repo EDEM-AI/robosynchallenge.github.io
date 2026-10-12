@@ -457,8 +457,12 @@ assert(call("handleReviewResponsePage_", deadlineParams).includes(explicitDeadli
 assert.equal(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_new").correction.deadline_at,explicitDeadline);
 vm.runInContext(`var deadlineRealNow = Date.now; Date.now = () => Date.parse(${JSON.stringify(explicitDeadline)});`, context);
 try {
+  const closedState = JSON.stringify([sheet("ReviewResponseLinks").cells, sheet("ReviewCorrections").cells, sheet("ReviewProgressBackups").cells]);
   assert.throws(() => call("requireReviewResponse_",deadlineParams), /deadline has passed/);
   assert.throws(() => call("handleReviewResponseSubmit_",{...deadlineParams,response_kind:"confirm",notes:"Too late"}), /deadline has passed/);
+  assert.throws(() => call("handleReviewResponseSubmit_",{...deadlineParams,response_kind:"correct",notes:"Opened earlier, posted after cutoff"}), /deadline has passed/);
+  assert.equal(JSON.stringify([sheet("ReviewResponseLinks").cells, sheet("ReviewCorrections").cells, sheet("ReviewProgressBackups").cells]), closedState,
+    "Late response attempts must not change a correction, consume the link or reset progress");
 } finally { vm.runInContext('Date.now = deadlineRealNow',context); }
 call("handleReviewResponseSubmit_",{...deadlineParams,response_kind:"confirm",notes:"Before the explicit deadline"});
 assert.equal(call("reviewSendIssue_",deadlineMail).duplicate,true,"Email retries preserve the already-sent deadline and do not send twice");
