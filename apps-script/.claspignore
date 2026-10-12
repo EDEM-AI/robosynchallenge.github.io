@@ -6,6 +6,7 @@
 !CutoffProgress.gs
 !ArchiveUpload.gs
 !CheckpointAccess.gs
+!CheckpointSources.gs
 !SubmissionWindow.gs
 !Scoring.gs
 !SubmissionReceipts.gs

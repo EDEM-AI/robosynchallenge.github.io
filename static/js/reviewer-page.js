@@ -353,6 +353,11 @@
   }
   function checkpointStatus(job) {
     if (job.local_walkthrough) return notice("Workflow demo: no live Hugging Face access check is performed.", false, "warning");
+    if (job.coverage_status === "legacy_unverified" && job.hf_sources) {
+      const sources = job.hf_sources;
+      return sources.status === "passed" ? notice(`Submitted HF source access verified automatically for ${sources.report.length} source(s). This is not a ten-task mapping verification. Record the documented checkpoint URL for every task above; saving runs the full task-specific checks.`, true) :
+        notice(`${sources.status === "retry" ? "Source access check will retry automatically after an organizer network/backend failure." : "Submitted HF source access was not confirmed."}<br>${escape(sources.message)}<br>Record the documented checkpoint URL for every task above. No task mapping is inferred from this source check.`, false, sources.status === "retry" ? "warning" : "error");
+    }
     const status = job.hf_check_status || (TASKS.every(task => job.hf_access?.[task]?.accessible) ? "passed" : "pending");
     if (status === "passed") return notice("Automatic HF access check passed for all 10 current task URLs. Model files are readable using the organizer's shared HF account. Pinned revisions and checked file counts are listed above; access is checked again for the final deadline freeze.", true);
     if (status === "failed") return notice(`Automatic HF access check failed.<br>${escape(job.hf_check_error || "Checkpoint access was not confirmed.")}<br>Code preparation runs independently. Use Issue / Send email, then retry after access or the checkpoint URLs have been corrected.`, false, "error") + `<div class="reviewer-retry">${button("retry-code", "Retry after participant follow-up", "refresh-cw")}</div>`;

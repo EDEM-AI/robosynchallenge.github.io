@@ -16,6 +16,7 @@ const REVIEW_TABLES = {
   ReviewTaskCommands: ["evaluation_id", "task", "bundle_commit", "command", "reviewer_email", "updated_at"],
   ReviewAccessChecks: ["evaluation_id", "report_json", "checked_at"],
   ReviewCheckpointChecks: ["evaluation_id", "context_json", "status", "message", "cutoff_at", "updated_at"],
+  ReviewCheckpointSources: ["evaluation_id", "context_json", "status", "report_json", "message", "checked_at"],
   ReviewResponseLinks: ["evaluation_id", "message_id", "token_hash", "status", "created_at", "response_kind", "response_json", "responded_at"],
   ReviewCorrections: ["evaluation_id", "participant_email", "deadline_at", "status", "code_link", "task_checkpoint_links_json", "notes", "responded_at", "previous_bundle_commit", "updated_at", "correction_count", "response_status", "response_at"],
   ReviewSubmissionWindows: ["window_id", "email", "token_hash", "status", "expires_at", "reason", "granted_by", "created_at"],
@@ -359,7 +360,7 @@ function reviewQueue_(payload, organizer) {
   if (organizer && viewer.role !== "admin") throw new Error("Organizer access required.");
   const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "ReviewRuns", "ReviewTaskResults",
     "ReviewProgress", "ReviewMachines", "ReviewMessages", "ReviewPreparation", "ReviewCodePreparations", "ReviewCorrections",
-    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades"]);
+    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewCheckpointSources", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades"]);
   const read = name => snapshot.rows[name];
   const runs = new Map(read("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
   const tasks = read("ReviewTaskResults");
@@ -372,6 +373,7 @@ function reviewQueue_(payload, organizer) {
   const corrections = new Map(read("ReviewCorrections").map((row) => [String(row.evaluation_id), row]));
   const accessChecks = new Map(read("ReviewAccessChecks").map((row) => [String(row.evaluation_id), row]));
   const checkpointChecks = new Map(read("ReviewCheckpointChecks").map(row => [String(row.evaluation_id), row]));
+  const checkpointSources = new Map(read("ReviewCheckpointSources").map(row => [String(row.evaluation_id), row]));
   const commands = read("ReviewTaskCommands");
   const versionChecks = new Map(read("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
   const versionDecisions = new Map(read("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
@@ -404,6 +406,11 @@ function reviewQueue_(payload, organizer) {
       savedAccess[task]?.accessible === true && savedAccess[task]?.url === taskLinks[task]) &&
       (!checkpointRow || (checkpointCheck && checkpointCheck.status === "passed"));
     const codeLink = correction?.status === "corrected" ? correction.code_link : submission.code_link;
+    const sourceContext = reviewCheckpointSourceContext_({submission_id:submission.submission_id,
+      preparation_attempt:attempt, version_generation:Number(decision?.generation || 0), version_cutoff_at:cutoff,
+      checkpoint_link:submission.checkpoint_link});
+    const sourceRow = checkpointSources.get(String(evaluation.evaluation_id));
+    const sourceCheck = sourceRow?.context_json === sourceContext ? sourceRow : null;
     const savedCode = codePreparations.get(String(evaluation.evaluation_id));
     const code = savedCode?.submission_id === submission.submission_id && savedCode?.code_link === codeLink &&
       Number(savedCode.attempt) === attempt && Number(savedCode.generation) === Number(decision?.generation || 0) ? savedCode : null;
@@ -428,6 +435,9 @@ function reviewQueue_(payload, organizer) {
       hf_check_error: checkpointCheck?.message || "", hf_check_updated_at: checkpointCheck?.updated_at || "",
       hf_check_cutoff_at: checkpointCheck?.cutoff_at || "",
       hf_check_context: checkpointContext,
+      hf_sources_context:sourceContext,
+      hf_sources:sourceCheck ? {status:sourceCheck.status, report:parseJson_(sourceCheck.report_json, []),
+        message:sourceCheck.message, checked_at:sourceCheck.checked_at} : null,
       task_checkpoint_links: taskLinks,
       coverage_status: correctedLinks || declaredLinks ? "declared_all_10" : verifiedLinks ? "verified_all_10" : "legacy_unverified",
       coverage_verified_by: run?.coverage_verified_by || "",
@@ -922,6 +932,8 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_save_command") return reviewSaveCommand_(payload);
   if (action === "reviewer_access_check") return reviewAccessCheck_(payload);
   if (action === "reviewer_checkpoint_check") return reviewCheckpointCheck_(payload);
+  if (action === "reviewer_checkpoint_source_check") return reviewCheckpointSourceCheck_(payload);
+  if (action === "reviewer_checkpoint_sources_batch") return reviewCheckpointSourcesBatch_(payload);
   if (action === "reviewer_assign") return reviewAssign_(payload);
   if (action === "reviewer_verify_coverage") return reviewVerifyCoverage_(payload);
   if (action === "reviewer_prepare") return reviewPrepare_(payload);

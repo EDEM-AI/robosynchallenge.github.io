@@ -42,7 +42,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "CheckpointSources.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 lockWaitHook = () => {
   const target = sheet("ReviewToolUpgrades");
@@ -266,6 +266,16 @@ let validationJob = call("reviewQueue_", credentials).jobs.find(job => job.evalu
 assert.equal(validationJob.code_bundle_commit, validation.bundle_commit);
 assert.equal(validationJob.bundle_commit, "");
 assert.equal(validationJob.coverage_status, "legacy_unverified");
+const sourceCheck = {...credentials,evaluation_id:"eval_legacy",context_json:validationJob.hf_sources_context,status:"passed",
+  report:[{url:"https://huggingface.co/test/model",revision:"f".repeat(40),accessible:true,files_checked:1,scope:"source_access_only_not_task_mapping"}]};
+const sourceSupervisor = vm.runInContext('provisionReviewer("source-supervisor@example.com", "supervisor")', context);
+assert.throws(()=>call("reviewCheckpointSourceCheck_",{...sourceCheck,reviewer_email:sourceSupervisor.email,reviewer_token:sourceSupervisor.token}), /Organizer/);
+assert.throws(()=>call("reviewCheckpointSourceCheck_",{...sourceCheck,context_json:"stale"}), /changed/);
+assert.equal(call("reviewCheckpointSourceCheck_",sourceCheck).status,"passed");
+const sourceJob = call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_legacy");
+assert.equal(sourceJob.hf_sources.status,"passed");
+assert.equal(sourceJob.hf_check_status,"awaiting_mapping","Source access must never fabricate a ten-task mapping");
+assert.equal(Object.keys(sourceJob.task_checkpoint_links).length,0);
 assert.throws(() => call("reviewCompleteStage_", { ...credentials, evaluation_id: "eval_legacy", stage: 0,
   checks: { repository_access: true, checkpoint_access: true, ten_tasks: true } }), /10 task|prepared|preparation/);
 assert.throws(() => call("reviewCheckpointCredential_", { ...credentials, evaluation_id: "eval_legacy",
