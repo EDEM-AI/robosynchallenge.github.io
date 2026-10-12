@@ -654,7 +654,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       });
     });
     paint();
-    if (state.credentials) perform(async () => {});
+    if (state.credentials) perform(async () => {}, true);
     if (!LOCAL) window.setInterval(async () => {
       if (!state.credentials || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
           root()?.contains(document.activeElement) && document.activeElement.matches("input,textarea,select")) return;
