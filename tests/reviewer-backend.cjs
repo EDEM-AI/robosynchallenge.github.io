@@ -36,6 +36,9 @@ const context = vm.createContext({
     releaseLock() { scriptLocked = false; } }) },
   CacheService: { getScriptCache: () => ({ get: key => cache.get(key), put: (key, value) => cache.set(key, value), remove: key => cache.delete(key) }) },
   Utilities: {
+    Charset: {UTF_8:"UTF-8"},
+    base64Encode: value => Buffer.from(String(value),'utf8').toString('base64'),
+    base64EncodeWebSafe: value => Buffer.from(String(value),'utf8').toString('base64url'),
     getUuid: () => crypto.randomUUID(),
     DigestAlgorithm: { SHA_256: "sha256" },
     computeDigest: (_, text) => [...crypto.createHash("sha256").update(text).digest()],
@@ -392,7 +395,28 @@ assert.equal(sent.length, 1);
 assert.equal(sent[0].to, "one@example.com", "Recipient cannot be changed by the client");
 assert(sent[0].htmlBody.includes("Evaluation update"));
 context.MailApp.getRemainingDailyQuota = () => 0;
-assert.throws(() => call("reviewSendIssue_", { ...issue, message_id: "msg_" + "e".repeat(32) }), /quota exhausted/);
+const beforeGmailFetcher = context.UrlFetchApp;
+context.ScriptApp.getOAuthToken = () => "synthetic-google";
+let gmailRejected = true;
+const gmailRawMessages = [];
+context.UrlFetchApp = {fetch:(url,options)=>{
+  assert.equal(url,"https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
+  assert.equal(options.headers.Authorization,"Bearer synthetic-google");
+  gmailRawMessages.push(Buffer.from(JSON.parse(options.payload).raw,'base64url').toString('utf8'));
+  return {getResponseCode:()=>gmailRejected?429:200,getContentText:()=>JSON.stringify({id:"1a1234567890abcd"})};
+}};
+const quotaIssue = {...issue,evaluation_id:"eval_legacy",message_id:"msg_"+"e".repeat(32)};
+assert.throws(()=>call("reviewSendIssue_",quotaIssue),/No email was sent/);
+assert.equal(call("reviewRows_",'ReviewMessages').find(row=>row.message_id===quotaIssue.message_id).status,"not_sent");
+gmailRejected = false;
+const gmailFallback = call("reviewSendIssue_",quotaIssue);
+assert.equal(gmailFallback.transport,"gmail_api");
+assert(gmailRawMessages.at(-1).includes("To: legacy@example.com\r\n"));
+assert.equal(properties["RSC_REVIEW_GMAIL_"+quotaIssue.message_id],"1a1234567890abcd");
+const gmailCallCount = gmailRawMessages.length;
+assert.equal(call("reviewSendIssue_",quotaIssue).duplicate,true);
+assert.equal(gmailRawMessages.length,gmailCallCount,"The fallback is also idempotent");
+context.UrlFetchApp = beforeGmailFetcher;
 assert.equal(sent.length, 1);
 const responseUrl = new URL(sent[0].body.match(/https:\/\/\S+rsc_action=review_response\S+/)[0]);
 const responseButton = sent[0].htmlBody.match(/<a href="([^"]+)" style="([^"]+)">Confirm or submit a correction<\/a>/);

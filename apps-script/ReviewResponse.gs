@@ -42,8 +42,10 @@ function reviewResponsePolicy_(deadline) {
 
 function reviewCreateResponseLink_(run, messageId, deadline) {
   const token = "rsp_" + Utilities.getUuid().replace(/-/g, "") + Utilities.getUuid().replace(/-/g, "");
-  reviewWrite_("ReviewResponseLinks", null, { evaluation_id: run.evaluation_id, message_id: messageId,
+  const previous = reviewRows_("ReviewResponseLinks").find(row => row.message_id === messageId);
+  reviewWrite_("ReviewResponseLinks", previous?._rowNumber, { evaluation_id: run.evaluation_id, message_id: messageId,
     token_hash: reviewerHash_(token), status: "sending", created_at: now_(),
+    response_kind: "", responded_at: "",
     response_json: deadline ? JSON.stringify({response_deadline_at: deadline}) : "" });
   return { url: `${getWebAppUrl_()}?rsc_action=review_response&evaluation_id=${encodeURIComponent(run.evaluation_id)}&token=${encodeURIComponent(token)}` };
 }

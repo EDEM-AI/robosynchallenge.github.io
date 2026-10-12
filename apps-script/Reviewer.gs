@@ -816,6 +816,34 @@ function reviewSavePreflight_(payload) {
   });
 }
 
+function reviewDeliverEmail_(message) {
+  if (MailApp.getRemainingDailyQuota() > 0) {
+    MailApp.sendEmail(message);
+    return {transport:"mailapp"};
+  }
+  const boundary = "rsc_" + Utilities.getUuid().replace(/-/g, "");
+  const encode = value => Utilities.base64Encode(String(value), Utilities.Charset.UTF_8);
+  const mime = ["To: " + requiredEmail_(message.to), "Reply-To: " + requiredEmail_(message.replyTo),
+    "Subject: =?UTF-8?B?" + encode(message.subject) + "?=", "MIME-Version: 1.0",
+    'Content-Type: multipart/alternative; boundary="' + boundary + '"', "",
+    "--" + boundary, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encode(message.body),
+    "--" + boundary, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encode(message.htmlBody),
+    "--" + boundary + "--", ""].join("\r\n");
+  const response = UrlFetchApp.fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method:"post", contentType:"application/json", muteHttpExceptions:true,
+    headers:{Authorization:"Bearer " + ScriptApp.getOAuthToken()},
+    payload:JSON.stringify({raw:Utilities.base64EncodeWebSafe(mime, Utilities.Charset.UTF_8)})});
+  const status = response.getResponseCode();
+  if (status < 200 || status >= 300) {
+    const error = new Error("Gmail API rejected delivery (HTTP " + status + ").");
+    error.delivery_not_sent = status >= 400 && status < 500;
+    throw error;
+  }
+  const receipt = JSON.parse(response.getContentText());
+  if (!/^[a-f0-9]{16,32}$/.test(receipt.id || "")) throw new Error("Gmail delivery receipt is missing.");
+  return {transport:"gmail_api",gmail_message_id:receipt.id};
+}
+
 function reviewSendIssue_(payload) {
   return withReviewLock_(() => {
     const { viewer, job, run } = reviewOwnedRun_(payload, true);
@@ -826,16 +854,15 @@ function reviewSendIssue_(payload) {
     if (previous) {
       if (previous.evaluation_id !== run.evaluation_id || previous.reviewer_email !== viewer.email) throw new Error("Message ID belongs to another request.");
       if (previous.status === "sent") return { ok: true, status: "sent", duplicate: true };
-      throw new Error("Delivery needs organizer verification before a retry; do not risk a duplicate email.");
+      if (previous.status !== "not_sent") throw new Error("Delivery needs organizer verification before a retry; do not risk a duplicate email.");
     }
     const subject = requiredString_(payload.subject, "Subject");
     const body = requiredString_(payload.body, "Email body");
     const deadline = reviewIssueDeadline_(payload, viewer);
     if (subject.length > 200 || /[\r\n]/.test(subject)) throw new Error("Invalid subject.");
-    if (MailApp.getRemainingDailyQuota() < 1) throw new Error("Daily email quota exhausted. No email was sent.");
     checkRateLimit_("reviewer_mail", viewer.email, 20, 60 * 60 * 1000);
     const recipient = requiredEmail_(job.submission.email);
-    reviewWrite_("ReviewMessages", null, { evaluation_id: run.evaluation_id, message_id: messageId,
+    reviewWrite_("ReviewMessages", previous?._rowNumber, { evaluation_id: run.evaluation_id, message_id: messageId,
       reviewer_email: viewer.email, stage, recipient, subject, body, status: "sending", created_at: now_() });
     const row = reviewRows_("ReviewMessages").find((item) => item.message_id === messageId);
     const preparation = reviewRows_("ReviewPreparation").find(item => item.evaluation_id === run.evaluation_id);
@@ -854,13 +881,15 @@ function reviewSendIssue_(payload) {
       </table>` : "";
     try {
       const argumentText = needsArgument ? "\n\nNo eligible pre-deadline code or checkpoint version was found. Reply to this email with your explanation and evidence. Rebuilding requires manual reviewer approval; this message does not grant a code-correction exception." : "";
-      MailApp.sendEmail({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText + argumentText,
+      const receipt = reviewDeliverEmail_({ to: recipient, replyTo: config_("CONTACT_EMAIL", "robosynchallenge@gmail.com"), subject, body: body + responseText + argumentText,
         htmlBody: htmlEmailShell_("Evaluation update", `<p>${escapeHtml_(body).replace(/\n/g, "<br>")}</p><table><tr><th>Evaluation</th><td>${escapeHtml_(run.evaluation_id)}</td></tr><tr><th>Stage</th><td>${escapeHtml_(REVIEW_STAGES[stage].title)}</td></tr></table>${responseButton}${response ? `<p>${escapeHtml_(responsePolicy)}</p>` : ""}${argumentText ? `<p>${escapeHtml_(argumentText)}</p>` : ""}`) });
       if (response) reviewActivateResponseLink_(run, messageId);
+      if (receipt.gmail_message_id) PropertiesService.getScriptProperties().setProperty("RSC_REVIEW_GMAIL_" + messageId, receipt.gmail_message_id);
       reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "sent", sent_at: now_() });
-      return { ok: true, status: "sent", response_deadline_at: response ? deadline : "" };
+      return { ok: true, status: "sent", response_deadline_at: response ? deadline : "", transport:receipt.transport };
     } catch (error) {
-      reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: "delivery_unknown" });
+      reviewWrite_("ReviewMessages", row._rowNumber, { evaluation_id: run.evaluation_id, status: error.delivery_not_sent ? "not_sent" : "delivery_unknown" });
+      if (error.delivery_not_sent) throw new Error(error.message + " No email was sent; the same message ID can be retried after fixing delivery.");
       throw new Error("Email delivery could not be confirmed. The organizer must check sent mail before retrying.");
     }
   });

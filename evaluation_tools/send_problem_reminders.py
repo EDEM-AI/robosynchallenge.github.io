@@ -77,7 +77,7 @@ def main():
             if target['status'] != 'needs_delivery_verification':
                 continue
             saved = messages.get(target.get('message_id'))
-            if not saved:
+            if not saved or saved.get('status') == 'not_sent':
                 target['status'] = 'pending'
             elif saved.get('status') == 'sent':
                 target['status'] = 'sent'
