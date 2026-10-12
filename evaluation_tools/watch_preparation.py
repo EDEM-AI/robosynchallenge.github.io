@@ -26,6 +26,60 @@ def source_urls(value):
     return list(dict.fromkeys(urls))
 
 
+def audit_deadlines(jobs, timestamp=None):
+    current = datetime.now(timezone.utc).timestamp() if timestamp is None else timestamp
+    def seconds(value):
+        parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
+        if parsed.tzinfo is None:
+            raise ValueError('A version timestamp must include its timezone')
+        return parsed.timestamp()
+    rows = []
+    for job in jobs:
+        cutoff = job['version_cutoff_at']
+        limit = seconds(cutoff)
+        report = job.get('version_report') or {}
+        code = report.get('code') if job.get('bundle_commit') else job.get('code_selection')
+        code = code or {}
+        code_valid = bool(re.fullmatch(r'[a-f0-9]{40}', code.get('revision', '')))
+        try:
+            code_valid = code_valid and seconds(code.get('cutoff_at')) == limit and all(
+                seconds(code.get(field)) < limit for field in ('authored_at', 'committed_at'))
+            if job.get('bundle_commit'):
+                code_valid = code_valid and code.get('revision') == job.get('code_participant_commit') and \
+                    job.get('bundle_commit') == job.get('code_bundle_commit')
+        except (ValueError, TypeError):
+            code_valid = False
+        hf = report.get('hf') or {}
+        links = job.get('task_checkpoint_links') or {}
+        hf_valid = len(hf) == len(links) == 10
+        try:
+            hf_valid = hf_valid and all(row.get('accessible') is True and row.get('url') == links.get(task) and
+                bool(re.fullmatch(r'[a-f0-9]{40}', row.get('revision', ''))) and
+                isinstance(row.get('files_checked'), int) and 0 < row['files_checked'] <= 10000 and
+                seconds(row.get('cutoff_at')) == limit and seconds(row.get('committed_at')) < limit
+                for task, row in hf.items())
+        except (ValueError, TypeError):
+            hf_valid = False
+        errors = [job.get('preparation_error'), job.get('hf_check_error')]
+        if current < limit:
+            state = 'awaiting_cutoff'
+        elif job.get('preparation_status') == 'failed' or job.get('hf_check_status') == 'failed':
+            state = 'blocked'
+        elif job.get('bundle_commit') and job.get('version_status') == 'final' and code_valid and hf_valid:
+            state = 'frozen'
+        elif job.get('version_status') == 'final':
+            state = 'invalid_final_receipt'
+        elif job.get('coverage_status') == 'legacy_unverified' and code_valid:
+            state = 'code_frozen_awaiting_task_mapping'
+        else:
+            state = 'awaiting_final_preparation'
+        rows.append({'evaluation_id':job['evaluation_id'], 'team_name':job.get('team_name', ''),
+            'cutoff_at':cutoff, 'state':state, 'code_revision':code.get('revision', ''),
+            'bundle_commit':job.get('bundle_commit', ''), 'error':next((value for value in errors if value), '')})
+    counts = {state:sum(row['state'] == state for row in rows) for state in sorted({row['state'] for row in rows})}
+    return {'checked_at':datetime.fromtimestamp(current, timezone.utc).isoformat(), 'counts':counts, 'requests':rows}
+
+
 def check_sources(value, token_file, cutoff):
     from hf_access import HF_OFFICIAL_ENDPOINT, model_location, read_token
     from huggingface_hub import HfApi, hf_hub_url, get_hf_file_metadata
@@ -126,6 +180,17 @@ def main():
             result = original.tick(settings)
         except Exception as error:
             result = {'state':'waiting_retry', 'error_type':type(error).__name__}
+        try:
+            from process_queue import api
+            token = Path(settings['organizer_token_file']).read_text().strip()
+            queue = api(settings['api_url'], settings['organizer_email'], token, 'reviewer_preparation_queue')
+            audit = audit_deadlines(queue['jobs'])
+            audit_path = Path(settings['status_file']).with_name('deadline-audit.json')
+            audit_temporary = audit_path.with_suffix('.tmp')
+            audit_temporary.write_text(json.dumps(audit)); audit_temporary.chmod(0o600); audit_temporary.replace(audit_path)
+            result['deadline_audit'] = audit['counts']
+        except Exception as error:
+            result['deadline_audit'] = {'state':'audit_retry', 'error_type':type(error).__name__}
         result.update(maintenance=maintenance, checked_at=datetime.now(timezone.utc).isoformat())
         path = Path(settings['status_file']); temporary = path.with_suffix('.tmp')
         temporary.write_text(json.dumps(result)); temporary.chmod(0o600); temporary.replace(path)

@@ -424,7 +424,7 @@
     },
     {
       question: "Can a team correct its code after an evaluation issue is reported?",
-      answer: `<p>Each new issue email opens a response round, with <strong>no 24-hour deadline or overall correction limit</strong>. Use the latest email's form to confirm the submission or provide a corrected immutable GitHub commit and checkpoints for all 10 tasks. Corrections remain under the same eval request and trigger automatic code and checkpoint checks. Registered team details cannot be changed.</p>`,
+      answer: `<p>Each new issue email opens a response round, with <strong>no automatic 24-hour deadline or overall correction limit</strong>. If the email specifies a response deadline, its form closes at that deadline, including when the form was opened earlier. Use the latest email's form to confirm the submission or provide a corrected immutable GitHub commit and checkpoints for all 10 tasks. A correction pins the submitted commit and selects checkpoint history dated before the recorded correction time; later changes are not picked up automatically. Corrections remain under the same eval request and trigger automatic code and checkpoint checks. Registered team details cannot be changed.</p>`,
     },
     {
       question: "How many times may a team submit, and what is the deadline?",

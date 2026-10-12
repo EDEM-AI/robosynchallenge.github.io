@@ -14,6 +14,8 @@ Use `--once` for one pass. Settings and credential files remain private (mode 06
 
 Each pass checks legacy checkpoint source access independently of the still-required ten-task mapping, retries transient organizer transport failures with backoff, then invokes the existing queue preparer. Source access alone does not certify coverage of all ten tasks. Permission errors, missing model repositories and invalid policy trees remain visible for reviewer follow-up, not automatically guessed or repaired.
 
+After each pass, `deadline-audit.json` beside the status file records the current per-request cutoff, selected commit, bundle and freeze status. `frozen` requires final code and all ten HF receipts, strictly pre-cutoff timestamps and matching prepared code. Legacy mappings, access failures and unfinished freezes remain distinct; they are never counted as complete. The file contains no credentials and is private (mode 0600). The audit is read-only; the existing preparer performs version selection, backup and reconciliation automatically.
+
 Baseline changes rebuild already composed branches using the original pinned participant policy and checkpoint revisions. The backend backs up affected progress before invalidation; each current request keeps its canonical `eval_xxxx` branch. Installation uses the existing `rsc-prepare.service`, with this script as its ExecStart; after updating source or the unit, reload and restart the service.
 
 ## Issue reminders
