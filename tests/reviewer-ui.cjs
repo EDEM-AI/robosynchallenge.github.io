@@ -106,7 +106,11 @@ async function main() {
       assert.deepEqual(geometry, { overflow: false, footerVisible: true, nonOverlap: true, aligned: true });
     }
     assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true);
-    assert.equal(await evaluate("document.querySelector('[data-review-stage=\"1\"]').disabled"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-stage=\"1\"]').disabled"), false, "All stages remain viewable without completing them");
+    await evaluate("document.querySelector('[data-review-stage=\"4\"]').click()");
+    assert.equal(await evaluate("document.querySelector('[data-review-stage=\"4\"]').classList.contains('active')"), true);
+    assert.equal(await evaluate("document.querySelector('[data-review-action=next]').disabled"), true, "Free viewing must not complete real progress");
+    await evaluate("document.querySelector('[data-review-stage=\"0\"]').click()");
     await evaluate("document.querySelector('[data-review-action=email]').click()");
     await until("!!document.querySelector('[data-mail-composer]')");
     assert.equal(await evaluate("document.querySelectorAll('[data-review-form=email] .reviewer-required').length"), 2);

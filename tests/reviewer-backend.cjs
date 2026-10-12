@@ -78,7 +78,7 @@ insert("Evaluations", { submission_id: "sub_old", evaluation_id: "eval_old", ema
 insert("Evaluations", { submission_id: "sub_new", evaluation_id: "eval_new", email: "one@example.com" });
 insert("Evaluations", { submission_id: "sub_late", evaluation_id: "eval_late", email: "one@example.com" });
 const before = JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]);
-const reviewer = vm.runInContext('provisionReviewer("1070055979@qq.com", "admin")', context);
+const reviewer = vm.runInContext('provisionReviewer("organizer@example.com", "admin")', context);
 const credentials = { reviewer_email: reviewer.email, reviewer_token: reviewer.token };
 vm.runInContext("requireSession_ = () => ({ email: 'one@example.com' }); checkRateLimit_ = () => {};", context);
 const submission = {
@@ -560,6 +560,15 @@ const observer = vm.runInContext('provisionReviewer("observer@example.com", "obs
 const observerCredentials = { reviewer_email: observer.email, reviewer_token: observer.token };
 assert.equal(call("reviewerIdentity_", observerCredentials).role, "observer");
 const dispatch = (action, payload) => vm.runInContext(`handleReviewerAction_(${JSON.stringify(action)}, ${JSON.stringify(payload)})`, context);
+const nonRecordingReviewer = vm.runInContext('provisionReviewer("1070055979@qq.com", "supervisor")', context);
+const nonRecordingCredentials = {reviewer_email:nonRecordingReviewer.email, reviewer_token:nonRecordingReviewer.token};
+assert.equal(dispatch("reviewer_login",nonRecordingCredentials).reviewer.non_recording,true);
+assert.equal(dispatch("reviewer_queue",nonRecordingCredentials).jobs.length,call("reviewQueue_",credentials).jobs.length);
+const beforeNonRecording = JSON.stringify([...sheets.entries()].map(([name,sheet])=>[name,sheet.cells]));
+for (const action of ["reviewer_complete_stage","reviewer_save_checks","reviewer_send_issue","reviewer_verify_coverage","reviewer_save_command","reviewer_check_result","reviewer_retry_preparation","reviewer_assign","reviewer_start_evidence_upload"]) {
+  assert.throws(()=>dispatch(action,{...nonRecordingCredentials,evaluation_id:"eval_assigned",stage:0,checks:{}}),/Non-recording account/);
+}
+assert.equal(JSON.stringify([...sheets.entries()].map(([name,sheet])=>[name,sheet.cells])),beforeNonRecording,"Non-recording requests cannot change any table or send email");
 const supervisor = vm.runInContext('provisionReviewer("supervisor@example.com", "supervisor")', context);
 const supervisorCredentials = {reviewer_email:supervisor.email, reviewer_token:supervisor.token};
 assert.equal(dispatch("reviewer_queue", supervisorCredentials).jobs.length, call("reviewQueue_", credentials).jobs.length);

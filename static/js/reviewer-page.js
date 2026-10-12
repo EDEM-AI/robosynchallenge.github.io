@@ -64,6 +64,10 @@
   const button = (action, name, symbol, extra = "") => `<button type="button" class="button button-secondary" data-review-action="${action}" ${extra}>${icon(symbol)}${name}</button>`;
   const root = () => document.querySelector("[data-reviewer-root]");
   const selected = () => state.jobs.find((job) => job.evaluation_id === state.selected);
+  const nonRecording = () => !LOCAL && state.credentials?.email === "1070055979@qq.com";
+  const localChanges = new Map();
+  let serverJobs = [];
+  const contextKey = (job) => JSON.stringify([job.bundle_commit, job.hf_check_context, job.preparation_attempt, job.workflow]);
   const canEdit = (job) => Boolean(job && (LOCAL || state.role === "supervisor" || state.role !== "observer" && job.reviewer_email === state.credentials?.email));
   const flow = (job) => job.workflow || { stages: STAGES.map(() => ({ done: false, checks: {} })), machine_id: "" };
   const doneCount = (job) => flow(job).stages.filter((stage) => stage.done).length;
@@ -86,7 +90,9 @@
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
   const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
+    if (nonRecording()) return "";
     if (LOCAL && job.local_walkthrough) return "";
+    if (flow(job).stages.slice(0, state.stage).some(stage => !stage.done)) return "Complete previous stages before recording progress";
     const checks = draft(job);
     if (state.stage === 0 && job.coverage_status === "legacy_unverified") return "Record a checkpoint URL for each of the 10 tasks";
     if (state.stage === 0 && !codeVerified(job)) return "Automatic code preparation must succeed before continuing";
@@ -103,6 +109,9 @@
   };
 
   async function request(action, fields = {}) {
+    if (nonRecording() && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
+      return simulateAction(action, fields);
+    }
     if (LOCAL) return previewAction(action, fields);
     if (!API) throw new Error("Reviewer backend is not configured.");
     const response = await fetch(API, { method: "POST", keepalive: action === "reviewer_save_checks", headers: { "Content-Type": "text/plain;charset=utf-8" },
@@ -110,6 +119,33 @@
     const data = await response.json();
     if (!response.ok || data.ok === false) throw new Error(data.error || "Reviewer request failed.");
     return data;
+  }
+  function simulateAction(action, fields) {
+    const current = state.jobs.find(job => job.evaluation_id === fields.evaluation_id);
+    if (!current) throw new Error("Select an evaluation request.");
+    let change = localChanges.get(current.evaluation_id);
+    if (!change) {
+      change = { context: contextKey(current), job: structuredClone(current) };
+      localChanges.set(current.evaluation_id, change);
+    }
+    const job = change.job;
+    if (["reviewer_save_checks", "reviewer_complete_stage"].includes(action)) {
+      job.workflow ||= { stages: STAGES.map(() => ({done:false, checks:{}})) };
+      const stage = job.workflow.stages[fields.stage];
+      stage.checks = structuredClone(fields.checks || {});
+      if (action === "reviewer_complete_stage") stage.done = true;
+    } else if (action === "reviewer_verify_coverage") {
+      job.task_checkpoint_links = structuredClone(fields.task_checkpoint_links);
+      job.coverage_status = "verified_all_10";
+    } else if (action === "reviewer_save_command") {
+      job.task_commands ||= {};
+      job.task_commands[fields.task] = fields.command;
+    } else if (action === "reviewer_check_result") {
+      const result = resultFor(job, fields.task);
+      if (result) result.status = fields.decision;
+    }
+    state.jobs = state.jobs.map(item => item.evaluation_id === job.evaluation_id ? job : item);
+    return { ok: true, local_only: true };
   }
   const hash = async (text) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
   function persistPreview() {
@@ -360,7 +396,7 @@
   function jobDetail(job) {
     if (!job) return `<div class="reviewer-empty">No requests are currently assigned to you.</div>`;
     const workflow = flow(job);
-return `<article class="reviewer-detail"><header class="reviewer-detail-head"><div><span class="reviewer-id" data-evaluation-id>${escape(job.evaluation_id)}</span><h2>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</h2><p>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)} · ${escape(job.email)}</p>${participantResponse(job)}</div><span class="reviewer-state ${doneCount(job) === 5 ? "completed" : ""}">${doneCount(job) === 5 ? "Completed" : doneCount(job) + " / 5 stages complete"}</span></header><nav class="reviewer-stage-nav" aria-label="Evaluation stages">${STAGES.map((stage, index) => `<button type="button" data-review-stage="${index}" aria-current="${state.stage === index ? "step" : "false"}" class="${state.stage === index ? "active" : ""} ${workflow.stages[index].done ? "done" : ""}" ${canEdit(job) && index > firstOpen(job) ? "disabled" : ""}><span class="reviewer-step-number">${workflow.stages[index].done ? icon("check") : index + 1}</span><span>${stage.title}</span></button>`).join("")}</nav><div class="reviewer-stage-body"><div class="reviewer-stage-title"><h3>${STAGES[state.stage].title}</h3><span>Step ${state.stage + 1} of 5</span></div><p class="reviewer-description">${STAGES[state.stage].description}</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}${state.toast ? `<p class="reviewer-toast" role="status">${escape(state.toast)}</p>` : ""}${!canEdit(job) ? notice("Read-only overview · Assigned reviewer: " + escape(job.reviewer_email || "Unassigned")) : ""}<fieldset class="reviewer-readonly" ${canEdit(job) ? "" : "disabled"}>${stageContent(job)}${checks(job)}${composer(job)}</fieldset>${job.messages?.length ? `<div class="reviewer-mail-log"><h4>Email history</h4>${job.messages.map((message) => `<p>${escape(STAGES[message.stage]?.title)} · ${escape(label(message.status))} · ${escape(message.sent_at || "")}<br>${escape(message.subject)}</p>`).join("")}</div>` : ""}</div><footer class="reviewer-footer">${button("previous", "Previous stage", "arrow-left", state.stage === 0 ? "disabled" : "")}${button("email", "Issue / Send email", "mail", canEdit(job) ? "" : "disabled")}<button type="button" class="button button-primary" data-review-action="next" ${!canEdit(job) || state.busy || (!workflow.stages[state.stage].done && nextBlocker(job)) ? "disabled" : ""} title="${escape(workflow.stages[state.stage].done ? "Stage already completed" : nextBlocker(job))}">${state.stage === 4 ? "Complete review" : "Complete / Next stage"}${icon(state.stage === 4 ? "check" : "arrow-right")}</button></footer></article>`;
+return `<article class="reviewer-detail"><header class="reviewer-detail-head"><div><span class="reviewer-id" data-evaluation-id>${escape(job.evaluation_id)}</span><h2>${escape(job.local_walkthrough ? "Workflow demo" : job.team_name)}</h2><p>${escape(job.local_walkthrough ? "Five-stage walkthrough" : job.artifact_name)} · ${escape(job.email)}</p>${participantResponse(job)}</div><span class="reviewer-state ${doneCount(job) === 5 ? "completed" : ""}">${doneCount(job) === 5 ? "Completed" : doneCount(job) + " / 5 stages complete"}</span></header><nav class="reviewer-stage-nav" aria-label="Evaluation stages">${STAGES.map((stage, index) => `<button type="button" data-review-stage="${index}" aria-current="${state.stage === index ? "step" : "false"}" class="${state.stage === index ? "active" : ""} ${workflow.stages[index].done ? "done" : ""}"><span class="reviewer-step-number">${workflow.stages[index].done ? icon("check") : index + 1}</span><span>${stage.title}</span></button>`).join("")}</nav><div class="reviewer-stage-body"><div class="reviewer-stage-title"><h3>${STAGES[state.stage].title}</h3><span>Step ${state.stage + 1} of 5</span></div><p class="reviewer-description">${STAGES[state.stage].description}</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}${state.toast ? `<p class="reviewer-toast" role="status">${escape(state.toast)}</p>` : ""}${!canEdit(job) ? notice("Read-only overview · Assigned reviewer: " + escape(job.reviewer_email || "Unassigned")) : ""}<fieldset class="reviewer-readonly" ${canEdit(job) ? "" : "disabled"}>${stageContent(job)}${checks(job)}${composer(job)}</fieldset>${job.messages?.length ? `<div class="reviewer-mail-log"><h4>Email history</h4>${job.messages.map((message) => `<p>${escape(STAGES[message.stage]?.title)} · ${escape(label(message.status))} · ${escape(message.sent_at || "")}<br>${escape(message.subject)}</p>`).join("")}</div>` : ""}</div><footer class="reviewer-footer">${button("previous", "Previous stage", "arrow-left", state.stage === 0 ? "disabled" : "")}${button("email", "Issue / Send email", "mail", canEdit(job) ? "" : "disabled")}<button type="button" class="button button-primary" data-review-action="next" ${!canEdit(job) || state.busy || (!workflow.stages[state.stage].done && nextBlocker(job)) ? "disabled" : ""} title="${escape(workflow.stages[state.stage].done ? "Stage already completed" : nextBlocker(job))}">${state.stage === 4 ? "Complete review" : "Complete / Next stage"}${icon(state.stage === 4 ? "check" : "arrow-right")}</button></footer></article>`;
   }
   function paint() {
     const content = root()?.querySelector("[data-reviewer-content]");
@@ -372,7 +408,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const samePane = previousBody?.dataset.paneKey === paneKey;
     if (!state.credentials) content.innerHTML = `${heading(false)}<div class="reviewer-login-layout"><form data-review-form="login" class="reviewer-form reviewer-login"><h2>Reviewer sign in</h2><p>Preliminary simulation evaluation</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}<label>Email<input type="email" name="email" autocomplete="username" value="${LOCAL ? "1070055979@qq.com" : ""}" required></label><label>Evaluation token<input type="password" name="token" autocomplete="current-password" placeholder="Your assigned evaluation token" required></label><button class="button button-primary" ${state.busy ? "disabled" : ""}>${icon("log-in")}Sign in</button></form></div><div class="reviewer-login-meta"><a href="../#/leaderboard">Public leaderboard</a></div>`;
     else {
-      const realJobs = state.jobs.filter((job) => !job.local_walkthrough);
+      const realJobs = (nonRecording() ? serverJobs : state.jobs).filter((job) => !job.local_walkthrough);
       const complete = realJobs.filter((job) => doneCount(job) === 5).length;
       const units = realJobs.reduce((sum, job) => sum + doneCount(job), 0);
       content.innerHTML = `${heading(true)}<div class="reviewer-progress"><strong>${["admin", "observer", "supervisor"].includes(state.role) ? "Global evaluation progress" : "My evaluation progress"}</strong><progress max="${Math.max(1, realJobs.length * 5)}" value="${units}" aria-label="Overall evaluation progress"></progress><span>${complete} / ${realJobs.length} requests completed · ${units} / ${realJobs.length * 5} stages</span></div><nav class="reviewer-overview-tools" aria-label="Evaluation overview">${button("downloads", "Download checkpoints", "download")}${button("email-status", "Email status", "mail")}</nav>${state.view !== "workspace" ? overviewPage() : `<div class="reviewer-layout"><aside class="reviewer-sidebar"><div class="reviewer-sidebar-head"><h2>${["admin", "observer", "supervisor"].includes(state.role) ? "All requests" : "Assigned requests"}</h2><span>${realJobs.length}${LOCAL ? " + demo" : ""}</span></div><input class="reviewer-search" type="search" placeholder="Search team or request" aria-label="Search requests" value="${escape(state.search)}"><div class="reviewer-queue">${queueHtml()}</div></aside>${jobDetail(selected())}</div>`}`;
@@ -424,7 +460,9 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     if (state.credentials !== credentials) return;
     state.role = response.reviewer?.role || "";
     state.jobs = response.jobs || [];
+    serverJobs = structuredClone(state.jobs);
     for (const job of state.jobs) {
+      if (nonRecording() && localChanges.get(job.evaluation_id)?.context === contextKey(job)) continue;
       const old = previous.get(job.evaluation_id);
       if (old && (old.preparation_attempt !== job.preparation_attempt || old.bundle_commit !== job.bundle_commit || old.hf_check_context !== job.hf_check_context ||
           old.workflow?.stages.some((stage, index) => stage.done && !job.workflow?.stages[index]?.done))) {
@@ -433,6 +471,14 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       }
     }
     if (includeMail) state.mailStatus = response.messages || [];
+    if (nonRecording()) {
+      state.jobs = state.jobs.map(job => {
+        const change = localChanges.get(job.evaluation_id);
+        if (change?.context === contextKey(job)) return change.job;
+        localChanges.delete(job.evaluation_id);
+        return job;
+      });
+    }
     if (!selected()) { state.selected = state.jobs[0]?.evaluation_id || ""; state.stage = selected() ? firstOpen(selected()) : 0; }
   }
   async function perform(action) {
@@ -453,7 +499,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   function saveStage() {
     const job = selected();
-    if (!canEdit(job) || flow(job).stages[state.stage].done || state.stage > firstOpen(job)) return Promise.resolve();
+    if (!canEdit(job) || flow(job).stages[state.stage].done || (!nonRecording() && state.stage > firstOpen(job))) return Promise.resolve();
     const stage = state.stage, credentials = state.credentials;
     const values = { ...draft(job) };
     const checks = Object.fromEntries(Object.keys(STAGES[stage].checks).map(key => [key, values[key] === true]));
@@ -520,7 +566,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         if (action === "email-status") loadMailStatus();
         return;
       }
-      if (action === "logout") { sessionStorage.removeItem(STORAGE); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
+      if (action === "logout") { sessionStorage.removeItem(STORAGE); localChanges.clear(); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
       if (action === "refresh") perform(async () => { await saveStage(); if (LOCAL) state.preview = null; });
       if (action === "copy") {
         const text = event.target.closest(".reviewer-command")?.querySelector("code")?.textContent || "";
@@ -528,13 +574,13 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       }
       if (action === "previous" && state.stage > 0) browse(() => { state.stage -= 1; state.emailDraft = null; state.toast = ""; });
       if (action === "email") openEmail();
-      if (action === "retry-code") perform(async () => { await request("reviewer_retry_preparation", { evaluation_id: selected().evaluation_id }); state.toast = "Preparation retry queued. Refresh after the organizer's script runs."; });
+      if (action === "retry-code") perform(async () => { await request("reviewer_retry_preparation", { evaluation_id: selected().evaluation_id }); state.toast = nonRecording() ? "Local simulation only. No preparation was queued." : "Preparation retry queued. Refresh after the organizer's script runs."; });
       if (action === "close-email") { state.emailDraft = null; paint(); }
       if (action === "next") perform(async () => {
         const job = selected();
         const values = draft(job);
         if (!flow(job).stages[state.stage].done) await request("reviewer_complete_stage", { evaluation_id: job.evaluation_id, stage: state.stage, checks: values, machine_id: values.machine_id || "" });
-        if (state.stage < 4) { state.stage += 1; state.toast = ""; } else state.toast = "Review completed. Results remain private until organizer publication.";
+        if (state.stage < 4) { state.stage += 1; state.toast = ""; } else state.toast = nonRecording() ? "Local simulation only. No evaluation progress was recorded." : "Review completed. Results remain private until organizer publication.";
         state.emailDraft = null;
       });
     });
@@ -596,14 +642,14 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         const commands = Object.fromEntries(TASKS.map((task) => [task, String(data.get("command_" + task) || "").trim()]));
         if (Object.values(commands).some((value) => !value)) throw new Error("The actual command is required for every task.");
         for (const task of TASKS) if (!resultFor(job, task)) await request("reviewer_save_command", { evaluation_id: job.evaluation_id, task, command: commands[task] });
-        state.toast = "Actual evaluation commands saved.";
+        state.toast = nonRecording() ? "Local only. Commands were not saved to the backend." : "Actual evaluation commands saved.";
       });
       if (type === "verify") perform(() => request("reviewer_verify_coverage", { evaluation_id: job.evaluation_id, coverage_confirmed: data.has("coverage_confirmed"), task_checkpoint_links: Object.fromEntries(TASKS.map((task) => [task, window.normalizeHfLocation(data.get(task))])) }));
       if (type === "accept") perform(() => request("reviewer_check_result", { evaluation_id: job.evaluation_id, task: state.task, decision: "checked", note: "", checks: { video: data.has("video"), trajectory: data.has("trajectory"), checksum: data.has("checksum") } }));
       if (type === "email") perform(async () => {
         const email = state.emailDraft;
         await request("reviewer_send_issue", { evaluation_id: job.evaluation_id, message_id: email.message_id, stage: email.stage, subject: String(data.get("subject") || "").trim(), body: String(data.get("body") || "").trim() });
-        state.emailDraft = null; state.toast = LOCAL ? "Demo email recorded. No email was sent." : "Email sent and recorded.";
+        state.emailDraft = null; state.toast = nonRecording() ? "Local simulation only. No email was sent or saved." : LOCAL ? "Demo email recorded. No email was sent." : "Email sent and recorded.";
       });
     });
     paint();

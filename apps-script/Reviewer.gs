@@ -171,7 +171,7 @@ function reviewerIdentity_(payload, workbook) {
   for (let index = 0; index < actual.length; index += 1) mismatch |= actual.charCodeAt(index) ^ (expected.charCodeAt(index) || 0);
   if (mismatch || !isTruthy_(row?.active)) throw new Error("Invalid reviewer credentials.");
   if (!["admin", "evaluator", "observer", "supervisor"].includes(row.role)) throw new Error("Invalid reviewer role.");
-  return { email, role: row.role };
+  return { email, role: row.role, non_recording: email === "1070055979@qq.com" };
 }
 
 function reviewProvisionAccount_(payload) {
@@ -854,6 +854,12 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  if (normalizeEmail_(payload.reviewer_email) === "1070055979@qq.com") {
+    reviewerIdentity_(payload);
+    if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
+      throw new Error("Non-recording account: actions are browser-local only; no evaluation or email was changed.");
+    }
+  }
   const cloneActions = ["reviewer_checkpoint_credential", "reviewer_save_command", "reviewer_submit_result",
     "reviewer_upload_health", "reviewer_evidence_status", "reviewer_start_evidence_upload",
     "reviewer_verify_evidence_upload", "reviewer_finish_evidence_upload"];
