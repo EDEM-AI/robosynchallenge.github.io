@@ -823,11 +823,12 @@ function reviewDeliverEmail_(message) {
   }
   const boundary = "rsc_" + Utilities.getUuid().replace(/-/g, "");
   const encode = value => Utilities.base64Encode(String(value), Utilities.Charset.UTF_8);
+  const encodeBody = value => encode(value).replace(/(.{76})/g, "$1\r\n");
   const mime = ["To: " + requiredEmail_(message.to), "Reply-To: " + requiredEmail_(message.replyTo),
     "Subject: =?UTF-8?B?" + encode(message.subject) + "?=", "MIME-Version: 1.0",
     'Content-Type: multipart/alternative; boundary="' + boundary + '"', "",
-    "--" + boundary, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encode(message.body),
-    "--" + boundary, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encode(message.htmlBody),
+    "--" + boundary, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encodeBody(message.body),
+    "--" + boundary, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encodeBody(message.htmlBody),
     "--" + boundary + "--", ""].join("\r\n");
   const response = UrlFetchApp.fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method:"post", contentType:"application/json", muteHttpExceptions:true,
@@ -835,7 +836,8 @@ function reviewDeliverEmail_(message) {
     payload:JSON.stringify({raw:Utilities.base64EncodeWebSafe(mime, Utilities.Charset.UTF_8)})});
   const status = response.getResponseCode();
   if (status < 200 || status >= 300) {
-    const error = new Error("Gmail API rejected delivery (HTTP " + status + ").");
+    const reason = parseJson_(response.getContentText(), {})?.error?.status || "";
+    const error = new Error("Gmail API rejected delivery (HTTP " + status + (reason ? "; " + reason : "") + ").");
     error.delivery_not_sent = status >= 400 && status < 500;
     throw error;
   }
