@@ -482,11 +482,11 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     }
     if (!selected()) { state.selected = state.jobs[0]?.evaluation_id || ""; state.stage = selected() ? firstOpen(selected()) : 0; }
   }
-  async function perform(action) {
+  async function perform(action, forceRefresh = false) {
     if (state.busy) return;
     state.busy = true;
     root()?.querySelectorAll("button:not([data-review-job])").forEach((element) => { element.disabled = true; });
-    try { state.error = ""; await saveChain; await action(); await refresh(); }
+    try { state.error = ""; await saveChain; await action(); if (!nonRecording() || forceRefresh) await refresh(); }
     catch (error) { if (!sessionStorage.getItem(STORAGE)) state.credentials = null; state.error = error.message || String(error); }
     finally {
       if (state.pendingSelection && state.jobs.some(job => job.evaluation_id === state.pendingSelection)) {
@@ -568,7 +568,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         return;
       }
       if (action === "logout") { sessionStorage.removeItem(STORAGE); localChanges.clear(); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
-      if (action === "refresh") perform(async () => { await saveStage(); if (LOCAL) state.preview = null; });
+      if (action === "refresh") perform(async () => { await saveStage(); if (LOCAL) state.preview = null; }, true);
       if (action === "copy") {
         const text = event.target.closest(".reviewer-command")?.querySelector("code")?.textContent || "";
         navigator.clipboard.writeText(text).then(() => { state.toast = "Command copied."; paint(); }).catch(() => { state.error = "Clipboard access unavailable. Select and copy the command."; paint(); });
@@ -627,7 +627,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       });
       if (type === "login") {
         state.credentials = { email: String(data.get("email") || "").trim().toLowerCase(), token: String(data.get("token") || "") };
-        perform(async () => { await request("reviewer_login"); sessionStorage.setItem(STORAGE, JSON.stringify(state.credentials)); });
+        perform(async () => { await request("reviewer_login"); sessionStorage.setItem(STORAGE, JSON.stringify(state.credentials)); }, true);
         return;
       }
       const job = selected();
