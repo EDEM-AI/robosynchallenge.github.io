@@ -95,6 +95,10 @@ body { background: #fff; font-size: 16px; }
 .reviewer-form input, .reviewer-form textarea, .reviewer-form select { width: 100%; padding: 11px 12px; border: 1px solid #ccd5dc; background: white; border-radius: 6px; font-size: 15px; font-weight: 400; }
 .reviewer-form textarea { resize: vertical; line-height: 1.55; min-height: 100px; }
 .reviewer-form button { justify-self: start; }
+.reviewer-task-command-form textarea { font-family: ui-monospace, monospace; }
+.reviewer-task-command-form > small { color: var(--ink-soft); font-size: 14px; line-height: 1.6; }
+.reviewer-task-command-actions { display: flex; align-items: center; gap: 18px; }
+.reviewer-task-command-actions span { color: var(--ink-soft); font-size: 14px; }
 .reviewer-verify-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 18px; }
 .reviewer-verify-grid small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
 .reviewer-form .reviewer-confirm, .reviewer-check { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.5; font-weight: 400; }

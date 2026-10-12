@@ -201,8 +201,12 @@ async function main() {
     await screenshot("environment-desktop");
     await finishStage(2);
     assert.equal(await evaluate("document.querySelectorAll('input[type=file]').length"), 0, "ZIP and JSON uploads must be CLI-only");
-    assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 5);
+    assert.equal(await evaluate("document.querySelectorAll('.reviewer-instruction').length"), 4);
     assert.equal(await evaluate("document.querySelectorAll('[data-review-form=commands]').length"),1);
+    assert.equal(await evaluate("document.querySelectorAll('[data-review-form=commands] textarea').length"),1);
+    assert.equal(await evaluate("document.querySelector('[data-review-form=commands]').closest('.reviewer-instruction').querySelector('h4').textContent.startsWith('2Run')"),true);
+    assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"", "The recommended command must not prefill the required actual command");
+    assert.equal(await evaluate("document.querySelector('[data-review-form=commands]').previousElementSibling.classList.contains('reviewer-command')"),true);
     assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].some(el=>el.textContent.includes('run_evaluation.py') && el.textContent.includes('-- bash policy/path/to/xxx/eval.sh') && !el.textContent.includes('--seeds') && !el.textContent.includes('RSC_SEED_PACKET'))"),true);
     assert.equal(await evaluate("document.querySelector('[data-policy-picker]') === null"), true);
     assert.equal(await evaluate("document.body.textContent.includes('RSC_UPLOAD_OK') && document.body.textContent.includes('exit code')"), true);
@@ -211,8 +215,17 @@ async function main() {
     assert.equal(await evaluate("window.copiedCommand.includes('run_evaluation.py')"),false);
     await screenshot("upload-desktop");
     assert.equal(await evaluate("document.querySelector('[data-review-form=commands]').closest('details')===null"),true,"Required command entry must be visible, not collapsed");
-    await evaluate("document.querySelectorAll('[data-review-form=commands] textarea').forEach(input => input.value='python run.py --task '+input.name.replace('command_', '')); document.querySelector('[data-review-form=commands]').requestSubmit()");
-    await until("document.querySelector('.reviewer-toast')?.textContent.includes('commands saved')");
+    await evaluate("(() => { document.querySelector('[data-task-command]').value='Unsaved bell command'; document.querySelector('[data-task-command]').dispatchEvent(new Event('input',{bubbles:true})); const picker=document.querySelector('[data-task-picker]'); picker.value='drawer_open_place'; picker.dispatchEvent(new Event('change',{bubbles:true})); })()");
+    assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"", "Task drafts cannot leak to another task");
+    await evaluate("(() => { const picker=document.querySelector('[data-task-picker]'); picker.value='click_bell'; picker.dispatchEvent(new Event('change',{bubbles:true})); })()");
+    assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"Unsaved bell command", "Switching tasks preserves unsaved command drafts");
+    for (const task of taskNames) {
+      await evaluate(`(() => { const picker=document.querySelector('[data-task-picker]'); picker.value=${JSON.stringify(task)}; picker.dispatchEvent(new Event('change',{bubbles:true})); const input=document.querySelector('[data-task-command]'); input.value='python run.py --task '+${JSON.stringify(task)}; input.dispatchEvent(new Event('input',{bubbles:true})); document.querySelector('[data-review-form=commands]').requestSubmit(); })()`);
+      await until("document.querySelector('.reviewer-toast')?.textContent.includes('command saved') && !document.querySelector('[data-review-form=commands] button').disabled");
+      assert.equal(await evaluate("document.querySelector('[data-task-command]').value"),"python run.py --task "+task);
+    }
+    assert.equal(await evaluate("document.querySelector('.reviewer-task-command-actions').textContent.includes('10 / 10')"),true);
+    await screenshot("task-command-desktop");
     const seeds = Array.from({ length: 100 }, (_, index) => index);
     for (const task of taskNames) {
       const manifest = { schema: 1, evaluation_id: evaluationId, submission_id: submissionId,
