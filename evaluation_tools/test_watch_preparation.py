@@ -1,5 +1,5 @@
 import unittest
-from watch_preparation import transient, source_urls, audit_deadlines
+from watch_preparation import transient, source_urls, audit_deadlines, maintain
 
 
 class MaintenanceTests(unittest.TestCase):
@@ -42,6 +42,8 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(state(), 'awaiting_final_preparation')
         job['hf_check_status'] = 'failed'
         self.assertEqual(state(), 'blocked')
+        job['hf_check_error'] = 'HF check: ConnectionError'
+        self.assertEqual(state(), 'organizer_retry')
 
     def test_legacy_mapping_never_counts_as_fully_frozen(self):
         job = {'evaluation_id':'eval_legacy', 'version_cutoff_at':'2026-10-12T12:00:00Z',
@@ -50,6 +52,30 @@ class MaintenanceTests(unittest.TestCase):
         from datetime import datetime
         stamp = datetime.fromisoformat('2026-10-12T12:00:00+00:00').timestamp()
         self.assertEqual(audit_deadlines([job], stamp)['requests'][0]['state'], 'code_frozen_awaiting_task_mapping')
+
+    def test_network_retry_keeps_the_prepared_bundle(self):
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            token = Path(directory) / 'organizer.token'
+            token.write_text('synthetic-secret')
+            job = {'evaluation_id':'eval_test', 'bundle_commit':'a'*40, 'coverage_status':'declared_all_10',
+                'hf_check_status':'failed', 'hf_check_error':'HF check: ConnectionError',
+                'version_cutoff_at':'2026-10-12T12:00:00Z', 'hf_check_context':'current-context',
+                'task_checkpoint_links':{str(index):'https://huggingface.co/team/model' for index in range(10)}}
+            backend = Mock(return_value={'jobs':[job]})
+            modules = {'process_queue':SimpleNamespace(api=backend), 'version_selection':SimpleNamespace(cutoff_seconds=lambda value:0)}
+            state = {}
+            with patch.dict('sys.modules', modules), patch('watch_preparation.time.time', return_value=100):
+                maintain({'organizer_token_file':str(token), 'api_url':'https://example.test', 'organizer_email':'owner@example.test'}, state)
+                self.assertEqual(backend.call_args.args[3], 'reviewer_checkpoint_check')
+                self.assertEqual(backend.call_args.kwargs['status'], 'checking')
+                self.assertNotIn('reviewer_retry_preparation', [call.args[3] for call in backend.call_args_list])
+                backend.reset_mock()
+                maintain({'organizer_token_file':str(token), 'api_url':'https://example.test', 'organizer_email':'owner@example.test'}, state)
+                self.assertEqual(backend.call_count, 1, 'Backoff prevents repeated retry mutations')
 
 
 if __name__ == '__main__':

@@ -63,6 +63,8 @@ def audit_deadlines(jobs, timestamp=None):
         errors = [job.get('preparation_error'), job.get('hf_check_error')]
         if current < limit:
             state = 'awaiting_cutoff'
+        elif any(transient(error) for error in errors if error):
+            state = 'organizer_retry'
         elif job.get('preparation_status') == 'failed' or job.get('hf_check_status') == 'failed':
             state = 'blocked'
         elif job.get('bundle_commit') and job.get('version_status') == 'final' and code_valid and hf_valid:
@@ -122,8 +124,15 @@ def maintain(settings, state):
         message = next((text for text in messages if transient(text)), '')
         key = json.dumps([job['evaluation_id'],job.get('hf_check_context'),message])
         previous = retries.get(key, {})
-        if message and not job.get('bundle_commit') and time.time() >= previous.get('next_at', 0):
-            api(settings['api_url'], settings['organizer_email'], token, 'reviewer_retry_preparation', evaluation_id=job['evaluation_id'])
+        if message and time.time() >= previous.get('next_at', 0):
+            if job.get('bundle_commit'):
+                if job.get('hf_check_status') != 'failed' or not transient(job.get('hf_check_error', '')):
+                    continue
+                api(settings['api_url'], settings['organizer_email'], token, 'reviewer_checkpoint_check',
+                    evaluation_id=job['evaluation_id'], status='checking', task_checkpoint_links=job['task_checkpoint_links'],
+                    cutoff_at=job['version_cutoff_at'], context_json=job['hf_check_context'])
+            else:
+                api(settings['api_url'], settings['organizer_email'], token, 'reviewer_retry_preparation', evaluation_id=job['evaluation_id'])
             count = previous.get('attempts', 0) + 1
             retries[key] = {'attempts':count, 'next_at':time.time() + min(3600, 60 * 2 ** min(count, 6))}
             events.append({'evaluation_id':job['evaluation_id'], 'state':'organizer_failure_retry_queued'})
