@@ -46,6 +46,7 @@ def main():
     parser.add_argument('--private-root', type=Path, required=True)
     parser.add_argument('--deadline', required=True, help='Explicit UTC ISO timestamp, ending in Z')
     parser.add_argument('--batch', type=Path, required=True, help='Private persistent delivery receipt; reuse it for retries')
+    parser.add_argument('--retry-unrecorded', action='store_true', help='Retry failed calls only when their message ID has no backend delivery record')
     args = parser.parse_args()
     deadline = datetime.fromisoformat(args.deadline.replace('Z', '+00:00'))
     if not args.deadline.endswith('Z') or deadline <= datetime.now(timezone.utc):
@@ -70,6 +71,17 @@ def main():
         batch = {'deadline':args.deadline, 'created_at':datetime.now(timezone.utc).isoformat(),
             'targets':[{ 'participant_email':job['email'], 'team_name':job['team_name'], 'status':'pending'} for job in jobs if problems(job)]}
         save()
+    if args.retry_unrecorded:
+        messages = {row['message_id']:row for row in request('reviewer_mail_status')['messages']}
+        for target in batch['targets']:
+            if target['status'] != 'needs_delivery_verification':
+                continue
+            saved = messages.get(target.get('message_id'))
+            if not saved:
+                target['status'] = 'pending'
+            elif saved.get('status') == 'sent':
+                target['status'] = 'sent'
+        save()
     for target in batch['targets']:
         if target['status'] != 'pending':
             continue
@@ -91,7 +103,7 @@ def main():
                 stage=0,subject=subject,body=body,response_deadline_at=args.deadline)
             target.update(status=result['status'], response_deadline_at=result.get('response_deadline_at',''), duplicate=bool(result.get('duplicate')))
         except Exception as error:
-            target.update(status='needs_delivery_verification',error_type=type(error).__name__)
+            target.update(status='needs_delivery_verification',error_type=type(error).__name__,error_message=str(error).replace(token,'[redacted]')[:300])
         save()
         print(json.dumps({'team':target['team_name'],'evaluation_id':target['evaluation_id'],'status':target['status']}),flush=True)
     print(json.dumps({'targets':len(batch['targets']), 'sent':sum(t['status']=='sent' for t in batch['targets']),

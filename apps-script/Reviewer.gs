@@ -818,7 +818,7 @@ function reviewSavePreflight_(payload) {
 
 function reviewSendIssue_(payload) {
   return withReviewLock_(() => {
-    const { viewer, job, run } = reviewOwnedRun_(payload);
+    const { viewer, job, run } = reviewOwnedRun_(payload, true);
     const stage = reviewStageInput_(payload);
     const messageId = String(payload.message_id || "");
     if (!/^msg_[a-f0-9]{32}$/.test(messageId)) throw new Error("Invalid message ID.");

@@ -500,6 +500,10 @@ insert("Submissions", { submission_id: "sub_assigned", evaluation_id: "eval_assi
   checkpoint_link: "https://huggingface.co/test/legacy", is_ranked: "true", created_at: "2026-10-10T00:00:00Z" });
 insert("Evaluations", { submission_id: "sub_assigned", evaluation_id: "eval_assigned", email: "assigned-legacy@example.com" });
 call("reviewAssign_", { ...credentials, evaluation_id: "eval_assigned", assign_to: evaluator.email });
+const assignedOwnerBeforeMail = call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_assigned").reviewer_email;
+call("reviewSendIssue_",{...issue,evaluation_id:"eval_assigned",message_id:"msg_"+"7".repeat(32),response_deadline_at:explicitDeadline});
+assert.equal(sent.at(-1).to,"assigned-legacy@example.com","Organizer reminders use the registered participant, not the evaluator");
+assert.equal(call("reviewQueue_",credentials).jobs.find(job=>job.evaluation_id==="eval_assigned").reviewer_email,assignedOwnerBeforeMail,"Organizer mail does not reassign the request");
 const assignedSnapshot = JSON.stringify([sheet("Users").cells, sheet("Submissions").cells, sheet("Evaluations").cells]);
 call("reviewVerifyCoverage_", { reviewer_email: evaluator.email, reviewer_token: evaluator.token,
   evaluation_id: "eval_assigned", coverage_confirmed: true, task_checkpoint_links: taskLinks });
