@@ -38,6 +38,8 @@ def main():
         return result
     if options.restore:
         ledger = json.loads(path.read_text())
+        if ledger["status"] == "formalized":
+            raise ValueError("Formal evaluator assignments cannot be restored as a temporary test")
         result = api("reviewer_restore_test_assignment", test_id=ledger["test_id"])
         ledger["status"] = "restored"
         save_receipt(path, ledger)
@@ -45,7 +47,7 @@ def main():
         return
     if path.exists():
         ledger = json.loads(path.read_text())
-        if ledger["email"] != options.email or ledger["previous_email"] != options.previous_email or ledger["status"] == "restored":
+        if ledger["email"] != options.email or ledger["previous_email"] != options.previous_email or ledger["status"] in ("restored", "formalized"):
             raise ValueError("Existing test identity differs or has already been restored")
     else:
         queue = api("reviewer_preparation_queue")

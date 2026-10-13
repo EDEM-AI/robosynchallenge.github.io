@@ -959,6 +959,7 @@ function handleReviewerAction_(action, payload) {
   }
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
   if (action === "reviewer_start_test_assignment") return reviewStartTestAssignment_(payload);
+  if (action === "reviewer_promote_test_assignment") return reviewPromoteTestAssignment_(payload);
   if (action === "reviewer_restore_test_assignment") return reviewRestoreTestAssignment_(payload);
   if (action === "reviewer_send_registration_notice") return reviewSendRegistrationNotice_(payload);
   if (action === "reviewer_send_deadline_notice") return reviewSendDeadlineNotice_(payload);

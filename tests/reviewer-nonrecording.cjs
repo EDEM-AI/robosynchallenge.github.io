@@ -14,6 +14,7 @@ const serverJob = {
 const original = JSON.stringify(serverJob);
 function fixture(email) {
   const calls = [], storage = new Map();
+  let role = email==="1070055979@qq.com"?"supervisor":email==="tester@example.com"?"tester":"evaluator";
   const context = vm.createContext({
     URL, URLSearchParams, structuredClone, console,
     location: {hostname:"127.0.0.1", search:"", hash:""},
@@ -23,17 +24,17 @@ function fixture(email) {
     fetch: async (_, options) => {
       const payload = JSON.parse(options.body);
       calls.push(payload);
-      return {ok:true, json:async()=>({ok:true, reviewer:{role:email==="1070055979@qq.com"?"supervisor":email==="tester@example.com"?"tester":"evaluator"}, jobs:[structuredClone(serverJob)]})};
+      return {ok:true, json:async()=>({ok:true, reviewer:{role}, jobs:[structuredClone(serverJob)]})};
     },
   });
   let source = fs.readFileSync(path.join(__dirname,"../static/js/reviewer-page.js"),"utf8");
   source = source.replace("window.RSCReviewer = { render, mount };",
-    "window.test = {state, request, refresh, nextBlocker, localChanges, serverJobs:()=>serverJobs}; window.RSCReviewer = { render, mount };");
+    "window.test = {state, request, refresh, nextBlocker, localChanges, commandDrafts, serverJobs:()=>serverJobs}; window.RSCReviewer = { render, mount };");
   vm.runInContext(source,context);
   const test = context.window.test;
   test.state.credentials = {email,token:"act_fixture"};
   test.state.selected = serverJob.evaluation_id;
-  return {test,calls,storage};
+  return {test,calls,storage,setRole:value=>{role=value;}};
 }
 
 async function main() {
@@ -79,6 +80,16 @@ async function main() {
   await tester.test.request("reviewer_send_issue",{evaluation_id:serverJob.evaluation_id,body:"Must never send"});
   assert(tester.calls.every(call=>call.action==="reviewer_queue"));
   assert.equal(tester.storage.size,0);
+  tester.test.state.drafts.set("fixture",{test:true});
+  tester.test.commandDrafts.set("fixture","local-only command draft");
+  tester.setRole("evaluator");
+  await tester.test.refresh();
+  assert.equal(tester.test.localChanges.size,0);
+  assert.equal(tester.test.state.drafts.size,0);
+  assert.equal(tester.test.commandDrafts.size,0);
+  assert.equal(tester.test.state.jobs[0].task_commands.click_bell,undefined);
+  await tester.test.request("reviewer_save_command",{evaluation_id:serverJob.evaluation_id,task:"click_bell",command:"formal command"});
+  assert.equal(tester.calls.at(-1).action,"reviewer_save_command");
   console.log("Non-recording accounts: organizer walkthrough, tester real gates, browser-only forms/mail and real evaluator recording passed.");
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

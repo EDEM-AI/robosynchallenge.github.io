@@ -49,6 +49,7 @@ function reviewRestoreTestAssignment_(payload) {
     const properties = PropertiesService.getScriptProperties(), key = "REVIEW_TEST_" + id;
     const receipt = parseJson_(properties.getProperty(key), null);
     if (!receipt) throw new Error("Unknown test assignment.");
+    if (receipt.status === "formalized") throw new Error("This reviewer is now a formal evaluator; temporary restoration is disabled.");
     if (receipt.status === "restored") return {ok:true, duplicate:true, ...receipt};
     receipt.evaluation_ids.forEach(value => {
       const run = reviewRun_(value);
@@ -70,5 +71,35 @@ function reviewRestoreTestAssignment_(payload) {
     receipt.status = "restored"; receipt.restored_at = now_();
     properties.setProperty(key, JSON.stringify(receipt));
     return {ok:true, ...receipt};
+  });
+}
+
+function reviewPromoteTestAssignment_(payload) {
+  return withReviewLock_(() => {
+    const viewer = reviewerIdentity_(payload);
+    if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    const id = String(payload.test_id || "");
+    if (!/^test_[a-f0-9]{32}$/.test(id)) throw new Error("Invalid test ID.");
+    const properties = PropertiesService.getScriptProperties(), key = "REVIEW_TEST_" + id;
+    const receipt = parseJson_(properties.getProperty(key), null);
+    if (!receipt || !["active", "formalized"].includes(receipt.status)) throw new Error("Promote an active test assignment.");
+    const account = reviewRows_("Reviewers").find(row => normalizeEmail_(row.email) === receipt.email);
+    if (!account || !isTruthy_(account.active) || !["tester", "evaluator"].includes(account.role)) throw new Error("Test account identity changed.");
+    receipt.evaluation_ids.forEach(value => {
+      if (normalizeEmail_(reviewRun_(value)?.reviewer_email) !== receipt.email) throw new Error("A test request changed owner; reconcile before promotion.");
+    });
+    const pins = parseJson_(properties.getProperty("REVIEW_FORMAL_ASSIGNMENT_PINS"), {});
+    receipt.evaluation_ids.forEach(value => {
+      if (pins[value] && pins[value] !== receipt.email) throw new Error("Pinned assignment conflicts with another evaluator.");
+      pins[value] = receipt.email;
+    });
+    // Pin ownership before pool admission; keep the existing credential and progress.
+    properties.setProperty("REVIEW_FORMAL_ASSIGNMENT_PINS", JSON.stringify(pins));
+    reviewWrite_("Reviewers", account._rowNumber, {email:receipt.email, role:"evaluator", active:"true"});
+    const duplicate = receipt.status === "formalized";
+    receipt.status = "formalized"; receipt.promoted_at = receipt.promoted_at || now_();
+    properties.setProperty(key, JSON.stringify(receipt));
+    return {ok:true, status:"formalized", duplicate, email:receipt.email, role:"evaluator", token_retained:true,
+      evaluation_ids:receipt.evaluation_ids};
   });
 }

@@ -470,11 +470,15 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   async function refresh() {
     const credentials = state.credentials;
+    const wasNonRecording = nonRecording();
     const previous = new Map(state.jobs.map(job => [job.evaluation_id, job]));
     const includeMail = state.view === "email-status";
     const response = await request("reviewer_queue", { include_mail_status: includeMail });
     if (state.credentials !== credentials) return;
     state.role = response.reviewer?.role || "";
+    if (wasNonRecording && !nonRecording()) {
+      localChanges.clear(); state.drafts.clear(); commandDrafts.clear(); state.emailDraft = null;
+    }
     state.jobs = response.jobs || [];
     serverJobs = structuredClone(state.jobs);
     for (const job of state.jobs) {

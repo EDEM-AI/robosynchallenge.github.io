@@ -33,3 +33,17 @@ test. It deactivates a tester with no remaining assignments. A changed submissio
 or a conflicting new owner requires organizer reconciliation rather than silently
 restoring an old snapshot. Repeated assignment and restoration calls with the same
 test ID are idempotent.
+
+## Promotion To Formal Evaluation
+
+```sh
+python tools/reviewer_pool.py --settings /path/to/prepare-settings.json \
+  promote-test --email tester@example.com
+```
+
+Promotion retains the existing token and five request owners, admits the account
+to the evaluator pool, sends a formal invitation and balances additional work.
+The original five requests are pinned against automatic redistribution. Existing
+server progress is preserved; browser-local test drafts are discarded on refresh.
+Temporary restoration is disabled after promotion. Formal edits and uploads then
+use the normal evaluator workflow. Manual organizer reassignment remains possible.

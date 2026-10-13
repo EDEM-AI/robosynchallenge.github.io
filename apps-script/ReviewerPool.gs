@@ -11,13 +11,15 @@ function reviewPoolSnapshot_(payload) {
   const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "Reviewers", "ReviewRuns",
     "ReviewProgress", "ReviewTaskResults", "ReviewTaskCommands", "ReviewArchiveUploads", "ReviewSubmissionWindows"]).rows;
   const runs = new Map(snapshot.ReviewRuns.map(row => [String(row.evaluation_id), row]));
+  const pins = parseJson_(config_("REVIEW_FORMAL_ASSIGNMENT_PINS", ""), {});
   const jobs = latestReviewSubmissions_(workbook, snapshot.ReviewSubmissionWindows, snapshot).map(job => {
     const id = String(job.evaluation.evaluation_id);
     const run = runs.get(id);
     if (run && String(run.submission_id) !== String(job.submission.submission_id)) throw new Error("Assignment submission identity changed.");
     const workflow = reviewWorkflow_(id, snapshot.ReviewProgress);
     const completed = run?.state === "checked" || workflow.stages[4].done;
-    const locked = completed || workflow.stages.slice(1).some(stage => stage.done || Object.values(stage.checks).some(value => value === true)) ||
+    const pinned = pins[id] && pins[id] === normalizeEmail_(run?.reviewer_email);
+    const locked = completed || pinned || workflow.stages.slice(1).some(stage => stage.done || Object.values(stage.checks).some(value => value === true)) ||
       snapshot.ReviewTaskResults.some(row => String(row.evaluation_id) === id && row.status !== "superseded") ||
       snapshot.ReviewTaskCommands.some(row => String(row.evaluation_id) === id) ||
       snapshot.ReviewArchiveUploads.some(row => String(row.evaluation_id) === id);

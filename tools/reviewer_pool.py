@@ -36,6 +36,8 @@ def main():
     member.add_argument("--inactive", action="store_true")
     invite = actions.add_parser("add")
     invite.add_argument("--email", required=True)
+    promote = actions.add_parser("promote-test")
+    promote.add_argument("--email", required=True)
     resend = actions.add_parser("resend")
     resend.add_argument("--email", required=True)
     resend.add_argument("--delivery-id", required=True, help="Stable invite_ followed by 32 hex digits; reuse when retrying")
@@ -93,6 +95,34 @@ def main():
         old["moved_to"] = email
         save(old_receipt, old)
         result["invitation_status"] = ledger["status"]
+    elif args.command == "promote-test":
+        email = args.email.strip().lower()
+        if not re.fullmatch(r"[a-z0-9._+-]+@[a-z0-9.-]+", email):
+            raise ValueError("Enter a valid email address")
+        test_path = args.settings.parent / ("tester-invitation-" + email + ".json")
+        test = json.loads(private_read(test_path))
+        if test["email"] != email or test["status"] not in ("active", "formalized"):
+            raise ValueError("Use the existing active test assignment")
+        receipt = args.settings.parent / ("evaluator-invitation-" + email + ".json")
+        if receipt.exists():
+            ledger = json.loads(private_read(receipt))
+            if ledger["email"] != email or ledger["token"] != test["token"]:
+                raise ValueError("Formal account credential conflicts with the test account")
+        else:
+            ledger = {"email":email, "token":test["token"], "invitation_id":"invite_" + secrets.token_hex(16), "status":"pending"}
+            save(receipt, ledger)
+        promoted = api("reviewer_promote_test_assignment", test_id=test["test_id"])
+        if promoted["evaluation_ids"] != test["evaluation_ids"]:
+            raise ValueError("Promotion did not preserve the five test assignments")
+        test["status"] = "formalized"
+        save(test_path, test)
+        if ledger["status"] != "sent":
+            sent = api("reviewer_send_invitation", email=email, eval_token=ledger["token"], invitation_id=ledger["invitation_id"])
+            ledger["status"] = sent["status"]
+            save(receipt, ledger)
+        result = api("reviewer_balance_pool")
+        result["invitation_status"] = ledger["status"]
+        result["retained_evaluation_ids"] = promoted["evaluation_ids"]
     elif args.command == "resend":
         email = args.email.strip().lower()
         if not re.fullmatch(r"[a-z0-9._+-]+@[a-z0-9.-]+", email) or not re.fullmatch(r"invite_[a-f0-9]{32}", args.delivery_id):
