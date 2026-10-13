@@ -473,7 +473,10 @@ function reviewQueue_(payload, organizer) {
         .map((row) => ({ message_id: row.message_id, stage: row.stage, status: row.status, subject: row.subject, sent_at: row.sent_at })),
       results };
   });
+  const sharedHfToken = ["admin", "evaluator", "tester", "supervisor"].includes(viewer.role)
+    ? String(config_("REVIEW_HF_DOWNLOAD_TOKEN", "")) : "";
   return { ok: true, reviewer: viewer, jobs,
+    shared_hf_token: sharedHfToken,
     ...(payload.include_mail_status === true ? { messages: reviewMailMessages_(viewer, snapshot.rows) } : {}),
     refresh: { read_mode: snapshot.mode, server_ms: Date.now() - started } };
 }

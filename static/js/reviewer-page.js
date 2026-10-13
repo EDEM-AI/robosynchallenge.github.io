@@ -47,7 +47,7 @@
       ["task_mapping", "Task or checkpoint mismatch", "We found a mismatch between the documented task entrypoint/checkpoint and the evaluated policy. Please confirm the intended mapping and clarify the affected task."]
     ]
   ];
-  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "", view: ["#downloads", "#email-status"].includes(location.hash) ? location.hash.slice(1) : "workspace", mailStatus: [] };
+  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "", view: ["#downloads", "#email-status"].includes(location.hash) ? location.hash.slice(1) : "workspace", mailStatus: [], sharedHfToken: "" };
   try { state.credentials = JSON.parse(sessionStorage.getItem(STORAGE) || "null"); } catch { /* Require sign-in. */ }
   let saveChain = Promise.resolve();
   const pendingSaves = new Map();
@@ -343,7 +343,10 @@
       return step(1, "Code preparation / GitHub access", identity + `<div class="reviewer-automatic-status"><h4>Automatic code preparation status</h4>${preparation}</div>`) +
         step(2, "Hugging Face checkpoint access", checkpoints + checkpointStatus(job));
     }
-    if (state.stage === 1) return step(1, "Clone the prepared code", codeStage(job)) + (job.bundle_commit ? step(2, "Download the frozen task checkpoints", commandBox(`cd ${cloneDirectory(job)}\nexport RSC_CHECKPOINTS=/path/to/checkpoints\nexport RSC_HF_TOKEN=PASTE_ORGANIZER_HF_READ_TOKEN_HERE\npython tools/download_checkpoints.py --output "$RSC_CHECKPOINTS"\nunset RSC_HF_TOKEN`, "Copy pinned checkpoint download command") + "<p>Replace <code>/path/to/checkpoints</code> with the chosen local directory and replace <code>PASTE_ORGANIZER_HF_READ_TOKEN_HERE</code> with the shared organizer Hugging Face read token. This bypasses evaluator-machine access to the credential backend and downloads the pinned revisions directly from Hugging Face. The script retries transient Hugging Face network errors, resumes existing files, and writes <code>download-status.json</code> plus the checksum receipt.</p>") + step(3, "Install the participant's dependencies", "<p>Follow the repository README and policy documentation. Use an isolated dependency image; keep checkpoints, seed packets and clone credentials outside the participant runtime. Check the documented entrypoint for every task.</p>") : "");
+    if (state.stage === 1) {
+      const hfToken = state.sharedHfToken || "PASTE_ORGANIZER_HF_READ_TOKEN_HERE";
+      return step(1, "Clone the prepared code", codeStage(job)) + (job.bundle_commit ? step(2, "Download the frozen task checkpoints", commandBox(`cd ${cloneDirectory(job)}\nexport RSC_CHECKPOINTS=/path/to/checkpoints\nexport RSC_HF_TOKEN=${hfToken}\npython tools/download_checkpoints.py --output "$RSC_CHECKPOINTS"\nunset RSC_HF_TOKEN`, "Copy pinned checkpoint download command") + "<p>Replace <code>/path/to/checkpoints</code> with the chosen local directory. The shared organizer Hugging Face read token is shown to signed-in evaluators and supervisors; if the placeholder is shown, ask the organizer for the token before running the command. This bypasses evaluator-machine access to the credential backend and downloads the pinned revisions directly from Hugging Face. The script retries transient Hugging Face network errors, resumes existing files, and writes <code>download-status.json</code> plus the checksum receipt.</p>") + step(3, "Install the participant's dependencies", "<p>Follow the repository README and policy documentation. Use an isolated dependency image; keep checkpoints, seed packets and clone credentials outside the participant runtime. Check the documented entrypoint for every task.</p>") : "");
+    }
     if (state.stage === 2) return notice("Environment acceptance remains waived by the organizers. Click Complete / Next stage without running a check or ticking a checklist. A waiver does not certify rendering.", true) + step(1, "Run the built-in rendering diagnostic (optional)", commandBox(`cd ${cloneDirectory(job)}\npython tools/check_environment.py --strict`, "Copy rendering diagnostic") + "<p>The private clone includes 30 official reference scenes and thresholds: SSIM &ge; 0.945 and PSNR &ge; 24 dB. The script checks three camera views, expert smoke trajectories and reset images. It prints ENVIRONMENT CHECK PASSED or ERROR and exits nonzero on failure. No seed path, metric entry or report upload is required. Passing checks are cached for unchanged machine/software/reference versions. This checks rendering tolerance, not exact state or RNG equality.</p>");
     if (state.stage === 3) return runCommands(job) + step(4, "Refresh and check all 10 task results", "<p>After RSC_UPLOAD_OK appears in the terminal, use Refresh requests above. Every task must show Submitted / RSC_UPLOAD_OK, and all 10 reviewer-reported commands must be saved before continuing.</p>" + taskTable(job));
     const row = resultFor(job, state.task);
@@ -503,6 +506,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const response = await request("reviewer_queue", { include_mail_status: includeMail });
     if (state.credentials !== credentials) return;
     state.role = response.reviewer?.role || "";
+    state.sharedHfToken = response.shared_hf_token || "";
     if (wasNonRecording && !nonRecording()) {
       localChanges.clear(); state.drafts.clear(); commandDrafts.clear(); state.emailDraft = null;
     }
