@@ -144,7 +144,7 @@ function provisionReviewer(email, role) {
 function provisionReviewerToken_(email, role, token) {
   const normalized = requiredEmail_(email);
   const assignedRole = String(role || "evaluator");
-  if (!["evaluator", "admin", "observer", "supervisor"].includes(assignedRole)) throw new Error("Invalid reviewer role.");
+  if (!["evaluator", "tester", "admin", "observer", "supervisor"].includes(assignedRole)) throw new Error("Invalid reviewer role.");
   if (!/^act_[0-9a-f]{64}$/i.test(token)) throw new Error("Invalid reviewer token format.");
   const row = reviewRows_("Reviewers").find((item) => normalizeEmail_(item.email) === normalized);
   reviewWrite_("Reviewers", row?._rowNumber, { email: normalized, token_sha256: reviewerHash_(token),
@@ -171,8 +171,8 @@ function reviewerIdentity_(payload, workbook) {
   let mismatch = expected.length !== actual.length ? 1 : 0;
   for (let index = 0; index < actual.length; index += 1) mismatch |= actual.charCodeAt(index) ^ (expected.charCodeAt(index) || 0);
   if (mismatch || !isTruthy_(row?.active)) throw new Error("Invalid reviewer credentials.");
-  if (!["admin", "evaluator", "observer", "supervisor"].includes(row.role)) throw new Error("Invalid reviewer role.");
-  return { email, role: row.role, non_recording: email === "1070055979@qq.com" };
+  if (!["admin", "evaluator", "tester", "observer", "supervisor"].includes(row.role)) throw new Error("Invalid reviewer role.");
+  return { email, role: row.role, non_recording: email === "1070055979@qq.com" || row.role === "tester" };
 }
 
 function reviewProvisionAccount_(payload) {
@@ -216,7 +216,7 @@ function reviewSendInvitation_(payload) {
     const receipt = { email, role: account.role, fingerprint, status: "sending", created_at: now_() };
     properties.setProperty(key, JSON.stringify(receipt));
     const url = "https://robosyn-bench.net/eval_backend/";
-    const access = account.role === "observer" ? "You can view all evaluation requests and progress. This is read-only access; no evaluation tasks are assigned to you." : account.role === "supervisor" ? "You can view and work on all evaluation requests. No tasks are assigned to you and you are not in the automatic assignment pool." : "You can view and work on evaluation requests assigned to you.";
+    const access = account.role === "tester" ? "Temporary test access: you can test the assigned requests. Web forms and progress stay in your browser only; no participant email or official result is changed. Do not upload real evaluation results during this test. Reloading discards your local test changes." : account.role === "observer" ? "You can view all evaluation requests and progress. This is read-only access; no evaluation tasks are assigned to you." : account.role === "supervisor" ? "You can view and work on all evaluation requests. No tasks are assigned to you and you are not in the automatic assignment pool." : "You can view and work on evaluation requests assigned to you.";
     try {
       MailApp.sendEmail({ to: email, subject: "RoboSynChallenge evaluation workspace access",
         body: `Evaluation workspace: ${url}\nEmail: ${email}\nEvaluation token: ${token}\n\n${access}\n\nKeep this token private. It is separate from participant access tokens.`,
@@ -945,11 +945,8 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
-  if (normalizeEmail_(payload.reviewer_email) === "1070055979@qq.com") {
-    reviewerIdentity_(payload);
-    if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
-      throw new Error("Non-recording account: actions are browser-local only; no evaluation or email was changed.");
-    }
+  if (!payload.upload_token && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).non_recording) {
+    throw new Error("Non-recording account: actions are browser-local only; no evaluation or email was changed.");
   }
   const cloneActions = ["reviewer_checkpoint_credential", "reviewer_save_command", "reviewer_submit_result",
     "reviewer_upload_health", "reviewer_evidence_status", "reviewer_start_evidence_upload",
@@ -961,6 +958,9 @@ function handleReviewerAction_(action, payload) {
     throw new Error("Read-only access: observers cannot modify evaluations.");
   }
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
+  if (action === "reviewer_start_test_assignment") return reviewStartTestAssignment_(payload);
+  if (action === "reviewer_restore_test_assignment") return reviewRestoreTestAssignment_(payload);
+  if (action === "reviewer_send_registration_notice") return reviewSendRegistrationNotice_(payload);
   if (action === "reviewer_send_deadline_notice") return reviewSendDeadlineNotice_(payload);
   if (action === "reviewer_migrate_response_schema") return reviewMigrateResponseSchema_(payload);
   if (action === "reviewer_reconcile_final_progress") return reviewReconcileFinalProgress_(payload);

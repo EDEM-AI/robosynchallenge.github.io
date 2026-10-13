@@ -50,7 +50,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "CheckpointSources.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "CheckpointSources.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs", "TestAssignments.gs", "RegistrationNotice.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 lockWaitHook = () => {
   const target = sheet("ReviewToolUpgrades");
@@ -883,4 +883,41 @@ try {
   assert.equal(call("reviewRows_","ReviewResponseLinks").find(row=>row.message_id===closureIssue.message_id).status,"expired");
   assert.equal(JSON.stringify([sheet("ReviewProgress").cells,sheet("ReviewCorrections").cells]),beforeClosureProgress,"Closing cannot erase an earlier correction or evaluation progress");
 } finally { vm.runInContext('Date.now=closureRealNow',context); context.UrlFetchApp=closureFetcher; }
-console.log("Reviewer backend: authorization, stage gates, result validation, corrections, storage, AoE cutoff, token-specific extensions and calibrated scoring passed.");
+const tester = vm.runInContext('provisionReviewer("tester@example.com", "tester")', context);
+const testerCredentials = {reviewer_email:tester.email, reviewer_token:tester.token};
+assert.equal(call("reviewerIdentity_", testerCredentials).non_recording, true);
+assert.throws(()=>dispatch("reviewer_save_checks",{...testerCredentials,evaluation_id:"eval_new",stage:0,checks:{}}),/Non-recording/);
+assert.throws(()=>dispatch("reviewer_send_issue",{...testerCredentials,evaluation_id:"eval_new"}),/Non-recording/);
+const testIds = [];
+for(let i=0;i<5;i++) {
+  const email=`test-participant-${i}@example.com`, id=`eval_test${i}`;
+  insert("Users",{email,team_name:`Temporary fixture ${i}`,token_status:"active"});
+  insert("Submissions",{email,submission_id:`sub_test${i}`,evaluation_id:id,is_ranked:"true",created_at:"2026-10-01T00:00:00Z",code_link:"https://github.com/example/policy"});
+  insert("Evaluations",{email,submission_id:`sub_test${i}`,evaluation_id:id});
+  call("reviewAssign_",{...credentials,evaluation_id:id,assign_to:reviewer.email});
+  testIds.push(id);
+}
+const beforeTestProgress=JSON.stringify(sheet("ReviewProgress").cells);
+const testLease={...credentials,test_id:"test_"+"c".repeat(32),email:tester.email,previous_email:reviewer.email,evaluation_ids:testIds};
+assert.throws(()=>dispatch("reviewer_start_test_assignment",{...testLease,...testerCredentials}),/Non-recording/);
+assert.equal(dispatch("reviewer_start_test_assignment",testLease).status,"active");
+assert.equal(dispatch("reviewer_start_test_assignment",testLease).duplicate,true);
+assert.equal(call("reviewQueue_",testerCredentials).jobs.length,5);
+assert.equal(call("reviewPool_",credentials).accounts.find(row=>row.email===tester.email).in_pool,false);
+assert.equal(JSON.stringify(sheet("ReviewProgress").cells),beforeTestProgress,"Temporary ownership cannot reset real progress");
+assert.equal(dispatch("reviewer_restore_test_assignment",{...credentials,test_id:testLease.test_id}).status,"restored");
+assert.equal(dispatch("reviewer_restore_test_assignment",{...credentials,test_id:testLease.test_id}).duplicate,true);
+assert(testIds.every(id=>call("reviewRun_",id).reviewer_email===reviewer.email));
+assert.equal(JSON.stringify(sheet("ReviewProgress").cells),beforeTestProgress);
+assert.throws(()=>call("reviewerIdentity_",testerCredentials),/Invalid reviewer credentials/);
+insert("Users",{email:"notice@example.com",team_name:"Notice fixture",token_status:"active"});
+const registrationNotice={...credentials,email:"notice@example.com",delivery_id:"notice_"+"d".repeat(32)};
+const beforeNotice=sent.length;
+context.MailApp={getRemainingDailyQuota:()=>2,sendEmail:message=>sent.push(message)};
+assert.equal(dispatch("reviewer_send_registration_notice",registrationNotice).transport,"mailapp");
+assert.equal(dispatch("reviewer_send_registration_notice",registrationNotice).duplicate,true);
+assert.equal(sent.length,beforeNotice+1);
+assert.throws(()=>dispatch("reviewer_send_registration_notice",{...registrationNotice,email:"other@example.com"}),/registered participant/);
+context.MailApp={getRemainingDailyQuota:()=>0,sendEmail:()=>{throw new Error("Must not send")}};
+assert.equal(dispatch("reviewer_send_registration_notice",{...registrationNotice,delivery_id:"notice_"+"e".repeat(32)}).status,"not_sent");
+console.log("Reviewer backend: existing workflow, isolated test accounts, reversible five-request assignments and idempotent MailApp notices passed.");

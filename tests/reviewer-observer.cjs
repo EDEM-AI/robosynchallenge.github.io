@@ -99,9 +99,10 @@ async function main() {
     assert.equal(await evaluate("window.observerCalls.filter(action=>action==='reviewer_queue').length"), 1, "Email status must load only mail metadata, not the entire queue");
     assert.equal(await evaluate("window.observerCalls.some(action=>![\"reviewer_login\",\"reviewer_queue\",\"reviewer_mail_status\"].includes(action))"), false);
     if (!live) {
-      await evaluate(`
+      await rpc("Page.addScriptToEvaluateOnNewDocument", {source:`
+        sessionStorage.setItem("rsc-reviewer-credentials-v1", JSON.stringify({email:"781785786@qq.com",token:${JSON.stringify(token)}}));
         window.navigationCalls=[]; window.navigationSaves=[];
-        const assigned=${JSON.stringify(jobs)}.map(job=>({...job,reviewer_email:'1070055979@qq.com'}));
+        const assigned=${JSON.stringify(jobs)}.map(job=>({...job,reviewer_email:'781785786@qq.com'}));
         window.fetch=async function(url,options) {
           const payload=JSON.parse(options.body); window.navigationCalls.push(payload.action);
           if(payload.action==='reviewer_save_checks') {
@@ -110,10 +111,10 @@ async function main() {
             return new Response(JSON.stringify({ok:true}));
           }
           if(payload.action!=='reviewer_queue') throw new Error('Unexpected navigation operation');
-          return new Response(JSON.stringify({ok:true,reviewer:{email:'1070055979@qq.com',role:'evaluator'},jobs:assigned}));
+          return new Response(JSON.stringify({ok:true,reviewer:{email:'781785786@qq.com',role:'evaluator'},jobs:assigned}));
         };
-        document.querySelector('[data-review-action=refresh]').click();
-      `);
+      `});
+      await rpc("Page.reload");
       await until("document.querySelector('fieldset.reviewer-readonly')?.disabled===false");
       const ids = await evaluate("[...document.querySelectorAll('[data-review-job]')].slice(0,2).map(button=>button.dataset.reviewJob)");
       await evaluate(`document.querySelector('[data-review-job="${ids[0]}"]').click()`);

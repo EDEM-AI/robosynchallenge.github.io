@@ -66,7 +66,7 @@
   const button = (action, name, symbol, extra = "") => `<button type="button" class="button button-secondary" data-review-action="${action}" ${extra}>${icon(symbol)}${name}</button>`;
   const root = () => document.querySelector("[data-reviewer-root]");
   const selected = () => state.jobs.find((job) => job.evaluation_id === state.selected);
-  const nonRecording = () => !LOCAL && state.credentials?.email === "1070055979@qq.com";
+  const nonRecording = () => !LOCAL && (state.credentials?.email === "1070055979@qq.com" || state.role === "tester");
   const localChanges = new Map();
   let serverJobs = [];
   const contextKey = (job) => JSON.stringify([job.bundle_commit, job.hf_check_context, job.preparation_attempt, job.workflow]);
@@ -92,7 +92,7 @@
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
   const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
-    if (nonRecording()) return "";
+    if (!LOCAL && state.credentials?.email === "1070055979@qq.com") return "";
     if (LOCAL && job.local_walkthrough) return "";
     if (flow(job).stages.slice(0, state.stage).some(stage => !stage.done)) return "Complete previous stages before recording progress";
     const checks = draft(job);
@@ -322,7 +322,7 @@
   }
   function stageContentDetails(job) {
     if (state.stage === 0) {
-      const identity = `<dl class="reviewer-meta"><div><dt>Participant</dt><dd>${escape(job.email)}</dd></div><div><dt>Submission ID</dt><dd>${escape(job.submission_id)}</dd></div><div><dt>Submitted</dt><dd>${escape(job.created_at)}</dd></div><div><dt>Task checkpoints</dt><dd>${job.coverage_status === "legacy_unverified" ? "10 task checkpoint URLs required" : "Checkpoint URLs recorded for all 10 tasks"}</dd></div></dl><div class="reviewer-links">${sourceLinks(job.code_link, "Code repository", "github")}${sourceLinks(job.checkpoint_link, "Checkpoint", "external-link")}</div>${job.technical_notes ? `<details class="reviewer-notes"><summary>Participant run commands and dependencies</summary><p>${escape(job.technical_notes)}</p></details>` : ""}`;
+      const identity = `<dl class="reviewer-meta"><div><dt>Participant</dt><dd>${escape(job.email)}</dd></div><div><dt>Submission ID</dt><dd>${escape(job.submission_id)}</dd></div><div><dt>Submitted</dt><dd>${escape(job.created_at)}</dd></div><div><dt>Task checkpoints</dt><dd>${job.coverage_status === "legacy_unverified" ? "10 task checkpoint URLs required" : "Checkpoint URLs recorded for all 10 tasks"}</dd></div></dl><div class="reviewer-links">${sourceLinks(job.code_link, "Code repository", "github")}${sourceLinks(job.checkpoint_link, "Checkpoint", "external-link")}</div>${participantNotes("Participant run commands and dependencies", job.technical_notes)}`;
       const mappingForm = `<form class="reviewer-form" data-review-form="verify"><p>Enter each task's documented Hugging Face URL or account/repository. Use the complete URL when a pinned revision or checkpoint subdirectory is specified. Saving queues a fresh access check; browser login does not prove the download token has access. Do not substitute another model to bypass an access error.</p><div class="reviewer-verify-grid">${TASKS.map(task => `<label>${label(task)}<input type="text" name="${task}" value="${escape(job.task_checkpoint_links?.[task] || "")}" placeholder="https://huggingface.co/account/repository or account/repository" required></label>`).join("")}</div><label class="reviewer-confirm"><input type="checkbox" name="coverage_confirmed" required>I verified every task's checkpoint from the participant's documentation; shared checkpoints are explicitly documented.</label><button class="button button-secondary">${icon("check")}Save task checkpoints</button></form>`;
       const checkpoints = job.coverage_status !== "legacy_unverified" ? taskTable(job, true) +
         (!job.bundle_commit && canEdit(job) ? `<details class="reviewer-notes"><summary>Correct documented task checkpoint URLs</summary>${mappingForm}</details>` : "") :
@@ -384,9 +384,13 @@
     const email = state.emailDraft;
     return `<section class="reviewer-composer" data-mail-composer><div class="reviewer-composer-head"><h3>Participant email</h3><button class="reviewer-icon" data-review-action="close-email" title="Close email draft" aria-label="Close email draft">${icon("x")}</button></div><form class="reviewer-form" data-review-form="email"><div class="reviewer-verify-grid"><label>Recipient<input value="${escape(job.email)}" readonly></label><label>Template<select data-email-template><option value="stage" ${email.template === "stage" ? "selected" : ""}>General stage issue</option>${ISSUE_TEMPLATES[email.stage].map(([key, title]) => `<option value="${key}" ${email.template === key ? "selected" : ""}>${title}</option>`).join("")}<option value="blank" ${email.template === "blank" ? "selected" : ""}>Blank email</option></select></label></div><label>Subject<input name="subject" value="${escape(email.subject)}" maxlength="200" required></label><label>Message<textarea name="body" rows="9" required>${escape(email.body)}</textarea></label><div class="reviewer-mail-actions"><button class="button button-primary">${icon("send")}${LOCAL ? "Record demo email" : "Send email"}</button><span>${LOCAL ? "Demo only; no email is sent." : "Recipient is fixed to the registered participant."}</span></div></form></section>`;
   }
+  function participantNotes(title, text) {
+    if (!text) return "";
+    return `<details class="reviewer-notes reviewer-participant-notes"><summary>${escape(title)}</summary><p tabindex="0" role="region" aria-label="${escape(title)}">${escape(text)}</p></details>`;
+  }
   function participantResponse(job) {
     if (!job.correction) return "";
-    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Correction round: ${escape(job.correction.round || 0)}${job.correction.deadline_at && job.correction.status === "awaiting" ? ` · Deadline (UTC): ${escape(job.correction.deadline_at)}` : ""}${job.correction.notes ? `<p>${escape(job.correction.notes)}</p>` : ""}</div>`;
+    return `<div class="reviewer-participant-response">Participant response: <strong>${escape(job.correction.status)}</strong> · Correction round: ${escape(job.correction.round || 0)}${job.correction.deadline_at && job.correction.status === "awaiting" ? ` · Deadline (UTC): ${escape(job.correction.deadline_at)}` : ""}${participantNotes("Participant correction notes", job.correction.notes)}</div>`;
   }
   function commandBlock(command) {
     return `<div class="reviewer-command"><code data-copy-command>${escape(command)}</code><button type="button" class="reviewer-icon" data-review-action="copy" title="Copy command" aria-label="Copy command">${icon("copy")}</button></div>`;

@@ -23,7 +23,7 @@ function fixture(email) {
     fetch: async (_, options) => {
       const payload = JSON.parse(options.body);
       calls.push(payload);
-      return {ok:true, json:async()=>({ok:true, reviewer:{role:email==="1070055979@qq.com"?"supervisor":"evaluator"}, jobs:[structuredClone(serverJob)]})};
+      return {ok:true, json:async()=>({ok:true, reviewer:{role:email==="1070055979@qq.com"?"supervisor":email==="tester@example.com"?"tester":"evaluator"}, jobs:[structuredClone(serverJob)]})};
     },
   });
   let source = fs.readFileSync(path.join(__dirname,"../static/js/reviewer-page.js"),"utf8");
@@ -71,6 +71,14 @@ async function main() {
   assert(evaluator.test.nextBlocker(evaluator.test.state.jobs[0]).includes("previous stages"));
   await evaluator.test.request("reviewer_save_checks",{evaluation_id:serverJob.evaluation_id,stage:1,checks:{}});
   assert.equal(evaluator.calls.at(-1).action,"reviewer_save_checks","Real evaluators retain their normal recording path");
-  console.log("Non-recording account: browser-only forms/progress/mail, fresh server overview, reload isolation and real evaluator gates passed.");
+  const tester = fixture("tester@example.com");
+  await tester.test.refresh();
+  tester.test.state.stage=0;
+  assert(tester.test.nextBlocker(tester.test.state.jobs[0]).includes("checkpoint URL"),"Tester retains real stage prerequisites, unlike organizer walkthrough");
+  await tester.test.request("reviewer_save_command",{evaluation_id:serverJob.evaluation_id,task:"click_bell",command:"local-only test command"});
+  await tester.test.request("reviewer_send_issue",{evaluation_id:serverJob.evaluation_id,body:"Must never send"});
+  assert(tester.calls.every(call=>call.action==="reviewer_queue"));
+  assert.equal(tester.storage.size,0);
+  console.log("Non-recording accounts: organizer walkthrough, tester real gates, browser-only forms/mail and real evaluator recording passed.");
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

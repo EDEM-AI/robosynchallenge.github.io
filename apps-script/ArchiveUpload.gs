@@ -4,6 +4,10 @@ function reviewUploadContext_(payload) {
   if (!payload.upload_token) return reviewOwnedRun_(payload);
   const job = reviewJob_(payload.evaluation_id);
   const run = reviewRun_(job.evaluation.evaluation_id);
+  const owner = run && reviewRows_("Reviewers").find(row => normalizeEmail_(row.email) === normalizeEmail_(run.reviewer_email));
+  if (owner?.role === "tester" && !["reviewer_checkpoint_credential", "reviewer_evidence_status"].includes(payload.rsc_action || payload.action)) {
+    throw new Error("Temporary test assignment: command uploads and official result changes are disabled. Use the workspace for browser-local testing.");
+  }
   const access = reviewRows_("ReviewUploadAccess").find((row) => row.evaluation_id === job.evaluation.evaluation_id);
   if (!run || !access || isTruthy_(access.revoked) || !Number.isFinite(new Date(access.expires_at).getTime()) || new Date(access.expires_at).getTime() <= Date.now() ||
       reviewerHash_(String(payload.upload_token)) !== String(access.token_hash)) throw new Error("Invalid or expired task upload capability.");
