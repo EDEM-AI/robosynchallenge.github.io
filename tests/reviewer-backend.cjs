@@ -50,7 +50,7 @@ const context = vm.createContext({
   },
 });
 const base = path.join(__dirname, "../apps-script");
-vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "CheckpointSources.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs", "TestAssignments.gs", "RegistrationNotice.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
+vm.runInContext(["Code.gs", "Reviewer.gs", "ReviewerPool.gs", "ArchiveUpload.gs", "CheckpointAccess.gs", "CheckpointSources.gs", "ReviewResponse.gs", "CutoffProgress.gs", "SubmissionWindow.gs", "SubmissionReceipts.gs", "VersionPolicy.gs", "Scoring.gs", "TestAssignments.gs", "RegistrationNotice.gs", "Adjudication.gs"].map(name => fs.readFileSync(path.join(base, name), "utf8")).join("\n"), context);
 const call = (expression, args = {}) => vm.runInContext(`${expression}(${JSON.stringify(args)})`, context);
 lockWaitHook = () => {
   const target = sheet("ReviewToolUpgrades");
@@ -66,7 +66,7 @@ sheet("ReviewTaskCommands").cells = [["unexpected"]];
 assert.throws(() => vm.runInContext('reviewTable_("ReviewTaskCommands")', context), /headers changed/);
 sheets.delete("ReviewTaskCommands");
 function insert(name, row) {
-  const headers = vm.runInContext(`SHEETS.${name}`, context);
+  const headers = vm.runInContext(`REVIEW_TABLES.${name} || SHEETS.${name}`, context);
   const target = sheet(name);
   if (!target.cells.length) target.cells.push([...headers]);
   target.appendRow([...headers].map((key) => row[key] ?? ""));
@@ -933,4 +933,46 @@ assert.equal(sent.length,beforeNotice+1);
 assert.throws(()=>dispatch("reviewer_send_registration_notice",{...registrationNotice,email:"other@example.com"}),/registered participant/);
 context.MailApp={getRemainingDailyQuota:()=>0,sendEmail:()=>{throw new Error("Must not send")}};
 assert.equal(dispatch("reviewer_send_registration_notice",{...registrationNotice,delivery_id:"notice_"+"e".repeat(32)}).status,"not_sent");
-console.log("Reviewer backend: existing workflow, isolated test accounts, reversible five-request assignments and idempotent MailApp notices passed.");
+const heldId=testIds[0], heldCommit="7".repeat(40);
+insert("ReviewCodePreparations",{evaluation_id:heldId,participant_commit:heldCommit});
+const beforeHeldEvidence=JSON.stringify([sheet("ReviewProgress").cells,sheet("ReviewTaskResults").cells,sheet("ReviewTaskCommands").cells]);
+const holdPayload={...credentials,evaluation_id:heldId,expected_submission_id:"sub_test0",participant_commit:heldCommit,
+  decision_id:"decision_"+"8".repeat(32),reason:"Disallowed object ground-truth used by the policy.",
+  evidence:[{url:"https://github.com/example/policy/blob/"+heldCommit+"/policy/model.py#L10",summary:"Ground-truth fallback"}]};
+assert.throws(()=>dispatch("reviewer_set_adjudication",{...holdPayload,...testerCredentials}),/Organizer access/);
+assert.throws(()=>dispatch("reviewer_set_adjudication",{...holdPayload,participant_commit:"9".repeat(40)}),/commit changed/);
+assert.equal(dispatch("reviewer_set_adjudication",holdPayload).status,"invalid_pending_review");
+assert.equal(dispatch("reviewer_set_adjudication",holdPayload).duplicate,true);
+const heldJob=dispatch("reviewer_queue",credentials).jobs.find(job=>job.evaluation_id===heldId);
+assert.equal(heldJob.evaluation_blocked,true);
+assert.equal(heldJob.state,"invalid");
+assert.equal(JSON.stringify([sheet("ReviewProgress").cells,sheet("ReviewTaskResults").cells,sheet("ReviewTaskCommands").cells]),beforeHeldEvidence,"Eligibility holds preserve all progress and evidence");
+for(const action of ["reviewer_complete_stage","reviewer_save_checks","reviewer_save_command","reviewer_retry_preparation", "reviewer_upgrade_tools", "reviewer_prepare_code", "reviewer_submit_result", "reviewer_verify_coverage"]) {
+  assert.throws(()=>dispatch(action,{...credentials,evaluation_id:heldId}),/Submission currently invalid/);
+}
+assert.throws(()=>call("reviewOwnedRun_",{...testerCredentials,evaluation_id:heldId}),/Submission currently invalid/);
+const heldCapability="upl_"+"a".repeat(64);
+insert("ReviewUploadAccess",{evaluation_id:heldId,token_hash:call("reviewerHash_",heldCapability),expires_at:new Date(Date.now()+3600000).toISOString()});
+assert.throws(()=>dispatch("reviewer_start_evidence_upload",{evaluation_id:heldId,upload_token:heldCapability}),/Submission currently invalid/);
+assert.equal(call("reviewUploadContext_",{evaluation_id:heldId,upload_token:heldCapability,action:"reviewer_evidence_status"}).run.evaluation_id,heldId);
+assert.deepEqual(JSON.parse(JSON.stringify(call("reviewParticipantOutcome_",{evaluation_id:heldId,submission_id:"sub_test0"}))),{task_results:[],overall_summary:null});
+const heldOwner=call("reviewRun_",heldId).reviewer_email;
+dispatch("reviewer_balance_pool",credentials);
+assert.equal(call("reviewRun_",heldId).reviewer_email,heldOwner,"Invalid requests do not move in pool balancing");
+insert("ReviewCorrections",{evaluation_id:heldId,participant_email:"test-participant-0@example.com",status:"awaiting"});
+const heldResponseToken="rsp_"+"b".repeat(64);
+insert("ReviewResponseLinks",{evaluation_id:heldId,status:"active",token_hash:call("reviewerHash_",heldResponseToken)});
+assert.throws(()=>call("requireReviewResponse_",{evaluation_id:heldId,token:heldResponseToken}),/paused pending organizer review/);
+context.MailApp={getRemainingDailyQuota:()=>2,sendEmail:message=>sent.push(message)};
+const heldNotice={...credentials,evaluation_id:heldId,decision_id:holdPayload.decision_id,message_id:"msg_"+"c".repeat(32),
+  subject:"Eligibility decision",body:"Current submission invalid. Please reply with relevant context for our review."};
+const beforeHoldNotice=sent.length, beforeHoldLinks=sheet("ReviewResponseLinks").cells.length;
+assert.equal(dispatch("reviewer_send_adjudication_notice",heldNotice).status,"sent");
+assert.equal(dispatch("reviewer_send_adjudication_notice",heldNotice).duplicate,true);
+assert.equal(sent.length,beforeHoldNotice+1);
+assert.equal(sheet("ReviewResponseLinks").cells.length,beforeHoldLinks,"Decision notices must not reopen correction links");
+assert(!sent.at(-1).body.includes("argue"));
+assert.throws(()=>dispatch("reviewer_release_adjudication",{...holdPayload,...testerCredentials}),/Organizer access/);
+assert.equal(dispatch("reviewer_release_adjudication",{...holdPayload,reason:"Organizer reviewed additional evidence."}).status,"released");
+assert.equal(dispatch("reviewer_queue",credentials).jobs.find(job=>job.evaluation_id===heldId).evaluation_blocked,false);
+console.log("Reviewer backend: existing workflow, test promotion, eligibility holds, preserved evidence and idempotent notices passed.");

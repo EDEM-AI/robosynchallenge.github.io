@@ -11,6 +11,7 @@ function reviewUploadContext_(payload) {
   const access = reviewRows_("ReviewUploadAccess").find((row) => row.evaluation_id === job.evaluation.evaluation_id);
   if (!run || !access || isTruthy_(access.revoked) || !Number.isFinite(new Date(access.expires_at).getTime()) || new Date(access.expires_at).getTime() <= Date.now() ||
       reviewerHash_(String(payload.upload_token)) !== String(access.token_hash)) throw new Error("Invalid or expired task upload capability.");
+  reviewAssertEvaluationAllowed_(run.evaluation_id, payload.rsc_action || payload.action || "");
   return { job, run, viewer: { email: normalizeEmail_(run.reviewer_email), role: "upload" } };
 }
 

@@ -10,6 +10,12 @@ import sys
 import time
 
 
+def preparation_blocked(job):
+    adjudication = job.get('adjudication') or {}
+    return job.get('evaluation_blocked') is True or (
+        isinstance(adjudication, dict) and adjudication.get('status') == 'invalid_pending_review')
+
+
 def transient(message):
     return bool(re.search(r"SSL|TLS|EOF|timeout|timed out|锁超时|占用锁|HTTP (?:429|5\d\d)|ConnectionError|ConnectionReset|connection aborted|Temporary failure|RemoteDisconnected|\['git', 'push'|Official source|Output must be new", str(message), re.I))
 
@@ -35,6 +41,11 @@ def audit_deadlines(jobs, timestamp=None):
         return parsed.timestamp()
     rows = []
     for job in jobs:
+        if preparation_blocked(job):
+            rows.append({'evaluation_id':job['evaluation_id'], 'team_name':job.get('team_name', ''),
+                'cutoff_at':job.get('version_cutoff_at', ''), 'state':'evaluation_blocked',
+                'code_revision':'', 'bundle_commit':job.get('bundle_commit', ''), 'error':''})
+            continue
         cutoff = job['version_cutoff_at']
         limit = seconds(cutoff)
         report = job.get('version_report') or {}
@@ -120,6 +131,9 @@ def maintain(settings, state):
     retries = state.setdefault('retries', {})
     hf_file = Path(settings.get('hf_token_file', Path(settings['organizer_token_file']).parent / 'huggingface-RoboSynChallenge.token'))
     for job in queue['jobs']:
+        if preparation_blocked(job):
+            events.append({'evaluation_id':job['evaluation_id'], 'state':'evaluation_blocked'})
+            continue
         messages = [job.get('preparation_error', ''), job.get('hf_check_error', '')]
         message = next((text for text in messages if transient(text)), '')
         key = json.dumps([job['evaluation_id'],job.get('hf_check_context'),message])

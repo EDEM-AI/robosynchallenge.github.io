@@ -25,6 +25,7 @@ const REVIEW_TABLES = {
   ReviewAssignments: ["evaluation_id", "previous_reviewer", "reviewer_email", "reason", "changed_by", "changed_at"],
   ReviewProgressBackups: ["backup_id", "evaluation_id", "table_name", "row_key", "part", "snapshot_json", "reason", "created_at"],
   ReviewToolUpgrades: ["evaluation_id", "base_commit", "previous_bundle_commit", "selection_json", "backup_id", "updated_at"],
+  ReviewAdjudications: ["evaluation_id", "decision_id", "submission_id", "participant_commit", "status", "reason", "evidence_json", "decided_by", "decided_at", "backup_id", "previous_state", "released_by", "released_at", "release_reason"],
 };
 const REVIEW_TASK_STEPS = {
   click_bell: 361, drawer_open_place: 900, mixer_operating: 500, table_rearrangement: 361,
@@ -360,9 +361,10 @@ function reviewQueue_(payload, organizer) {
   if (organizer && viewer.role !== "admin") throw new Error("Organizer access required.");
   const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "ReviewRuns", "ReviewTaskResults",
     "ReviewProgress", "ReviewMachines", "ReviewMessages", "ReviewPreparation", "ReviewCodePreparations", "ReviewCorrections",
-    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewCheckpointSources", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades"]);
+    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewCheckpointSources", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades", "ReviewAdjudications"]);
   const read = name => snapshot.rows[name];
   const runs = new Map(read("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
+  const adjudications = new Map(read("ReviewAdjudications").map(row => [String(row.evaluation_id), row]));
   const tasks = read("ReviewTaskResults");
   const progress = read("ReviewProgress");
   const machines = read("ReviewMachines").filter((row) => normalizeEmail_(row.reviewer_email) === viewer.email)
@@ -386,6 +388,8 @@ function reviewQueue_(payload, organizer) {
     return organizer || ["admin", "observer", "supervisor"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {
     const run = runs.get(String(evaluation.evaluation_id));
+    const adjudication = adjudications.get(String(evaluation.evaluation_id));
+    const evaluationBlocked = adjudication?.status === "invalid_pending_review";
     const correction = corrections.get(String(evaluation.evaluation_id));
     const attempt = reviewCorrectionAttempt_(correction);
     const decision = versionDecisions.get(String(evaluation.evaluation_id));
@@ -444,7 +448,11 @@ function reviewQueue_(payload, organizer) {
       coverage_verified_at: run?.coverage_verified_at || "",
       technical_notes: submission.technical_notes, reviewer_email: run?.reviewer_email || "",
       overall_summary: reviewOverallSummary_(results),
-      state: run?.state || "unassigned", bundle_url: run?.bundle_url || "",
+      state: evaluationBlocked ? "invalid" : run?.state || "unassigned", bundle_url: run?.bundle_url || "",
+      evaluation_blocked: evaluationBlocked,
+      adjudication: adjudication ? {status:adjudication.status, decision_id:adjudication.decision_id,
+        reason:adjudication.reason, evidence:parseJson_(adjudication.evidence_json, []),
+        participant_commit:adjudication.participant_commit, decided_at:adjudication.decided_at} : null,
       preparation_status: preparation.get(String(evaluation.evaluation_id))?.status || "pending",
       preparation_error: preparation.get(String(evaluation.evaluation_id))?.message || "",
       preparation_updated_at: preparation.get(String(evaluation.evaluation_id))?.updated_at || "",
@@ -535,6 +543,7 @@ function reviewOwnedRun_(payload, organizer) {
   const run = reviewRun_(job.evaluation.evaluation_id);
   if (!run || String(run.submission_id) !== String(job.submission.submission_id) ||
       (!(organizer && viewer.role === "admin") && viewer.role !== "supervisor" && normalizeEmail_(run.reviewer_email) !== viewer.email)) throw new Error("This request is not assigned to you.");
+  reviewAssertEvaluationAllowed_(run.evaluation_id, payload.rsc_action || payload.action || "");
   return { viewer, job, run };
 }
 
@@ -917,7 +926,7 @@ function reviewSendIssue_(payload) {
     const preparation = reviewRows_("ReviewPreparation").find(item => item.evaluation_id === run.evaluation_id);
     const checkpointError = reviewQueue_(payload, viewer.role === "admin").jobs.find(item => item.evaluation_id === run.evaluation_id)?.hf_check_error || "";
     const needsArgument = stage === 0 && String((preparation?.message || "") + checkpointError).includes("NO_LEGAL_VERSION");
-    const response = stage === 2 || needsArgument ? null : reviewCreateResponseLink_(run, messageId, deadline);
+    const response = stage === 2 || needsArgument || reviewAdjudication_(run.evaluation_id)?.status === "invalid_pending_review" ? null : reviewCreateResponseLink_(run, messageId, deadline);
     const responsePolicy = reviewResponsePolicy_(deadline);
     const responseText = response ? `\n\nConfirm or submit a correction: ${response.url}\n${responsePolicy} Team and submission identity cannot be changed.` : "";
     const responseButton = response ? `
@@ -945,6 +954,7 @@ function reviewSendIssue_(payload) {
 }
 
 function handleReviewerAction_(action, payload) {
+  payload = {...payload, action};
   if (!payload.upload_token && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).non_recording) {
     throw new Error("Non-recording account: actions are browser-local only; no evaluation or email was changed.");
   }
@@ -957,6 +967,10 @@ function handleReviewerAction_(action, payload) {
   } else if (!["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).role === "observer") {
     throw new Error("Read-only access: observers cannot modify evaluations.");
   }
+  reviewAssertEvaluationAllowed_(payload.evaluation_id, action);
+  if (action === "reviewer_set_adjudication") return reviewSetAdjudication_(payload);
+  if (action === "reviewer_release_adjudication") return reviewReleaseAdjudication_(payload);
+  if (action === "reviewer_send_adjudication_notice") return reviewSendAdjudicationNotice_(payload);
   if (action === "reviewer_mail_status") return reviewMailStatus_(payload);
   if (action === "reviewer_start_test_assignment") return reviewStartTestAssignment_(payload);
   if (action === "reviewer_promote_test_assignment") return reviewPromoteTestAssignment_(payload);

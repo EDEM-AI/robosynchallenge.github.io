@@ -9,21 +9,23 @@ function reviewPoolSnapshot_(payload) {
   const viewer = reviewerIdentity_(payload, workbook);
   if (viewer.role !== "admin") throw new Error("Organizer access required.");
   const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "Reviewers", "ReviewRuns",
-    "ReviewProgress", "ReviewTaskResults", "ReviewTaskCommands", "ReviewArchiveUploads", "ReviewSubmissionWindows"]).rows;
+    "ReviewProgress", "ReviewTaskResults", "ReviewTaskCommands", "ReviewArchiveUploads", "ReviewSubmissionWindows", "ReviewAdjudications"]).rows;
   const runs = new Map(snapshot.ReviewRuns.map(row => [String(row.evaluation_id), row]));
   const pins = parseJson_(config_("REVIEW_FORMAL_ASSIGNMENT_PINS", ""), {});
+  const adjudications = new Map(snapshot.ReviewAdjudications.map(row => [row.evaluation_id, row]));
   const jobs = latestReviewSubmissions_(workbook, snapshot.ReviewSubmissionWindows, snapshot).map(job => {
     const id = String(job.evaluation.evaluation_id);
     const run = runs.get(id);
     if (run && String(run.submission_id) !== String(job.submission.submission_id)) throw new Error("Assignment submission identity changed.");
     const workflow = reviewWorkflow_(id, snapshot.ReviewProgress);
     const completed = run?.state === "checked" || workflow.stages[4].done;
+    const blocked = adjudications.get(id)?.status === "invalid_pending_review";
     const pinned = pins[id] && pins[id] === normalizeEmail_(run?.reviewer_email);
-    const locked = completed || pinned || workflow.stages.slice(1).some(stage => stage.done || Object.values(stage.checks).some(value => value === true)) ||
+    const locked = completed || blocked || pinned || workflow.stages.slice(1).some(stage => stage.done || Object.values(stage.checks).some(value => value === true)) ||
       snapshot.ReviewTaskResults.some(row => String(row.evaluation_id) === id && row.status !== "superseded") ||
       snapshot.ReviewTaskCommands.some(row => String(row.evaluation_id) === id) ||
       snapshot.ReviewArchiveUploads.some(row => String(row.evaluation_id) === id);
-    return { ...job, run, locked, completed };
+    return { ...job, run, locked, completed, blocked };
   });
   return { viewer, jobs, accounts: snapshot.Reviewers };
 }
@@ -33,8 +35,9 @@ function reviewPoolReport_(snapshot, extra) {
     const jobs = snapshot.jobs.filter(job => normalizeEmail_(job.run?.reviewer_email) === normalizeEmail_(account.email));
     return { email: normalizeEmail_(account.email), role: account.role, active: isTruthy_(account.active),
       in_pool: account.role === "evaluator" && isTruthy_(account.active), assigned: jobs.length,
-      active_requests: jobs.filter(job => !job.completed).length,
-      locked: jobs.filter(job => job.locked && !job.completed).length,
+      active_requests: jobs.filter(job => !job.completed && !job.blocked).length,
+      blocked_requests: jobs.filter(job => job.blocked).length,
+      locked: jobs.filter(job => job.locked && !job.completed && !job.blocked).length,
       completed: jobs.filter(job => job.completed).length };
   }).sort((a, b) => a.email.localeCompare(b.email));
   return { ok: true, policy: reviewPoolPolicy_(), accounts, latest_requests: snapshot.jobs.length,
@@ -110,7 +113,7 @@ function reviewBalancePool_(payload) {
     const movable = [];
     snapshot.jobs.forEach(job => {
       const owner = normalizeEmail_(job.run?.reviewer_email);
-      if (job.completed) return;
+      if (job.completed || job.blocked) return;
       if (job.locked || (owner && !pool.includes(owner) && snapshot.accounts.some(row => normalizeEmail_(row.email) === owner && row.role !== "evaluator"))) {
         if (load.has(owner)) load.set(owner, load.get(owner) + 1);
       } else {

@@ -68,8 +68,12 @@
   const selected = () => state.jobs.find((job) => job.evaluation_id === state.selected);
   const nonRecording = () => !LOCAL && (state.credentials?.email === "1070055979@qq.com" || state.role === "tester");
   const localChanges = new Map();
+  const holdRevisions = new Map();
   let serverJobs = [];
-  const contextKey = (job) => JSON.stringify([job.bundle_commit, job.hf_check_context, job.preparation_attempt, job.workflow]);
+  const HOLD_MESSAGE = "Submission currently invalid; evaluation paused pending organizer review";
+  const evaluationBlocked = (job) => Boolean(job && (job.evaluation_blocked === true || job.state === "invalid" || job.adjudication?.status === "invalid_pending_review"));
+  const holdContext = (job) => JSON.stringify([job.state === "invalid", job.evaluation_blocked === true, job.adjudication]);
+  const contextKey = (job) => JSON.stringify([job.bundle_commit, job.hf_check_context, job.preparation_attempt, job.workflow, holdContext(job)]);
   const canEdit = (job) => Boolean(job && (LOCAL || state.role === "supervisor" || state.role !== "observer" && job.reviewer_email === state.credentials?.email));
   const flow = (job) => job.workflow || { stages: STAGES.map(() => ({ done: false, checks: {} })), machine_id: "" };
   const doneCount = (job) => flow(job).stages.filter((stage) => stage.done).length;
@@ -92,6 +96,7 @@
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
   const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
+    if (evaluationBlocked(job)) return HOLD_MESSAGE;
     if (!LOCAL && state.credentials?.email === "1070055979@qq.com") return "";
     if (LOCAL && job.local_walkthrough) return "";
     if (flow(job).stages.slice(0, state.stage).some(stage => !stage.done)) return "Complete previous stages before recording progress";
@@ -111,6 +116,9 @@
   };
 
   async function request(action, fields = {}) {
+    const job = fields.evaluation_id ? state.jobs.find(job => job.evaluation_id === fields.evaluation_id)
+      : fields.participant_email ? state.jobs.find(job => job.email === fields.participant_email) : selected();
+    if (evaluationBlocked(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_send_issue"].includes(action)) throw new Error(HOLD_MESSAGE);
     if (nonRecording() && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
       return simulateAction(action, fields);
     }
@@ -125,6 +133,10 @@
   function simulateAction(action, fields) {
     const current = state.jobs.find(job => job.evaluation_id === fields.evaluation_id);
     if (!current) throw new Error("Select an evaluation request.");
+    if (evaluationBlocked(current)) {
+      if (action === "reviewer_send_issue") return { ok: true, local_only: true };
+      throw new Error(HOLD_MESSAGE);
+    }
     let change = localChanges.get(current.evaluation_id);
     if (!change) {
       change = { context: contextKey(current), job: structuredClone(current) };
@@ -318,7 +330,7 @@
     }).join("")}</tbody></table>`;
   }
   function stageContent(job) {
-    return stageContentDetails(job) + (state.stage === 0 ? versionControls(job) : "");
+    return (evaluationBlocked(job) ? `<div data-evaluation-hold><div role="alert">${notice(HOLD_MESSAGE, false, "error")}</div>${participantNotes("Organizer review reason", job.adjudication?.reason)}</div>` : "") + stageContentDetails(job) + (state.stage === 0 ? versionControls(job) : "");
   }
   function stageContentDetails(job) {
     if (state.stage === 0) {
@@ -399,7 +411,7 @@
     const back = `<button type="button" class="button button-secondary" data-review-action="workspace">${icon("arrow-left")}Evaluation requests</button>`;
     if (state.view === "downloads") {
       const assigned = state.jobs.filter(job => !job.local_walkthrough && job.reviewer_email === state.credentials.email);
-      const ready = assigned.filter(job => job.bundle_commit && ["provisional", "final"].includes(job.version_status)).length;
+      const ready = assigned.filter(job => !evaluationBlocked(job) && job.bundle_commit && ["provisional", "final"].includes(job.version_status)).length;
       const setup = `git clone --single-branch --branch main https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git "/path/to/RoboSynChallenge_eval_tools"\npython -m pip install huggingface_hub`;
       const run = `python "/path/to/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --api-url '${API}' --email '${state.credentials.email.replace(/'/g, "")}' --output /path/to/checkpoints`;
       const status = `python "/path/to/RoboSynChallenge_eval_tools/tools/download_assigned_checkpoints.py" --output /path/to/checkpoints --status`;
@@ -420,7 +432,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const queueScroll = content.querySelector(".reviewer-queue")?.scrollTop || 0;
     const previousBody = content.querySelector(".reviewer-stage-body");
     const bodyScroll = previousBody?.scrollTop || 0;
-    const paneKey = state.selected + ":" + state.stage;
+    const paneKey = state.selected + ":" + state.stage + (evaluationBlocked(selected()) ? ":" + holdContext(selected()) : "");
     const samePane = previousBody?.dataset.paneKey === paneKey;
     if (!state.credentials) content.innerHTML = `${heading(false)}<div class="reviewer-login-layout"><form data-review-form="login" class="reviewer-form reviewer-login"><h2>Reviewer sign in</h2><p>Preliminary simulation evaluation</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}<label>Email<input type="email" name="email" autocomplete="username" value="${LOCAL ? "1070055979@qq.com" : ""}" required></label><label>Evaluation token<input type="password" name="token" autocomplete="current-password" placeholder="Your assigned evaluation token" required></label><button class="button button-primary" ${state.busy ? "disabled" : ""}>${icon("log-in")}Sign in</button></form></div><div class="reviewer-login-meta"><a href="../#/leaderboard">Public leaderboard</a></div>`;
     else {
@@ -436,6 +448,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         content.querySelector(".reviewer-stage-body").prepend(message);
       }
     }
+    applyHoldControls(content);
     markRequiredFields(content);
     const queue = content.querySelector(".reviewer-queue");
     if (queue) queue.scrollTop = queueScroll;
@@ -443,6 +456,20 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     if (body) { body.dataset.paneKey = paneKey; if (samePane) body.scrollTop = bodyScroll; }
     content.querySelectorAll(".reviewer-error").forEach(error => { error.prepend("ERROR: "); });
     window.lucide?.createIcons();
+  }
+  function applyHoldControls(content) {
+    if (state.view !== "workspace" || !evaluationBlocked(selected())) return;
+    const detail = content.querySelector(".reviewer-detail");
+    if (!detail) return;
+    detail.querySelector(".reviewer-stage-body").prepend(detail.querySelector("[data-evaluation-hold]"));
+    const status = detail.querySelector(".reviewer-state");
+    status.textContent = "Invalid - pending review";
+    status.classList.remove("completed");
+    detail.querySelectorAll("input, textarea, select, button").forEach(control => {
+      if (control.closest("[data-mail-composer]") || control.matches("[data-task-picker], [data-review-stage], [data-review-action=previous], [data-review-action=email]")) return;
+      control.disabled = true;
+      control.title = HOLD_MESSAGE;
+    });
   }
   function markRequiredFields(content) {
     content.querySelectorAll("[required], [data-stage-check], [name=saved_machine]").forEach((field) => {
@@ -482,8 +509,20 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     state.jobs = response.jobs || [];
     serverJobs = structuredClone(state.jobs);
     for (const job of state.jobs) {
-      if (nonRecording() && localChanges.get(job.evaluation_id)?.context === contextKey(job)) continue;
       const old = previous.get(job.evaluation_id);
+      if (evaluationBlocked(job) || old && holdContext(old) !== holdContext(job)) {
+        holdRevisions.set(job.evaluation_id, (holdRevisions.get(job.evaluation_id) || 0) + 1);
+        localChanges.delete(job.evaluation_id);
+        for (let index = 0; index < STAGES.length; index += 1) {
+          const key = job.evaluation_id + ":" + index;
+          state.drafts.delete(key); pendingSaves.delete(key);
+        }
+        for (const key of commandDrafts.keys()) {
+          if (JSON.parse(key)[0] === job.evaluation_id) commandDrafts.delete(key);
+        }
+        if (state.selected === job.evaluation_id && (!old || holdContext(old) !== holdContext(job))) state.toast = "";
+      }
+      if (nonRecording() && localChanges.get(job.evaluation_id)?.context === contextKey(job)) continue;
       if (old && (old.preparation_attempt !== job.preparation_attempt || old.bundle_commit !== job.bundle_commit || old.hf_check_context !== job.hf_check_context ||
           old.workflow?.stages.some((stage, index) => stage.done && !job.workflow?.stages[index]?.done))) {
         for (let index = 0; index < STAGES.length; index += 1) state.drafts.delete(job.evaluation_id + ":" + index);
@@ -494,7 +533,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     if (nonRecording()) {
       state.jobs = state.jobs.map(job => {
         const change = localChanges.get(job.evaluation_id);
-        if (change?.context === contextKey(job)) return change.job;
+        if (!evaluationBlocked(job) && change?.context === contextKey(job)) return change.job;
         localChanges.delete(job.evaluation_id);
         return job;
       });
@@ -519,8 +558,9 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   function saveStage() {
     const job = selected();
-    if (!canEdit(job) || flow(job).stages[state.stage].done || (!nonRecording() && state.stage > firstOpen(job))) return Promise.resolve();
+    if (!canEdit(job) || evaluationBlocked(job) || flow(job).stages[state.stage].done || (!nonRecording() && state.stage > firstOpen(job))) return Promise.resolve();
     const stage = state.stage, credentials = state.credentials;
+    const holdRevision = holdRevisions.get(job.evaluation_id) || 0;
     const values = { ...draft(job) };
     const checks = Object.fromEntries(Object.keys(STAGES[stage].checks).map(key => [key, values[key] === true]));
     const key = job.evaluation_id + ":" + stage;
@@ -530,7 +570,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     if (signature === (pending?.signature || persisted)) return pending?.promise || Promise.resolve();
     // Save captured checks in order while local navigation stays responsive.
     const promise = saveChain.then(async () => {
-      if (state.credentials !== credentials) return;
+      if (state.credentials !== credentials || holdRevision !== (holdRevisions.get(job.evaluation_id) || 0) || evaluationBlocked(state.jobs.find(item => item.evaluation_id === job.evaluation_id))) return;
       await request("reviewer_save_checks", { evaluation_id: job.evaluation_id, stage, checks, machine_id: values.machine_id || "" });
       flow(job).stages[stage].checks = checks;
       flow(job).machine_id = values.machine_id || "";
@@ -580,6 +620,8 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       if (stageButton && !stageButton.disabled && !state.busy) { browse(() => { state.stage = Number(stageButton.dataset.reviewStage); state.emailDraft = null; state.toast = ""; }); return; }
       const action = event.target.closest("[data-review-action]")?.dataset.reviewAction;
       if (!action || state.busy) return;
+      if (evaluationBlocked(selected()) && ["next", "retry-code"].includes(action)) return;
+      if (action === "copy" && state.view === "workspace" && evaluationBlocked(selected())) return;
       if (!["logout", "refresh", "copy", "previous", "close-email", "downloads", "email-status", "workspace"].includes(action) && !canEdit(selected())) return;
       if (["downloads", "email-status", "workspace"].includes(action)) {
         browse(() => { state.view = action; history.replaceState(null, "", location.pathname + location.search + (action === "workspace" ? "" : "#" + action)); });
@@ -606,6 +648,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     });
     element.addEventListener("input", (event) => {
       if (event.target.matches(".reviewer-search")) { state.search = event.target.value; element.querySelector(".reviewer-queue").innerHTML = queueHtml(); return; }
+      if (evaluationBlocked(selected()) && !event.target.closest("[data-review-form=email]")) return;
       if (event.target.matches("[data-task-command]")) {
         commandDrafts.set(commandDraftKey(selected(), event.target.form.dataset.commandTask), event.target.value);
       }
@@ -617,6 +660,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       if (event.target.closest("[data-review-form=email]") && ["subject", "body"].includes(event.target.name)) state.emailDraft[event.target.name] = event.target.value;
     });
     element.addEventListener("change", (event) => {
+      if (evaluationBlocked(selected()) && !event.target.matches("[data-task-picker], [data-email-template]") && !event.target.closest("[data-review-form=email]")) return;
       if (event.target.name === "revoke" && event.target.closest("[data-review-form=admission]")) {
         const date = event.target.form.elements.expires_at;
         date.required = !event.target.checked;
@@ -642,6 +686,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       const data = new FormData(form);
       const type = form.dataset.reviewForm;
       if (type !== "login" && !canEdit(selected())) return;
+      if (!["login", "email"].includes(type) && evaluationBlocked(selected())) return;
       if (type === "version-exception") perform(async () => {
         await request("reviewer_approve_version_exception", { evaluation_id: selected().evaluation_id,
           reason: String(data.get("reason") || ""), argument_reviewed: data.has("argument_reviewed") });
@@ -683,8 +728,8 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     if (!LOCAL) window.setInterval(async () => {
       if (!state.credentials || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
           root()?.contains(document.activeElement) && document.activeElement.matches("input,textarea,select")) return;
-      const waiting = state.jobs.some(job => ["pending", "checking"].includes(job.hf_check_status) ||
-        ["pending", "code_ready"].includes(job.preparation_status) || job.correction?.status === "awaiting");
+      const waiting = state.jobs.some(job => !evaluationBlocked(job) && (["pending", "checking"].includes(job.hf_check_status) ||
+        ["pending", "code_ready"].includes(job.preparation_status) || job.correction?.status === "awaiting"));
       if (!waiting) return;
       state.busy = true;
       try { await refresh(); paint(); } catch { /* Manual refresh exposes persistent network failures. */ }

@@ -65,6 +65,7 @@ function reviewOverallSummary_(results) {
 }
 
 function reviewParticipantOutcome_(evaluation) {
+  if (reviewAdjudication_(evaluation.evaluation_id)?.status === "invalid_pending_review") return {task_results:[], overall_summary:null};
   const run = reviewRun_(evaluation.evaluation_id);
   if (!run || run.submission_id !== evaluation.submission_id || normalizeEmail_(run.participant_email) !== normalizeEmail_(evaluation.email) ||
       !reviewWorkflow_(run.evaluation_id).stages[4].done) return { task_results: [], overall_summary: null };

@@ -3,7 +3,7 @@ function reviewBackupProgress_(run, reason) {
   const backupId = "backup_" + Utilities.getUuid().replace(/-/g, "");
   const tables = ["ReviewRuns", "ReviewProgress", "ReviewTaskResults", "ReviewTaskCommands", "ReviewCodePreparations",
     "ReviewVersionChecks", "ReviewCorrections", "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewCheckpointSources", "ReviewPreparation",
-    "ReviewUploadAccess", "ReviewArchiveUploads", "ReviewToolUpgrades"];
+    "ReviewUploadAccess", "ReviewArchiveUploads", "ReviewToolUpgrades", "ReviewAdjudications"];
   tables.forEach(name => reviewRows_(name).filter(row => row.evaluation_id === run.evaluation_id).forEach(row => {
     const data = JSON.stringify(row);
     for (let offset = 0; offset < data.length; offset += 20000) {

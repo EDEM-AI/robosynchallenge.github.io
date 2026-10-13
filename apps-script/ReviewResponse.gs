@@ -67,6 +67,7 @@ function requireReviewResponse_(params, allowUsed) {
     (row.status === "active" || allowUsed && row.status === "used") && row.token_hash === reviewerHash_(token));
   const correction = reviewRows_("ReviewCorrections").find((row) => row.evaluation_id === params.evaluation_id);
   if (!link || !correction) throw new Error("This response link is not active. Contact the organizers.");
+  if (reviewAdjudication_(params.evaluation_id)?.status === "invalid_pending_review") throw new Error("This evaluation is paused pending organizer review. Please reply directly to the latest eligibility notice; this form cannot change the decision.");
   // Only an explicit per-link deadline applies; historical 24-hour limits remain disabled.
   const deadline = reviewResponseDeadline_(link);
   if (link.status !== "used" && deadline && Date.now() >= Date.parse(deadline)) throw new Error("This response deadline has passed. Contact the organizers; no new response was saved.");
