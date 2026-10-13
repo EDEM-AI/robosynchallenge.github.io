@@ -185,7 +185,9 @@ async function main() {
     assert.equal(await evaluate("document.querySelector('.reviewer-code table') === null"), true, "Stage 2 must not repeat Stage 1's checkpoint table");
     assert.equal(await evaluate("document.querySelector('.reviewer-code [data-copy-command]').textContent.includes('-snapshot0123456789abcdef')"), true, "Clone the actual registered snapshot branch, not an inferred name");
     assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].every(code=>!code.textContent.includes('$HOME') && code.textContent.includes('/path/to/'))"), true, "All stage commands use the same user-selected path placeholder");
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].find(code=>code.textContent.includes('download_checkpoints.py')).textContent.includes('RSC_HF_TOKEN=PASTE_ORGANIZER_HF_READ_TOKEN_HERE')"), true);
     assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].find(code=>code.textContent.includes('download_checkpoints.py')).textContent.includes('--token-file')"), false);
+    assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-command code')].find(code=>code.textContent.includes('download_checkpoints.py')).textContent.includes('--prompt-token')"), false);
     await screenshot("code-desktop");
     await finishStage(1);
     const taskNames = ["click_bell", "drawer_open_place", "mixer_operating", "table_rearrangement", "water_pouring", "handle_basket", "items_handover", "item_assembly", "manipulate_pipette", "sample_loading"];
