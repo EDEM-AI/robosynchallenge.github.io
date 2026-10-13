@@ -163,7 +163,7 @@ async function main() {
     chrome.kill();
     if (chrome.exitCode === null && chrome.signalCode === null) await new Promise(resolve => chrome.once("exit", resolve));
     await new Promise(resolve => server.close(resolve));
-    fs.rmSync(profile, { recursive: true, force: true });
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
   }
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
