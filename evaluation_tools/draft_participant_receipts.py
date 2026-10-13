@@ -2,6 +2,7 @@
 import argparse
 from datetime import datetime, timezone
 import json
+import html
 import os
 from pathlib import Path
 import re
@@ -105,9 +106,13 @@ def draft(team, job, audit):
                   "Experiment / artifact: " + job["artifact_name"], "Request recorded at (UTC): " + job["created_at"],
                   "Applicable version cutoff (UTC): " + job["version_cutoff_at"]]
         if audit["code_revision"]:
-            lines += ["Code version selected for evaluation: " + commit_url(job, audit["code_revision"])]
+            lines += ["", "Code commit selected for evaluation:",
+                      audit["code_revision"] + " | " + commit_url(job, audit["code_revision"])]
         else:
-            lines += ["No eligible code commit is currently recorded for this request. Please await further contact from the organizers.",
+            lines += ["", "Code commit selected for evaluation:",
+                      "No legal commit is currently recorded for this request.",
+                      "Standard: a confirmed commit from the submitted repository/branch must have both author and commit timestamps strictly before the applicable version cutoff stated above. A later version requires a recorded organizer-requested correction or an explicit approved exception.",
+                      "Please await further contact from the organizers.",
                       "Code link on record: " + job["code_link"]]
         if job.get("preparation_attempt"):
             lines += ["Recorded organizer-requested correction round: " + str(job["preparation_attempt"])]
@@ -163,8 +168,16 @@ def prepare_drafts(roster, jobs, audits):
         subject, body = draft(team, job, report)
         output.append({"team_name":team, "to":recipient, "other_registered_accounts":sorted(accounts-{recipient.lower()}),
                        "evaluation_id":job["evaluation_id"] if job else "", "subject":subject, "body":body,
+                       "expected_identity":participation_identity(job),
                        "status":"draft_not_sent"})
     return output, excluded
+
+
+def participation_identity(job):
+    if not job:
+        return ""
+    return json.dumps([job["evaluation_id"], job["hf_check_context"], job.get("code_bundle_commit", ""),
+                       job.get("bundle_commit", "")], separators=(",", ":"))
 
 
 def write_private(path, value):
@@ -173,6 +186,20 @@ def write_private(path, value):
     temporary.write_text(value, encoding="utf-8")
     temporary.chmod(0o600)
     temporary.replace(path)
+
+
+def html_message(body, title):
+    paragraphs = []
+    for paragraph in body.split("\n\n"):
+        value = html.escape(paragraph)
+        value = re.sub(r"https://[^\s<]+", lambda match: '<a style="color:#e9673f" href="' + match[0] + '">' + match[0] + '</a>', value)
+        value = re.sub(r"(?<![A-Za-z0-9/])[a-f0-9]{40}(?= \|)", lambda match: '<code style="font-size:13px">' + match[0] + '</code>', value)
+        value = value.replace("No legal commit", '<strong style="color:#a33a1f">No legal commit</strong>')
+        paragraphs.append('<p style="margin:0 0 16px;overflow-wrap:anywhere">' + value.replace("\n", "<br>") + '</p>')
+    return ('<div style="font-family:Arial,sans-serif;color:#142333;line-height:1.55;max-width:720px">'
+            '<h2 style="margin:0 0 12px;font-size:22px;color:#142333">' + html.escape(title) + '</h2>'
+            '<div style="background:#f8f5ef;border:1px solid #e3ddd2;border-radius:10px;padding:18px">' + ''.join(paragraphs) + '</div>'
+            '<p style="color:#65717d;font-size:12px;margin-top:16px">RoboSynChallenge Organizing Team</p></div>')
 
 
 def main():

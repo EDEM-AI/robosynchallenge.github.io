@@ -1,6 +1,6 @@
 import unittest
 
-from draft_participant_receipts import DEADLINE, audit_job, draft, legal_selection, prepare_drafts, matching_hf_receipts
+from draft_participant_receipts import DEADLINE, audit_job, draft, legal_selection, prepare_drafts, matching_hf_receipts, html_message
 
 
 class ReceiptTests(unittest.TestCase):
@@ -9,6 +9,7 @@ class ReceiptTests(unittest.TestCase):
                 "submission_id":"sub_example", "artifact_name":"Final policy", "created_at":"2026-10-12T11:00:00Z",
                 "version_cutoff_at":DEADLINE, "code_link":"https://github.com/team/code",
                 "checkpoint_link":"https://huggingface.co/team/model",
+                "hf_check_context":"context",
                 "coverage_status":"legacy_unverified", "preparation_status":"failed", "hf_check_status":"pending",
                 "preparation_error":"Submitted commit has no policy/ tree"}
 
@@ -19,12 +20,23 @@ class ReceiptTests(unittest.TestCase):
         self.assertNotIn("We have received", body)
         self.assertIn("does not reopen", body)
 
+    def test_html_keeps_legacy_shell_and_commit_line_without_unescaped_text(self):
+        value = html_message('<img src=x>\n\n'+'a'*40+' | https://github.com/team/code/tree/'+'a'*40+'\nNo legal commit', 'Confirmation')
+        self.assertIn('font-family:Arial', value)
+        self.assertIn('background:#f8f5ef', value)
+        self.assertNotIn('<img', value)
+        self.assertIn('href="https://github.com/', value)
+        self.assertIn('<code', value)
+        self.assertIn('No legal commit</strong>', value)
+
     def test_failed_code_does_not_invent_valid_commit(self):
         subject, body = draft("Example", self.job(), {"code_revision":""})
         self.assertIn("Evaluation ID: eval_example", body)
         self.assertIn("Code link on record", body)
         self.assertNotIn("Code preparation", body)
         self.assertNotIn("Submitted commit has no policy/ tree", body)
+        self.assertIn("No legal commit", body)
+        self.assertIn("Standard:", body)
         self.assertIn("Please await further contact", body)
 
     def test_unchanged_final_freeze_preserves_older_valid_branch_receipt(self):

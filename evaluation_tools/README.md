@@ -49,3 +49,5 @@ python evaluation_tools/draft_participant_receipts.py \
 ```
 
 The roster is a bounded snapshot of approved `Users` records with `registrations` containing email, team, status and intended_use; exclude credentials. Drafts use one recipient per exact registered team name, preferring the latest eligible submitting account. Other registered contacts remain in the private review manifest, not CC. Explicit organizer test registrations are excluded; learning-only or other ambiguous registrations are retained for organizer review, not silently discarded. Teams with no request receive distinct text. Pending checks never become a false success confirmation. Review `version-audit.json`, `drafts.json` and `drafts.md` before any separately authorized mailing.
+
+Send only after explicit organizer approval, using Gmail directly rather than Apps Script/MailApp. Keep one message per team with the existing HTML email shell; do not expose team addresses through shared To/CC lists. Store Gmail message IDs and ambiguous-delivery receipts privately. These notices create no response forms and do not change progress or admission deadlines.
