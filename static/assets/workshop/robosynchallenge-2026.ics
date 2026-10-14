@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//RoboSynChallenge//Workshop 2026//EN
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+BEGIN:VEVENT
+UID:robosynchallenge-workshop-2026@robosyn-bench.net
+DTSTAMP:20261014T000000Z
+DTSTART:20261210T233000Z
+DTEND:20261211T014500Z
+SUMMARY:RoboSynChallenge Workshop at NeurIPS 2026
+LOCATION:MR C4.3\, Sydney
+DESCRIPTION:Two invited research talks\, competition findings\, finalist
+ presentations\, and awards. 10:30 AM-12:45 PM AEDT (Sydney time).
+URL:https://robosyn-bench.net/#/workshop
+END:VEVENT
+END:VCALENDAR

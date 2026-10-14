@@ -1361,6 +1361,7 @@
     const user = currentUser();
 
     const links = [
+      ["workshop", "Workshop"],
       ["home", "Home"],
       ["data", "Data"],
       ["faq", "FAQ"],
@@ -1396,12 +1397,14 @@
   }
 
   function renderSection(html, title) {
+    window.ROBO_SYN_WORKSHOP?.cleanup();
     if (viewerCleanup) {
       viewerCleanup();
       viewerCleanup = null;
     }
 
     if (title) document.title = `${title} | RoboSynChallenge`;
+    document.body.classList.toggle("workshop-route", parseRoute(currentRoute()).name === "workshop");
     appEl.innerHTML = `<div class="page-shell">${html}</div>`;
     renderHeader();
     renderFlashes(true);
@@ -2515,6 +2518,7 @@
   }
 
   function parseRoute(route) {
+    if (route === "workshop") return { name: "workshop" };
     if (route === "home") return { name: "home" };
     if (route === "data") return { name: "data" };
     if (route === "benchmark") return { name: "leaderboard" };
@@ -2536,6 +2540,10 @@
   function render() {
     const route = parseRoute(currentRoute());
     switch (route.name) {
+      case "workshop":
+        renderSection(window.ROBO_SYN_WORKSHOP.render(CONTACT_EMAIL), "Workshop");
+        window.ROBO_SYN_WORKSHOP.init(appEl);
+        break;
       case "home":
         renderSection(renderHome(), "Home");
         break;
