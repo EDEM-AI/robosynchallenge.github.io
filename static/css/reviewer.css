@@ -93,6 +93,7 @@ body { background: #fff; font-size: 16px; }
 .reviewer-notes summary { cursor: pointer; font-weight: 500; }
 .reviewer-notes p { white-space: pre-wrap; line-height: 1.6; font-size: 15px; margin-top: 14px; overflow-wrap: anywhere; }
 .reviewer-participant-notes > p { max-height: min(160px, 20vh); overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; padding: 4px 8px 4px 0; }
+.reviewer-participant-notes-full > p { max-height: none; overflow-y: visible; scrollbar-gutter: auto; }
 .reviewer-form { display: grid; gap: 16px; margin: 22px 0; }
 .reviewer-form label { display: grid; gap: 7px; font-size: 15px; font-weight: 500; }
 .reviewer-required { color: #b42318; font-weight: 700; white-space: pre; }
