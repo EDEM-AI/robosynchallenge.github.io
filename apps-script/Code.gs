@@ -138,6 +138,10 @@ const DEFAULT_WECHAT_QR_FILE_NAME = "RCS_wechat_QRcode_test.jpg";
 const DEFAULT_DISCORD_INVITE_URL = "https://discord.gg/tUDEtJG92";
 const FULL_NAME_UPDATE_DAYS = 14;
 const FULL_NAME_UPDATE_TEST_EMAIL = "224040356@link.cuhk.edu.cn";
+const ACCESS_REQUEST_INTAKE_CLOSED = true;
+const POLICY_SUBMISSION_INTAKE_CLOSED = true;
+const ACCESS_REQUEST_CLOSED_MESSAGE = "RoboSynChallenge participant access requests are closed. The organizers are processing existing registrations.";
+const POLICY_SUBMISSION_CLOSED_MESSAGE = "RoboSynChallenge evaluation requests are closed. The organizers are processing existing requests.";
 
 function doGet(e) {
   const action = String(e?.parameter?.rsc_action || e?.parameter?.action || "");
@@ -551,6 +555,7 @@ function handleRequestAccess_(payload) {
     intended_use: requiredString_(payload.intended_use, "Intended use"),
     misc: optionalString_(payload.misc, "Misc"),
   };
+  if (ACCESS_REQUEST_INTAKE_CLOSED) throw new Error(ACCESS_REQUEST_CLOSED_MESSAGE);
   checkRateLimit_("request_access", request.email, 5, 60 * 60 * 1000);
   assertAccessRequestsIntegrity_();
 
@@ -659,6 +664,11 @@ function handleSubmitPolicyLocked_(payload) {
   const retryKey = reviewerHash_(session.email + ":" + (suppliedKey || fingerprint));
   let receipt = policyReceipt_(retryKey);
   if (receipt && receipt.fingerprint !== fingerprint) throw new Error("Submission retry key belongs to different content.");
+  if (!receipt && POLICY_SUBMISSION_INTAKE_CLOSED) {
+    const error = new Error(POLICY_SUBMISSION_CLOSED_MESSAGE);
+    error.code = "SUBMISSIONS_CLOSED";
+    throw error;
+  }
   if (!receipt && !admission.allowed) {
     const error = new Error(`Preliminary submissions closed on October 11, 2026 at 23:59 AoE. Please contact ${admission.contact_email}; only organizers can grant a token-specific extension.`);
     error.code = "SUBMISSIONS_CLOSED";

@@ -15,6 +15,10 @@
   const DATA_COLLECTION_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/collect_data.html";
   const REPORT_URL = "material/RoboSynChallenge-report.pdf";
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
+  const ACCESS_REQUEST_INTAKE_CLOSED = true;
+  const POLICY_SUBMISSION_INTAKE_CLOSED = true;
+  const ACCESS_REQUEST_CLOSED_MESSAGE = "RoboSynChallenge participant access requests are closed. The organizers are processing existing registrations.";
+  const POLICY_SUBMISSION_CLOSED_MESSAGE = "RoboSynChallenge evaluation requests are closed. The organizers are processing existing requests.";
 
   const EVALUATION_STAGE_LABELS = {
     preliminary_simulation: "Preliminary simulation",
@@ -1722,6 +1726,7 @@
             RoboSynChallenge access requests are reviewed by the organizers through Gmail. Submit the
             required fields here, then the approval workflow can issue an access token after review.
           </p>
+          ${ACCESS_REQUEST_INTAKE_CLOSED ? `<p class="construction-note">${escapeHtml(ACCESS_REQUEST_CLOSED_MESSAGE)}</p>` : ""}
           ${backendConfigured() ? "" : `<p class="construction-note">Backend API is not configured yet. Please contact the organizers.</p>`}
           <div class="task-list">
             <span><strong>Request id:</strong> <span data-register-request-id>${escapeHtml(requestId)}</span></span>
@@ -1756,7 +1761,7 @@
               <span>Misc</span>
               <textarea name="misc" rows="4" placeholder="Optional extra information"></textarea>
             </label>
-            <button type="submit" class="button button-primary" ${backendConfigured() ? "" : "disabled"}>Send request</button>
+            <button type="submit" class="button button-primary" ${backendConfigured() && !ACCESS_REQUEST_INTAKE_CLOSED ? "" : "disabled"}>Send request</button>
             <p class="form-status" data-register-status aria-live="polite"></p>
           </form>
           <div class="cta-row">
@@ -1773,7 +1778,8 @@
 
   function renderPolicySubmissionForm() {
     const access = remoteState.submissionAccess;
-    const accessNotice = remoteState.submissionAccessError || (!access ? "Checking submission eligibility..." : !access.allowed
+    const accessNotice = POLICY_SUBMISSION_INTAKE_CLOSED ? POLICY_SUBMISSION_CLOSED_MESSAGE :
+      remoteState.submissionAccessError || (!access ? "Checking submission eligibility..." : !access.allowed
       ? `Preliminary submissions closed on October 11, 2026 at 23:59 AoE. Contact ${access.contact_email || CONTACT_EMAIL} to request an organizer-approved extension.`
       : access.exception ? `An organizer-approved extension is active for your current access token until ${new Date(access.exception_expires_at).toUTCString()}.`
       : "Preliminary submissions close October 11, 2026 at 23:59 AoE (October 12, 20:00 Beijing time).");
@@ -1832,7 +1838,7 @@
           </article>
 
           <div class="section-actions">
-            <button type="submit" class="button button-primary" ${access?.allowed ? "" : "disabled"}>Submit Policy</button>
+            <button type="submit" class="button button-primary" ${access?.allowed && !POLICY_SUBMISSION_INTAKE_CLOSED ? "" : "disabled"}>Submit Policy</button>
           </div>
           <p data-evaluation-status role="status" aria-live="polite" hidden></p>
         </form>
@@ -2715,6 +2721,11 @@
       setStatus("error", "The access-request backend is not configured yet.");
       return;
     }
+    if (ACCESS_REQUEST_INTAKE_CLOSED) {
+      pushFlash("error", ACCESS_REQUEST_CLOSED_MESSAGE);
+      setStatus("error", ACCESS_REQUEST_CLOSED_MESSAGE);
+      return;
+    }
 
     const formData = new FormData(form);
     const requestId = String(formData.get("request_id") || accessRequestId()).trim();
@@ -2786,6 +2797,11 @@
     }
     if (!backendConfigured() || !state.session.session_id) {
       pushFlash("error", "The submission backend is not available. Please sign in again or contact the organizers.");
+      return;
+    }
+    if (POLICY_SUBMISSION_INTAKE_CLOSED) {
+      showStatus(POLICY_SUBMISSION_CLOSED_MESSAGE, true);
+      pushFlash("error", POLICY_SUBMISSION_CLOSED_MESSAGE);
       return;
     }
 
@@ -2865,7 +2881,7 @@
       pushFlash("error", error.message || "Policy submission failed.");
     } finally {
       delete form.dataset.submitting;
-      if (submitButton) { submitButton.disabled = !remoteState.submissionAccess?.allowed; submitButton.textContent = "Submit Policy"; }
+      if (submitButton) { submitButton.disabled = POLICY_SUBMISSION_INTAKE_CLOSED || !remoteState.submissionAccess?.allowed; submitButton.textContent = "Submit Policy"; }
     }
   }
 
