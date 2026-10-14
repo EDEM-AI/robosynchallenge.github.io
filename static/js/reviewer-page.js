@@ -66,14 +66,16 @@
   const button = (action, name, symbol, extra = "") => `<button type="button" class="button button-secondary" data-review-action="${action}" ${extra}>${icon(symbol)}${name}</button>`;
   const root = () => document.querySelector("[data-reviewer-root]");
   const selected = () => state.jobs.find((job) => job.evaluation_id === state.selected);
-  const nonRecording = () => !LOCAL && (state.credentials?.email === "1070055979@qq.com" || state.role === "tester");
+  const usesLocalSimulation = () => !LOCAL && (state.credentials?.email === "1070055979@qq.com" || state.role === "tester");
+  const nonRecording = (job = selected()) => usesLocalSimulation() && !(state.role === "supervisor" &&
+    state.credentials?.email === "1070055979@qq.com" && job?.reviewer_email === state.credentials.email);
   const localChanges = new Map();
   const holdRevisions = new Map();
   let serverJobs = [];
   const HOLD_MESSAGE = "Submission currently invalid; evaluation paused pending organizer review";
   const evaluationBlocked = (job) => Boolean(job && (job.evaluation_blocked === true || job.state === "invalid" || job.adjudication?.status === "invalid_pending_review"));
   const holdContext = (job) => JSON.stringify([job.state === "invalid", job.evaluation_blocked === true, job.adjudication]);
-  const contextKey = (job) => JSON.stringify([job.bundle_commit, job.hf_check_context, job.preparation_attempt, job.workflow, holdContext(job)]);
+  const contextKey = (job) => JSON.stringify([job.reviewer_email, job.bundle_commit, job.hf_check_context, job.preparation_attempt, job.workflow, holdContext(job)]);
   const canEdit = (job) => Boolean(job && (LOCAL || state.role === "supervisor" || state.role !== "observer" && job.reviewer_email === state.credentials?.email));
   const flow = (job) => job.workflow || { stages: STAGES.map(() => ({ done: false, checks: {} })), machine_id: "" };
   const doneCount = (job) => flow(job).stages.filter((stage) => stage.done).length;
@@ -91,13 +93,13 @@
     const match = String(job.bundle_url || "").match(/^https:\/\/github\.com\/ZhaoRunyi\/RoboSynChallenge_eval\/tree\/((?:submissions\/)?eval_[A-Za-z0-9_.-]+)$/);
     return match && (match[1] === job.evaluation_id || match[1].startsWith("submissions/" + job.evaluation_id)) ? match[1] : "";
   };
-  const cloneCommand = (job) => `git clone --single-branch --branch ${cloneBranch(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} checkout --detach ${job.bundle_commit}`;
+  const cloneCommand = (job) => `git clone --single-branch --branch ${cloneBranch(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} rev-parse HEAD`;
   const cloneDirectory = (job) => `"/path/to/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}${job.bundle_commit ? "_" + job.bundle_commit.slice(0, 12) : ""}"`;
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
   const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
     if (evaluationBlocked(job)) return HOLD_MESSAGE;
-    if (!LOCAL && state.credentials?.email === "1070055979@qq.com") return "";
+    if (nonRecording(job) && state.credentials?.email === "1070055979@qq.com") return "";
     if (LOCAL && job.local_walkthrough) return "";
     if (flow(job).stages.slice(0, state.stage).some(stage => !stage.done)) return "Complete previous stages before recording progress";
     const checks = draft(job);
@@ -119,7 +121,7 @@
     const job = fields.evaluation_id ? state.jobs.find(job => job.evaluation_id === fields.evaluation_id)
       : fields.participant_email ? state.jobs.find(job => job.email === fields.participant_email) : selected();
     if (evaluationBlocked(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_send_issue"].includes(action)) throw new Error(HOLD_MESSAGE);
-    if (nonRecording() && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
+    if (nonRecording(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
       return simulateAction(action, fields);
     }
     if (LOCAL) return previewAction(action, fields);
@@ -441,7 +443,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const samePane = previousBody?.dataset.paneKey === paneKey;
     if (!state.credentials) content.innerHTML = `${heading(false)}<div class="reviewer-login-layout"><form data-review-form="login" class="reviewer-form reviewer-login"><h2>Reviewer sign in</h2><p>Preliminary simulation evaluation</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}<label>Email<input type="email" name="email" autocomplete="username" value="${LOCAL ? "1070055979@qq.com" : ""}" required></label><label>Evaluation token<input type="password" name="token" autocomplete="current-password" placeholder="Your assigned evaluation token" required></label><button class="button button-primary" ${state.busy ? "disabled" : ""}>${icon("log-in")}Sign in</button></form></div><div class="reviewer-login-meta"><a href="../#/leaderboard">Public leaderboard</a></div>`;
     else {
-      const realJobs = (nonRecording() ? serverJobs : state.jobs).filter((job) => !job.local_walkthrough);
+      const realJobs = (usesLocalSimulation() ? serverJobs : state.jobs).filter((job) => !job.local_walkthrough);
       const complete = realJobs.filter((job) => doneCount(job) === 5).length;
       const units = realJobs.reduce((sum, job) => sum + doneCount(job), 0);
       content.innerHTML = `${heading(true)}<div class="reviewer-progress"><strong>${["admin", "observer", "supervisor"].includes(state.role) ? "Global evaluation progress" : "My evaluation progress"}</strong><progress max="${Math.max(1, realJobs.length * 5)}" value="${units}" aria-label="Overall evaluation progress"></progress><span>${complete} / ${realJobs.length} requests completed · ${units} / ${realJobs.length * 5} stages</span></div><nav class="reviewer-overview-tools" aria-label="Evaluation overview">${button("downloads", "Download checkpoints", "download")}${button("email-status", "Email status", "mail")}</nav>${state.view !== "workspace" ? overviewPage() : `<div class="reviewer-layout"><aside class="reviewer-sidebar"><div class="reviewer-sidebar-head"><h2>${["admin", "observer", "supervisor"].includes(state.role) ? "All requests" : "Assigned requests"}</h2><span>${realJobs.length}${LOCAL ? " + demo" : ""}</span></div><input class="reviewer-search" type="search" placeholder="Search team or request" aria-label="Search requests" value="${escape(state.search)}"><div class="reviewer-queue">${queueHtml()}</div></aside>${jobDetail(selected())}</div>`}`;
@@ -502,21 +504,21 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   async function refresh() {
     const credentials = state.credentials;
-    const wasNonRecording = nonRecording();
+    const wasNonRecording = usesLocalSimulation();
     const previous = new Map(state.jobs.map(job => [job.evaluation_id, job]));
     const includeMail = state.view === "email-status";
     const response = await request("reviewer_queue", { include_mail_status: includeMail });
     if (state.credentials !== credentials) return;
     state.role = response.reviewer?.role || "";
     state.sharedHfToken = response.shared_hf_token || "";
-    if (wasNonRecording && !nonRecording()) {
+    if (wasNonRecording && !usesLocalSimulation()) {
       localChanges.clear(); state.drafts.clear(); commandDrafts.clear(); state.emailDraft = null;
     }
     state.jobs = response.jobs || [];
     serverJobs = structuredClone(state.jobs);
     for (const job of state.jobs) {
       const old = previous.get(job.evaluation_id);
-      if (evaluationBlocked(job) || old && holdContext(old) !== holdContext(job)) {
+      if (evaluationBlocked(job) || old && (holdContext(old) !== holdContext(job) || old.reviewer_email !== job.reviewer_email)) {
         holdRevisions.set(job.evaluation_id, (holdRevisions.get(job.evaluation_id) || 0) + 1);
         localChanges.delete(job.evaluation_id);
         for (let index = 0; index < STAGES.length; index += 1) {
@@ -528,7 +530,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         }
         if (state.selected === job.evaluation_id && (!old || holdContext(old) !== holdContext(job))) state.toast = "";
       }
-      if (nonRecording() && localChanges.get(job.evaluation_id)?.context === contextKey(job)) continue;
+      if (nonRecording(job) && localChanges.get(job.evaluation_id)?.context === contextKey(job)) continue;
       if (old && (old.preparation_attempt !== job.preparation_attempt || old.bundle_commit !== job.bundle_commit || old.hf_check_context !== job.hf_check_context ||
           old.workflow?.stages.some((stage, index) => stage.done && !job.workflow?.stages[index]?.done))) {
         for (let index = 0; index < STAGES.length; index += 1) state.drafts.delete(job.evaluation_id + ":" + index);
@@ -536,10 +538,10 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       }
     }
     if (includeMail) state.mailStatus = response.messages || [];
-    if (nonRecording()) {
+    if (usesLocalSimulation()) {
       state.jobs = state.jobs.map(job => {
         const change = localChanges.get(job.evaluation_id);
-        if (!evaluationBlocked(job) && change?.context === contextKey(job)) return change.job;
+        if (nonRecording(job) && !evaluationBlocked(job) && change?.context === contextKey(job)) return change.job;
         localChanges.delete(job.evaluation_id);
         return job;
       });

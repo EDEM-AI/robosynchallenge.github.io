@@ -176,6 +176,12 @@ function reviewerIdentity_(payload, workbook) {
   return { email, role: row.role, non_recording: email === "1070055979@qq.com" || row.role === "tester" };
 }
 
+function reviewNonRecordingForRequest_(viewer, evaluationId) {
+  if (!viewer.non_recording) return false;
+  return !(viewer.email === "1070055979@qq.com" && viewer.role === "supervisor" && evaluationId &&
+    normalizeEmail_(reviewRun_(evaluationId)?.reviewer_email) === viewer.email);
+}
+
 function reviewProvisionAccount_(payload) {
   return withReviewLock_(() => {
     const viewer = reviewerIdentity_(payload);
@@ -546,6 +552,7 @@ function reviewOwnedRun_(payload, organizer) {
   const run = reviewRun_(job.evaluation.evaluation_id);
   if (!run || String(run.submission_id) !== String(job.submission.submission_id) ||
       (!(organizer && viewer.role === "admin") && viewer.role !== "supervisor" && normalizeEmail_(run.reviewer_email) !== viewer.email)) throw new Error("This request is not assigned to you.");
+  if (reviewNonRecordingForRequest_(viewer, run.evaluation_id)) throw new Error("Non-recording account: this request is browser-local only.");
   reviewAssertEvaluationAllowed_(run.evaluation_id, payload.rsc_action || payload.action || "");
   return { viewer, job, run };
 }
@@ -958,7 +965,8 @@ function reviewSendIssue_(payload) {
 
 function handleReviewerAction_(action, payload) {
   payload = {...payload, action};
-  if (!payload.upload_token && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) && reviewerIdentity_(payload).non_recording) {
+  if (!payload.upload_token && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) &&
+      reviewNonRecordingForRequest_(reviewerIdentity_(payload), payload.evaluation_id)) {
     throw new Error("Non-recording account: actions are browser-local only; no evaluation or email was changed.");
   }
   const cloneActions = ["reviewer_checkpoint_credential", "reviewer_save_command", "reviewer_submit_result",

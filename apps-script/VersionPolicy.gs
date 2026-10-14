@@ -45,7 +45,10 @@ function reviewReassign_(payload) {
     if (reviewWorkflow_(run.evaluation_id).stages[1].done || reviewTaskRows_(run.evaluation_id).some(row => row.status !== "superseded")) throw new Error("Local code handoff or evaluation has started; reassignment is locked.");
     const owner = requiredEmail_(payload.assign_to);
     const reason = requiredString_(payload.reason, "Reassignment reason");
-    if (!reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) === owner && isTruthy_(row.active) && ["evaluator", "admin"].includes(row.role))) throw new Error("Reviewer is not active or is read-only/non-assigned.");
+    if (!reviewRows_("Reviewers").some(row => normalizeEmail_(row.email) === owner && isTruthy_(row.active) &&
+        (["evaluator", "admin"].includes(row.role) || owner === "1070055979@qq.com" && row.role === "supervisor"))) {
+      throw new Error("Reviewer is not active or is read-only/non-assigned.");
+    }
     reviewWrite_("ReviewAssignments", null, { evaluation_id: run.evaluation_id, previous_reviewer: run.reviewer_email,
       reviewer_email: owner, reason, changed_by: viewer.email, changed_at: now_() });
     reviewWrite_("ReviewRuns", run._rowNumber, { evaluation_id: run.evaluation_id, reviewer_email: owner, updated_at: now_() });

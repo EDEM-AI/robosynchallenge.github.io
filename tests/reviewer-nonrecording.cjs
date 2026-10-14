@@ -12,7 +12,7 @@ const serverJob = {
   workflow: { stages: Array.from({length:5}, () => ({done:false, checks:{}})) },
 };
 const original = JSON.stringify(serverJob);
-function fixture(email) {
+function fixture(email, jobs = [serverJob]) {
   const calls = [], storage = new Map();
   let role = email==="1070055979@qq.com"?"supervisor":email==="tester@example.com"?"tester":"evaluator";
   const context = vm.createContext({
@@ -24,12 +24,12 @@ function fixture(email) {
     fetch: async (_, options) => {
       const payload = JSON.parse(options.body);
       calls.push(payload);
-      return {ok:true, json:async()=>({ok:true, reviewer:{role}, jobs:[structuredClone(serverJob)]})};
+      return {ok:true, json:async()=>({ok:true, reviewer:{role}, jobs:structuredClone(jobs)})};
     },
   });
   let source = fs.readFileSync(path.join(__dirname,"../static/js/reviewer-page.js"),"utf8");
   source = source.replace("window.RSCReviewer = { render, mount };",
-    "window.test = {state, request, refresh, nextBlocker, localChanges, commandDrafts, serverJobs:()=>serverJobs}; window.RSCReviewer = { render, mount };");
+    "window.test = {state, request, refresh, nextBlocker, nonRecording, cloneCommand, localChanges, commandDrafts, serverJobs:()=>serverJobs}; window.RSCReviewer = { render, mount };");
   vm.runInContext(source,context);
   const test = context.window.test;
   test.state.credentials = {email,token:"act_fixture"};
@@ -90,6 +90,33 @@ async function main() {
   assert.equal(tester.test.state.jobs[0].task_commands.click_bell,undefined);
   await tester.test.request("reviewer_save_command",{evaluation_id:serverJob.evaluation_id,task:"click_bell",command:"formal command"});
   assert.equal(tester.calls.at(-1).action,"reviewer_save_command");
+  const assigned = structuredClone(serverJob);
+  assigned.evaluation_id = "eval_owned";
+  assigned.reviewer_email = "1070055979@qq.com";
+  const mixed = fixture("1070055979@qq.com", [assigned, serverJob]);
+  await mixed.test.refresh();
+  mixed.test.state.selected = assigned.evaluation_id;
+  assert.equal(mixed.test.nonRecording(mixed.test.state.jobs[0]), false);
+  assert.equal(mixed.test.nonRecording(mixed.test.state.jobs[1]), true);
+  mixed.test.state.stage = 4;
+  assert(mixed.test.nextBlocker(mixed.test.state.jobs[0]).includes("previous stages"), "Owned request retains real completion requirements");
+  await mixed.test.request("reviewer_save_checks", {evaluation_id:assigned.evaluation_id, stage:1, checks:{commit_verified:true}});
+  assert.equal(mixed.calls.at(-1).action, "reviewer_save_checks", "Owned supervisor request records normally");
+  const realCalls = mixed.calls.length;
+  await mixed.test.request("reviewer_save_command", {evaluation_id:serverJob.evaluation_id, task:"click_bell", command:"preview only"});
+  assert.equal(mixed.calls.length, realCalls, "Selected owned request cannot cause another request to record");
+  await mixed.test.refresh();
+  assert.equal(mixed.test.state.jobs[1].task_commands.click_bell, "preview only");
+  assert.equal(mixed.test.serverJobs()[1].task_commands.click_bell, undefined);
+  mixed.test.state.drafts.set(serverJob.evaluation_id+":0", {ten_tasks:true});
+  serverJob.reviewer_email = "1070055979@qq.com";
+  await mixed.test.refresh();
+  assert.equal(mixed.test.localChanges.has(serverJob.evaluation_id), false, "Reassignment drops prior browser-only simulation");
+  assert.equal(mixed.test.state.drafts.has(serverJob.evaluation_id+":0"), false);
+  assert.equal(mixed.test.state.jobs[1].task_commands.click_bell, undefined);
+  serverJob.reviewer_email = "evaluator@example.com";
+  const clone = mixed.test.cloneCommand({...assigned, bundle_url:"https://github.com/ZhaoRunyi/RoboSynChallenge_eval/tree/eval_owned", bundle_commit:"a".repeat(40)});
+  assert(!clone.includes("--detach"), "New clones must retain their tracking branch for git pull");
   console.log("Non-recording accounts: organizer walkthrough, tester real gates, browser-only forms/mail and real evaluator recording passed.");
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
