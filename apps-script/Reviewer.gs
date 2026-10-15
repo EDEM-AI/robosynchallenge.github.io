@@ -33,16 +33,16 @@ const REVIEW_TASK_STEPS = {
   manipulate_pipette: 1000, sample_loading: 500,
 };
 const REVIEW_SEED_HASHES = {
-  click_bell: "5e108dabef5880b19d94bda7915098ecb5721ad401516f53f357f51c19a937aa",
-  drawer_open_place: "ac0dfab95c7cf945bf7c7157e82f0d75ab1f08891ff10b5b2f2ddee83006cc74",
-  handle_basket: "34909c5afd60d68aa0d12f6066a8f8b88e94ab321673739e04653bf61668e0d2",
-  item_assembly: "850516df6e6481f6be4fbd9d65ed2b512bde8fa89d67ff780bfa891bc7e854f0",
-  items_handover: "5ebc46ac96c1ac12a3774292014028783f71b2e1347c1f1fa431f8d821cecc86",
-  manipulate_pipette: "0f54070f2f03357b9e4846c4b5b3e4cdce94a96bd9bf248bfa49c71b252c96fb",
-  mixer_operating: "22ab31fc8c4461ff99aad7ca3614861e0d9314bc518f8f8817c6b400036cb370",
-  sample_loading: "745dc13202ca5a75ffce62d44452129a0bebe79bcfd03405fb99dadde3fc8800",
-  table_rearrangement: "ad479b03691b7d85ea2d62888409dbf8c873675f16f23c5646cd77a7ec6ab546",
-  water_pouring: "f616b2bf8109aab4b816fb22b5df5707bb74c13c873519092cb459430c2f3a66",
+  click_bell: "57e2401bcc4df0e52f1999a7cd7dae53ee2af444938cebf357cd35ec2eb398aa",
+  drawer_open_place: "98a2d2d0fb0e12a9aa55bb5798cdf644273b444b73acd6edbf09746f8b9eaeab",
+  handle_basket: "7cab681cfc8ce8e4a8ffe172fd3c8a545a02a465bcfaf05046ae38035cfdf826",
+  item_assembly: "ac4b8997e234a0d77d16ab38322d63aee7f67dd34f7c7bea4323da13bae1756a",
+  items_handover: "9bdb5f01adc504cd448d2bb5ad6377382f774cd97eb716e913c8a794b5339938",
+  manipulate_pipette: "0ceabd91a0041f61bac6b0bab1f517f193abdc55454bb5c4b5d89e45c02761b3",
+  mixer_operating: "979ac42144b1085d27aa76b108ce78135d13bd79340e79396fc2f8d4a26bb239",
+  sample_loading: "580863598cf42c75e2c82a1de6476fee6e36efd43a636bc5cd54dfb144b54d01",
+  table_rearrangement: "45cfe6272b7b3c9772ec3869d078cf691f645ef732a2449cc309155f0499e5f1",
+  water_pouring: "5ce89bedf9d08f0746caf0ef1ae1cfed1404acf2e2c71b70265dd2a2f5fdb6f9",
 };
 const REVIEW_DEADLINE_MS = Date.parse("2026-10-12T12:00:00Z");
 const REVIEW_PRIVATE_REPO = "ZhaoRunyi/RoboSynChallenge_eval";
