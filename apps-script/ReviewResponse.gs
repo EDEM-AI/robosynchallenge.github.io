@@ -125,6 +125,7 @@ function handleReviewResponseSubmit_(params) {
           { evaluation_id: run.evaluation_id, status: "pending", message: "", updated_at: now_() });
       }
     } else if (params.response_kind === "correct") {
+      reviewAssertPreparationMutable_(params, run.evaluation_id);
       const code = requiredString_(params.code_link, "Immutable GitHub commit URL");
       if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/tree\/[a-f0-9]{40}\/?$/i.test(code)) throw new Error("Use a GitHub tree URL with a full 40-character commit SHA.");
       const links = Object.fromEntries(Object.keys(REVIEW_TASK_STEPS).map((task) => [task, requiredHuggingFaceUrl_(params["checkpoint_" + task])]));
