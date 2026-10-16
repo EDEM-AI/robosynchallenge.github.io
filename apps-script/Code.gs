@@ -664,7 +664,7 @@ function handleSubmitPolicyLocked_(payload) {
   const retryKey = reviewerHash_(session.email + ":" + (suppliedKey || fingerprint));
   let receipt = policyReceipt_(retryKey);
   if (receipt && receipt.fingerprint !== fingerprint) throw new Error("Submission retry key belongs to different content.");
-  if (!receipt && POLICY_SUBMISSION_INTAKE_CLOSED) {
+  if (!receipt && POLICY_SUBMISSION_INTAKE_CLOSED && !admission.exception) {
     const error = new Error(POLICY_SUBMISSION_CLOSED_MESSAGE);
     error.code = "SUBMISSIONS_CLOSED";
     throw error;

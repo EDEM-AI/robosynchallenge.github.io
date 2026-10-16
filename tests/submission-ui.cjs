@@ -99,9 +99,9 @@ async function main() {
     await rpc("Page.captureScreenshot", { format: "png", captureBeyondViewport: true }).then(result =>
       fs.writeFileSync("/tmp/rsc-submission-desktop.png", Buffer.from(result.data, "base64")));
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/?test_gate=closed#/submit-policy" });
-    await until("!!document.querySelector('[data-form=evaluation]') && document.body.textContent.includes('closed')");
+    await until("!!document.querySelector('[data-form=evaluation]') && document.body.textContent.includes('closed') && !!document.querySelector('[data-submission-access] a')");
     assert.equal(await evaluate("document.querySelector('[data-form=evaluation] [type=submit]').disabled"),true);
-    assert.equal(await evaluate("document.body.textContent.includes('robosynchallenge@gmail.com')"),true);
+    assert.equal(await evaluate("document.querySelector('[data-submission-access] a').getAttribute('href')"),"mailto:robosynchallenge@gmail.com");
     await rpc("Page.navigate", { url: "http://127.0.0.1:8032/?test_gate=extension#/submit-policy" });
     await until("!!document.querySelector('[data-form=evaluation]') && !document.querySelector('[data-form=evaluation] [type=submit]').disabled");
     assert.equal(await evaluate("document.body.textContent.includes('organizer-approved extension')"),true);

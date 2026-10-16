@@ -21,7 +21,7 @@ function handleSubmissionStatus_(payload) {
   const user = findActiveUser_(session.email);
   if (!user) throw new Error("User token is not active.");
   const { window_id, ...status } = submissionAdmission_(user);
-  return { ok: true, ...status };
+  return { ok: true, ...status, allowed: status.allowed && (!POLICY_SUBMISSION_INTAKE_CLOSED || status.exception) };
 }
 
 function reviewSubmissionWindow_(payload) {
