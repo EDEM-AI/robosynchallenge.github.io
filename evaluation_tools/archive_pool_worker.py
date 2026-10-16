@@ -32,6 +32,15 @@ def private_write(path, value):
     temporary.replace(path)
 
 
+def clean_stale_spools(workspace):
+    # The caller holds the exclusive worker lock; only our interrupted transfer caches are removed.
+    for child in workspace.glob("transfer-*"):
+        if child.is_symlink():
+            raise ValueError("Unexpected symlink in private transfer spool")
+        if child.is_dir():
+            shutil.rmtree(child)
+
+
 def session(proxy):
     value = requests.Session()
     value.trust_env = False
@@ -222,6 +231,7 @@ def choose_slot(drives, size, reserve, reservations=None):
 
 
 def migrate(candidate, source, drives, backend, workspace, report, reserve, cleanup=False):
+    started = time.monotonic()
     identity = {"evaluation_id":candidate["evaluation_id"], "task":candidate["task"],
                 "upload_id":candidate["upload_id"]}
     location = candidate.get("location")
@@ -268,7 +278,8 @@ def migrate(candidate, source, drives, backend, workspace, report, reserve, clea
         return
     report("cleaning_source", slot=slot, **identity, bytes=candidate["size"])
     backend.call("reviewer_archive_pool_cleanup", **identity, sha256=candidate["sha256"])
-    report("migrated", slot=slot, **identity, bytes=candidate["size"])
+    elapsed = time.monotonic() - started
+    report("migrated", slot=slot, **identity, bytes=candidate["size"], elapsed_seconds=round(elapsed, 3))
 
 
 def main():
@@ -288,6 +299,7 @@ def main():
         raise ValueError("Transfer spool must be private")
     lock = (args.pool_root / "worker.lock").open("a")
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    clean_stale_spools(workspace)
     settings = private_read(args.settings)
     backend = Backend(settings)
     proxy = settings.get("proxy", "http://127.0.0.1:7897")

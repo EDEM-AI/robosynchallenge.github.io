@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-from archive_pool_worker import choose_slot, migrate
+from archive_pool_worker import choose_slot, migrate, clean_stale_spools
 
 
 class MigrationTests(unittest.TestCase):
@@ -109,6 +109,20 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(choose_slot({"slot-02":self.target},400,100,{"slot-02":400})[0],"slot-02")
         with self.assertRaises(ValueError):
             choose_slot({"slot-02":self.target},400,100,{"slot-02":501})
+
+    def test_restart_cleanup_only_removes_our_transfer_caches(self):
+        cache = self.root / "transfer-interrupted"
+        cache.mkdir()
+        (cache / "evidence.zip").write_bytes(self.data)
+        keep = self.root / "unrelated"
+        keep.mkdir()
+        clean_stale_spools(self.root)
+        self.assertFalse(cache.exists())
+        self.assertTrue(keep.exists())
+        (self.root / "transfer-link").symlink_to(keep)
+        with self.assertRaises(ValueError):
+            clean_stale_spools(self.root)
+        self.assertTrue(keep.exists())
 
 
 if __name__ == "__main__":
