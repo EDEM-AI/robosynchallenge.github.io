@@ -570,6 +570,7 @@ function reviewPrepare_(payload) {
   return withReviewLock_(() => {
     const { viewer, job, run } = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Only an organizer can attach prepared code.");
+    reviewAssertPreparationMutable_(payload, run.evaluation_id);
     if (reviewWorkflow_(run.evaluation_id).stages[1].done) throw new Error("Prepared code is frozen after the code handoff stage.");
     if (!reviewTaskLinks_(parseJson_(job.submission.task_checkpoint_links_json, {})) &&
         !reviewTaskLinks_(parseJson_(run.task_checkpoint_links_json, {}))) {
@@ -593,6 +594,7 @@ function reviewPrepare_(payload) {
       bundle_commit: commit, policy_dirs_json: JSON.stringify([...new Set(dirs)]),
       state: "ready", updated_at: now_() });
     reviewPreparationStatus_(run.evaluation_id, "ready", "");
+    reviewFinishPreparationClaim_(payload, run.evaluation_id);
     return { ok: true, evaluation_id: run.evaluation_id };
   });
 }
@@ -601,6 +603,7 @@ function reviewPrepareCode_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Only the organizer preparer can attach validation code.");
+    reviewAssertPreparationMutable_(payload, run.evaluation_id);
     if (run.bundle_commit || reviewWorkflow_(run.evaluation_id).stages[1].done) throw new Error("Formal code has already been handed off.");
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     const selection = payload.selection || {};
@@ -785,6 +788,7 @@ function reviewUpdateStage_(payload, complete) {
     workflow.stages[index].checks = checks;
     if (index === 2) workflow.stages[index].checks.environment_check_waived = true;
     if (complete) {
+      if (index === 3 && reviewPreparationClaim_(run.evaluation_id)) throw new Error("An automatic code update is in progress; refresh and retry after it finishes.");
       if (index === 0 && !checks.repository_access) throw new Error("Automatic code preparation must succeed before continuing.");
       if (index === 0 && current.hf_check_status !== "passed") throw new Error("Automatic Hugging Face access checks must pass for the current 10 task URLs.");
       if (Object.values(checks).some((value) => !value)) throw new Error("Complete every required checklist item.");
@@ -1047,6 +1051,8 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_preflight") return reviewSavePreflight_(payload);
   if (action === "reviewer_send_issue") return reviewSendIssue_(payload);
   if (action === "reviewer_migrate_bundle") return reviewMigrateBundle_(payload);
+  if (action === "reviewer_claim_preparation") return reviewClaimPreparation_(payload, false);
+  if (action === "reviewer_release_preparation") return reviewClaimPreparation_(payload, true);
   if (action === "reviewer_save_command") return reviewSaveCommand_(payload);
   if (action === "reviewer_access_check") return reviewAccessCheck_(payload);
   if (action === "reviewer_checkpoint_check") return reviewCheckpointCheck_(payload);

@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import sys
 import time
+from preparation_freeze import completed
 
 
 def preparation_blocked(job):
@@ -134,6 +135,9 @@ def maintain(settings, state):
     retries = state.setdefault('retries', {})
     hf_file = Path(settings.get('hf_token_file', Path(settings['organizer_token_file']).parent / 'huggingface-RoboSynChallenge.token'))
     for job in queue['jobs']:
+        if completed(job):
+            events.append({'evaluation_id':job['evaluation_id'], 'state':'completed_snapshot_preserved'})
+            continue
         if preparation_blocked(job):
             events.append({'evaluation_id':job['evaluation_id'], 'state':'evaluation_blocked'})
             continue
@@ -193,6 +197,8 @@ def main():
     sys.path.insert(0, str(args.private_root.resolve() / 'tools'))
     from code_version_policy import install
     install(importlib.import_module('process_queue'))
+    from preparation_freeze import install as install_completed_policy
+    install_completed_policy(importlib.import_module('process_queue'), importlib.import_module('upgrade_bundles'))
     original = importlib.import_module('watch_queue')
     os.umask(0o077)
     state_file = args.settings.parent / 'preparation-maintenance-state.json'

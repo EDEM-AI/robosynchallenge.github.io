@@ -21,6 +21,7 @@ function reviewMigrateBundle_(payload) {
   return withReviewLock_(() => {
     const {viewer, run} = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    reviewAssertPreparationMutable_(payload, run.evaluation_id);
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     const formal = Boolean(run.bundle_commit);
     const previous = run.bundle_commit || job.code_bundle_commit;
@@ -57,6 +58,7 @@ function reviewMigrateBundle_(payload) {
     if (formal) reviewWrite_("ReviewRuns", run._rowNumber, {evaluation_id:run.evaluation_id, bundle_url:url,
       bundle_commit:payload.bundle_commit, policy_dirs_json:JSON.stringify(payload.policy_dirs), state:"ready", updated_at:now_()});
     reviewPreparationStatus_(run.evaluation_id, formal ? "ready" : "code_ready", "");
+    reviewFinishPreparationClaim_(payload, run.evaluation_id);
     return {ok:true, state:"upgraded", backup_id:backupId};
   });
 }
@@ -65,6 +67,7 @@ function reviewUpgradeTools_(payload) {
   return withReviewLock_(() => {
     const {viewer, run} = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Organizer access required.");
+    reviewAssertPreparationMutable_(payload, run.evaluation_id);
     const base = String(payload.base_commit || "");
     if (!/^[a-f0-9]{40}$/.test(base)) throw new Error("Pin the official tools commit.");
     const previous = reviewRows_("ReviewToolUpgrades").find(row => row.evaluation_id === run.evaluation_id);
@@ -99,6 +102,7 @@ function reviewUpgradeTools_(payload) {
 }
 
 function reviewResetParticipantProgress_(run, links, reason) {
+  reviewAssertCompletedSnapshotMutable_(run.evaluation_id);
   const previous = reviewWorkflow_(run.evaluation_id);
   reviewTaskRows_(run.evaluation_id).forEach(row => reviewWrite_("ReviewTaskResults", row._rowNumber,
     { evaluation_id: run.evaluation_id, status: "superseded", updated_at: now_() }));
@@ -125,6 +129,7 @@ function reviewReconcileFinalProgress_(payload) {
   return withReviewLock_(() => {
     const { viewer, run } = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Organizer preparation access required.");
+    reviewAssertPreparationMutable_(payload, run.evaluation_id);
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     if (payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Participant inputs changed during final progress check.");
     if (Date.now() < Date.parse(job.version_cutoff_at)) throw new Error("Wait until the version cutoff.");

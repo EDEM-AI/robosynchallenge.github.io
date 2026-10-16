@@ -3,6 +3,27 @@ from watch_preparation import transient, source_urls, audit_deadlines, maintain
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_completed_evaluations_skip_maintenance_without_changing_receipts(self):
+        from copy import deepcopy
+        import tempfile
+        from pathlib import Path
+        from types import SimpleNamespace
+        from unittest.mock import Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            token = Path(directory) / 'organizer.token'
+            token.write_text('synthetic-secret')
+            job = {'evaluation_id':'eval_done', 'workflow':{'stages':[{'done':True}]*4+[{'done':False}]},
+                   'preparation_error':'HTTP 503', 'hf_check_status':'failed', 'hf_check_error':'ConnectionError'}
+            saved = deepcopy(job)
+            backend = Mock(return_value={'jobs':[job]})
+            modules = {'process_queue':SimpleNamespace(api=backend),
+                       'version_selection':SimpleNamespace(cutoff_seconds=Mock())}
+            with patch.dict('sys.modules',modules):
+                result = maintain({'organizer_token_file':str(token),'api_url':'https://example.test','organizer_email':'admin@example.test'}, {})
+            backend.assert_called_once()
+            self.assertEqual(result['events'],[{'evaluation_id':'eval_done','state':'completed_snapshot_preserved'}])
+            self.assertEqual(job,saved)
+
     def test_holds_skip_retries_sources_and_all_organizer_mutations(self):
         from copy import deepcopy
         import tempfile
