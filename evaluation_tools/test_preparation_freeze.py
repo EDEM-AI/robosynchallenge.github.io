@@ -117,6 +117,14 @@ class FreezeTests(unittest.TestCase):
         self.assertTrue(self.args.retire_generated_branches)
         self.assertEqual(result["cleanup_deferred"],"completed_history_protected")
 
+    def test_new_correction_precedes_pinned_tool_sweep_without_mutating_queue(self):
+        original = [{"evaluation_id":"eval_pinned","bundle_commit":"a"*40},
+                    {"evaluation_id":"eval_corrected","preparation_attempt":1}]
+        self.api.side_effect = lambda *args, **kwargs:{"jobs":original,"ok":True}
+        result = self.process.api("url","email","synthetic","reviewer_preparation_queue")
+        self.assertEqual([j["evaluation_id"] for j in result["jobs"]],["eval_corrected","eval_pinned"])
+        self.assertEqual([j["evaluation_id"] for j in original],["eval_pinned","eval_corrected"])
+
 
 if __name__ == "__main__":
     unittest.main()

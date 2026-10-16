@@ -36,7 +36,11 @@ def install(process, upgrades):
         operation = active.get()
         if operation and fields.get("evaluation_id") == operation["evaluation_id"]:
             fields["preparation_operation"] = operation["id"]
-        return original_api(url, email, token, action, **fields)
+        response = original_api(url, email, token, action, **fields)
+        if action == "reviewer_preparation_queue" and isinstance(response.get("jobs"), list):
+            # Fresh/corrected requests should not wait behind a full sweep of pinned tool upgrades.
+            return {**response, "jobs":sorted(response["jobs"], key=lambda row:bool(row.get("bundle_commit") or row.get("code_bundle_commit")))}
+        return response
 
     process.api = upgrades.api = guarded_api
 
@@ -123,7 +127,7 @@ def install(process, upgrades):
             result["cleanup_deferred"] = "completed_history_protected"
         for row in result.get("skipped", []):
             if row.get("reason") == "evaluation_blocked":
-                row["reason"] = "evaluation_blocked_or_completed"
+                row["reason"] = "evaluation_blocked_or_snapshot_preserved"
         return result
 
     process.process_once = once
