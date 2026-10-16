@@ -57,8 +57,13 @@
 .workshop-program-table tbody th { font-size: 16px; font-weight: 500; color: var(--accent-dark); white-space: nowrap; }
 .workshop-program-table tbody td:last-child { white-space: nowrap; color: var(--ink-soft); font-size: 14px; }
 .workshop-program-table tbody tr:last-child > * { border-bottom: 0; }
-.workshop-speaker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.workshop-speaker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; }
 .workshop-speaker { padding: 28px; }
+.workshop-speaker-heading { display: flex; align-items: center; gap: 24px; }
+.workshop-speaker-photo { display: block; width: 120px; height: 120px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }
+.workshop-speaker-affiliation { margin-top: 10px !important; font-size: 15px; color: var(--ink-soft); }
+.workshop-speaker-talk { margin-top: 24px !important; font-weight: 600; }
+.workshop-speaker-bio { margin-top: 12px !important; font-size: 15px; color: var(--ink-soft); }
 .workshop-speaker-icon { width: 44px; height: 44px; display: grid; place-items: center; background: var(--mint); border-radius: 50%; color: var(--success); margin-bottom: 20px; }
 .workshop-speaker-icon svg { width: 22px; height: 22px; }
 .workshop-talk-label { font-size: 14px; color: var(--ink-soft); }
@@ -143,6 +148,8 @@
   .workshop-program-table tbody td { font-size: 14px; }
   .workshop-speaker-grid { grid-template-columns: 1fr; }
   .workshop-speaker { padding: 24px; }
+  .workshop-speaker-heading { gap: 16px; }
+  .workshop-speaker-photo { width: 96px; height: 96px; }
   .workshop-speaker h3 { font-size: 23px; }
   .workshop-session-date { text-align: left; }
   .workshop-resource-links { gap: 16px; }

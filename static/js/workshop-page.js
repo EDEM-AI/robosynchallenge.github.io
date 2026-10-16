@@ -3,7 +3,7 @@
 
   const program = [
     { start: "10:30", end: "10:40", minutes: 10, title: "Opening Remarks & Competition Introduction" },
-    { start: "10:40", end: "11:10", minutes: 30, title: "Invited Talk 1" },
+    { start: "10:40", end: "11:10", minutes: 30, title: "Invited Talk 1: Stone Tao" },
     { start: "11:10", end: "11:40", minutes: 30, title: "Invited Talk 2" },
     { start: "11:40", end: "12:00", minutes: 20, title: "Competition Results & Key Insights" },
     { start: "12:00", end: "12:35", minutes: 35, title: "Finalist Presentations" },
@@ -116,13 +116,23 @@
           <div class="shell">
             <div class="section-heading left"><p class="eyebrow">Research perspectives</p><h2>Invited speakers</h2></div>
             <div class="workshop-speaker-grid">
-              ${[1, 2].map(number => `
-                <article class="card workshop-speaker">
-                  <span class="workshop-speaker-icon">${icon("mic")}</span>
-                  <p class="workshop-talk-label">Invited Talk ${number}</p>
-                  <h3>Talk info to be announced</h3>
-                </article>
-              `).join("")}
+              <article class="card workshop-speaker">
+                <div class="workshop-speaker-heading">
+                  <img class="workshop-speaker-photo" src="static/assets/workshop/stone-tao.jpeg" alt="Stone Tao" width="400" height="400" loading="lazy">
+                  <div>
+                    <p class="workshop-talk-label">Invited Talk 1</p>
+                    <h3>Stone Tao</h3>
+                    <p class="workshop-speaker-affiliation">Physical Intelligence</p>
+                  </div>
+                </div>
+                <p class="workshop-speaker-talk">Talk info to be announced</p>
+                <p class="workshop-speaker-bio">Stone is a member of technical staff at Physical Intelligence, driving research and engineering on simulation. He currently is completing his PhD at UC San Diego advised by Henrik Christensen and previously Hao Su. His research investigates the intersection of simulation and robot learning and how that can be leveraged for training, evaluation, and deployment of robotic systems. His work spans scalable simulation infrastructure, reinforcement learning, sim-to-real, and synthetic data generation for robotics.</p>
+              </article>
+              <article class="card workshop-speaker">
+                <span class="workshop-speaker-icon">${icon("mic")}</span>
+                <p class="workshop-talk-label">Invited Talk 2</p>
+                <h3>Talk info to be announced</h3>
+              </article>
             </div>
           </div>
         </section>
