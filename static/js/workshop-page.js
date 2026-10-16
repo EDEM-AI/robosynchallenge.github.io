@@ -118,7 +118,7 @@
             <div class="workshop-speaker-grid">
               <article class="card workshop-speaker">
                 <div class="workshop-speaker-heading">
-                  <img class="workshop-speaker-photo" src="static/assets/workshop/stone-tao.jpeg" alt="Stone Tao" width="400" height="400" loading="lazy">
+                  <img class="workshop-speaker-photo" src="static/assets/workshop/stone-tao.jpeg?v=original" alt="Stone Tao" width="958" height="1278" loading="lazy">
                   <div>
                     <p class="workshop-talk-label">Invited Talk 1</p>
                     <h3>Stone Tao</h3>
