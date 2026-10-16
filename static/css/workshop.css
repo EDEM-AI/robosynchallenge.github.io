@@ -57,7 +57,7 @@
 .workshop-program-table tbody th { font-size: 16px; font-weight: 500; color: var(--accent-dark); white-space: nowrap; }
 .workshop-program-table tbody td:last-child { white-space: nowrap; color: var(--ink-soft); font-size: 14px; }
 .workshop-program-table tbody tr:last-child > * { border-bottom: 0; }
-.workshop-speaker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; }
+.workshop-speaker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 24px; }
 .workshop-speaker { padding: 28px; }
 .workshop-speaker-heading { display: flex; align-items: center; min-height: 160px; gap: 24px; }
 .workshop-speaker-photo { display: block; width: 120px; height: auto; max-height: 160px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }

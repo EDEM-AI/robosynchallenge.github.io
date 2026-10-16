@@ -138,7 +138,7 @@
                   </div>
                 </div>
                 <p class="workshop-speaker-talk">Talk info to be announced</p>
-                <p class="workshop-speaker-bio"><strong>Bio:</strong> Yueci is a PhD student at the Chinese University of Hong Kong, Shenzhen, supervised by Kui Jia. Previously, he was an architect at DexForce Technology, leading the development of DexVerse, a Sim2Real AI platform for embodied intelligence. His research investigates scalable systems connecting generative worlds, hybrid simulation, and sim-to-real learning, enabling embodied agents to learn continually from simulated and real-world rollouts. His work spans simulation infrastructure, automated data generation, robot learning, and training and evaluation systems for embodied intelligence.</p>
+                <p class="workshop-speaker-bio"><strong>Bio:</strong> Yueci is a PhD student at CUHK-Shenzhen, supervised by Kui Jia. Previously an architect at DexForce Technology, he led the development of DexVerse, a Sim2Real AI platform for embodied intelligence. His research connects generative worlds, hybrid simulation, and sim-to-real learning, enabling embodied agents to learn from simulated and real-world rollouts. His work spans simulation infrastructure, automated data generation, and robot learning.</p>
               </article>
             </div>
           </div>
