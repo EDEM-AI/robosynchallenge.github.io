@@ -788,7 +788,7 @@ function reviewUpdateStage_(payload, complete) {
     workflow.stages[index].checks = checks;
     if (index === 2) workflow.stages[index].checks.environment_check_waived = true;
     if (complete) {
-      if (index === 3 && reviewPreparationClaim_(run.evaluation_id)) throw new Error("An automatic code update is in progress; refresh and retry after it finishes.");
+      if ([1, 3].includes(index) && reviewPreparationClaim_(run.evaluation_id)) throw new Error("An automatic code update is in progress; refresh and retry after it finishes.");
       if (index === 0 && !checks.repository_access) throw new Error("Automatic code preparation must succeed before continuing.");
       if (index === 0 && current.hf_check_status !== "passed") throw new Error("Automatic Hugging Face access checks must pass for the current 10 task URLs.");
       if (Object.values(checks).some((value) => !value)) throw new Error("Complete every required checklist item.");

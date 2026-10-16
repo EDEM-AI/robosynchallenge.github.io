@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-from preparation_freeze import completed, install
+from preparation_freeze import completed, preservation_reason, install
 
 
 class FreezeTests(unittest.TestCase):
@@ -12,7 +12,7 @@ class FreezeTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.job = {"evaluation_id":"eval_abc", "bundle_commit":"a"*40, "hf_check_context":"context",
-                    "workflow":{"stages":[{"done":True}]*3 + [{"done":False}, {"done":False}]}}
+                    "workflow":{"stages":[{"done":True}] + [{"done":False} for _ in range(4)]}}
         self.api = Mock(side_effect=lambda *args, **kwargs: {"jobs":[self.job]} if args[3] == "reviewer_preparation_queue" else {"ok":True})
         self.publish = Mock(return_value="b"*40)
         def upgrade(args, job, token):
@@ -41,6 +41,28 @@ class FreezeTests(unittest.TestCase):
         stale = deepcopy(self.job)
         self.job["workflow"]["stages"][3]["done"] = True
         self.assertEqual(self.upgrades.upgrade(self.args,stale,"synthetic")["state"],"completed_snapshot_preserved")
+        self.assertEqual(self.api.call_count,1)
+        self.publish.assert_not_called()
+
+    def test_handoff_partial_results_uploads_or_commands_prevent_automatic_upgrade(self):
+        from copy import deepcopy
+        for fields in ({"results":[{"task":"click_bell","status":"submitted"}]},
+                       {"uploads":[{"task":"click_bell","status":"uploading"}]},
+                       {"task_commands":{"click_bell":"bash policy/example/eval.sh"}},
+                       {"workflow":{"stages":[{"done":True},{"done":True}]}}):
+            with self.subTest(fields=fields):
+                job = {**deepcopy(self.job), **fields}
+                self.assertEqual(preservation_reason(job),"in_progress_snapshot_preserved")
+                self.assertTrue(self.process.preparation_blocked(job))
+                self.assertEqual(self.upgrades.upgrade(self.args,job,"synthetic")["state"],"in_progress_snapshot_preserved")
+                self.publish.assert_not_called()
+                self.api.assert_not_called()
+
+    def test_fresh_upload_blocks_stale_queue_before_claim(self):
+        from copy import deepcopy
+        stale = deepcopy(self.job)
+        self.job["uploads"] = [{"task":"click_bell","status":"uploading"}]
+        self.assertEqual(self.upgrades.upgrade(self.args,stale,"synthetic")["state"],"in_progress_snapshot_preserved")
         self.assertEqual(self.api.call_count,1)
         self.publish.assert_not_called()
 

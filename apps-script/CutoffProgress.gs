@@ -21,7 +21,7 @@ function reviewMigrateBundle_(payload) {
   return withReviewLock_(() => {
     const {viewer, run} = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Organizer access required.");
-    reviewAssertPreparationMutable_(payload, run.evaluation_id);
+    reviewAssertAutomaticPreparationMutable_(payload, run.evaluation_id);
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     const formal = Boolean(run.bundle_commit);
     const previous = run.bundle_commit || job.code_bundle_commit;
@@ -67,7 +67,7 @@ function reviewUpgradeTools_(payload) {
   return withReviewLock_(() => {
     const {viewer, run} = reviewOwnedRun_(payload, true);
     if (viewer.role !== "admin") throw new Error("Organizer access required.");
-    reviewAssertPreparationMutable_(payload, run.evaluation_id);
+    reviewAssertAutomaticPreparationMutable_(payload, run.evaluation_id);
     const base = String(payload.base_commit || "");
     if (!/^[a-f0-9]{40}$/.test(base)) throw new Error("Pin the official tools commit.");
     const previous = reviewRows_("ReviewToolUpgrades").find(row => row.evaluation_id === run.evaluation_id);

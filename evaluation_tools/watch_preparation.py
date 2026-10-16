@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 import sys
 import time
-from preparation_freeze import completed
+from preparation_freeze import preservation_reason
 
 
 def preparation_blocked(job):
@@ -135,8 +135,8 @@ def maintain(settings, state):
     retries = state.setdefault('retries', {})
     hf_file = Path(settings.get('hf_token_file', Path(settings['organizer_token_file']).parent / 'huggingface-RoboSynChallenge.token'))
     for job in queue['jobs']:
-        if completed(job):
-            events.append({'evaluation_id':job['evaluation_id'], 'state':'completed_snapshot_preserved'})
+        if preservation_reason(job):
+            events.append({'evaluation_id':job['evaluation_id'], 'state':preservation_reason(job)})
             continue
         if preparation_blocked(job):
             events.append({'evaluation_id':job['evaluation_id'], 'state':'evaluation_blocked'})

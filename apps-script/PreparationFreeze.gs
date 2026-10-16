@@ -15,6 +15,15 @@ function reviewAssertPreparationMutable_(payload, evaluationId) {
   if (claim && claim.operation_id !== payload.preparation_operation) throw new Error("An automatic code update is in progress; retry after it finishes.");
 }
 
+function reviewAssertAutomaticPreparationMutable_(payload, evaluationId) {
+  reviewAssertPreparationMutable_(payload, evaluationId);
+  if (reviewWorkflow_(evaluationId).stages[1].done || reviewTaskRows_(evaluationId).length ||
+      reviewRows_("ReviewArchiveUploads").some(row => row.evaluation_id === evaluationId && row.status !== "superseded") ||
+      reviewRows_("ReviewTaskCommands").some(row => row.evaluation_id === evaluationId && row.command)) {
+    throw new Error("Evaluation has started; automatic tool updates preserve its existing code and partial results.");
+  }
+}
+
 function reviewFinishPreparationClaim_(payload, evaluationId) {
   const claim = reviewPreparationClaim_(evaluationId);
   if (claim && claim.operation_id === payload.preparation_operation) {
@@ -33,7 +42,7 @@ function reviewClaimPreparation_(payload, release) {
       reviewFinishPreparationClaim_(payload, run.evaluation_id);
       return {ok:true, released:true};
     }
-    reviewAssertPreparationMutable_(payload, run.evaluation_id);
+    reviewAssertAutomaticPreparationMutable_(payload, run.evaluation_id);
     const job = reviewQueue_(payload, true).jobs.find(item => item.evaluation_id === run.evaluation_id);
     const expected = run.bundle_commit || job.code_bundle_commit || "";
     if (payload.expected_bundle_commit !== expected || payload.context_json !== reviewCheckpointContext_(job)) throw new Error("Prepared request changed before publication.");

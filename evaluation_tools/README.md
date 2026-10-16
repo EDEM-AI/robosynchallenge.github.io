@@ -60,6 +60,14 @@ automatic preparation, retries and tool upgrades preserve its exact Git head,
 bundle identity, checkpoint receipts, results, commands and progress. Stage five
 is evidence review and is not required for this protection.
 
+The same automatic-update protection applies earlier whenever code handoff
+(stage two) is complete, or any current task result, upload session or reported
+command exists. A machine may already be running a policy before its first
+upload reaches the backend. These in-progress requests keep their existing
+generation; a backward-compatible storage-tool PR does not authorize resetting
+them. Only unused bundles are automatically recomposed. Explicit participant
+corrections remain a separate versioning workflow.
+
 Publication claims are held under the same backend lock as stage-four completion.
 An update claims the current generation before composing or pushing; stage four
 cannot complete during an unresolved publication. Successful registration releases

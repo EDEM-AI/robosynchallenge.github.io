@@ -39,5 +39,25 @@ vm.runInContext('reviewStoreWorkflow_({evaluation_id:"eval_abc"},'+JSON.stringif
 assert.throws(()=>action("reviewer_complete_stage",{...credentials,evaluation_id:"eval_abc",stage:3}),/in progress/);
 assert.equal(action("reviewer_release_preparation").released,true);
 assert.equal(call("reviewPreparationClaim_","eval_abc"),null);
-console.log("PASS completed fourth stage is immutable; publication claims fence concurrent completion and retain ownership");
+// Handoff is itself sufficient protection, even before an upload reaches the backend.
+workflow.stages[3].done=false;
+vm.runInContext('reviewStoreWorkflow_({evaluation_id:"eval_abc"},'+JSON.stringify(workflow)+')',context);
+assert.throws(()=>action("reviewer_claim_preparation"),/has started/);
+assert.throws(()=>action("reviewer_migrate_bundle"),/has started/);
+assert.throws(()=>action("reviewer_upgrade_tools"),/has started/);
+workflow.stages.slice(1).forEach(stage=>stage.done=false);
+vm.runInContext('reviewStoreWorkflow_({evaluation_id:"eval_abc"},'+JSON.stringify(workflow)+')',context);
+for (const [table,row] of [["ReviewTaskResults",{task:"click_bell",status:"submitted"}],
+    ["ReviewArchiveUploads",{task:"click_bell",status:"uploading"}],
+    ["ReviewTaskCommands",{task:"click_bell",command:"bash policy/team/eval.sh"}]]) {
+  insert(table,{evaluation_id:"eval_abc",...row});
+  const saved=JSON.stringify([...sheets].map(([key,value])=>[key,value.cells]));
+  assert.throws(()=>action("reviewer_claim_preparation"),/has started/);
+  assert.equal(JSON.stringify([...sheets].map(([key,value])=>[key,value.cells])),saved);
+  sheet(table).cells.splice(1);
+}
+assert.equal(action("reviewer_claim_preparation").claimed,true);
+assert.throws(()=>action("reviewer_complete_stage",{...credentials,evaluation_id:"eval_abc",stage:1}),/in progress/);
+assert.equal(action("reviewer_release_preparation").released,true);
+console.log("PASS completed and partial snapshots are preserved; publication claims fence concurrent handoff/completion and retain ownership");
 `);
