@@ -32,6 +32,36 @@ def private_write(path, value):
     temporary.replace(path)
 
 
+def runtime_settings(path, default_workers=2):
+    settings = private_read(path)
+    if not isinstance(settings, dict):
+        raise ValueError("Archive worker settings must be an object")
+    defaults = {"workers":default_workers, "reserve_gib":2, "poll_seconds":20, "retry_seconds":120}
+    limits = {"workers":(1, 4), "reserve_gib":(1, 1024), "poll_seconds":(10, 3600), "retry_seconds":(10, 86400)}
+    for name, default in defaults.items():
+        value = settings.setdefault(name, default)
+        lower, upper = limits[name]
+        if type(value) is not int or not lower <= value <= upper:
+            raise ValueError("Invalid archive worker option: " + name)
+    if type(settings.setdefault("cleanup_enabled", False)) is not bool:
+        raise ValueError("cleanup_enabled must be a boolean")
+    return settings
+
+
+def connection_settings(settings):
+    return (settings["api_url"], settings["organizer_email"], settings["organizer_token_file"],
+            settings.get("proxy", "http://127.0.0.1:7897"))
+
+
+def cleanup_allowed(path, task_settings):
+    # Re-read immediately before deletion; malformed/replaced configuration fails closed.
+    try:
+        current = runtime_settings(path)
+        return current["cleanup_enabled"] and connection_settings(current) == connection_settings(task_settings)
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def clean_stale_spools(workspace):
     # The caller holds the exclusive worker lock; only our interrupted transfer caches are removed.
     for child in workspace.glob("transfer-*"):
@@ -273,7 +303,7 @@ def migrate(candidate, source, drives, backend, workspace, report, reserve, clea
         task=identity["task"], sha256=candidate["sha256"])
     if resolved.get("storage") != location["slot"]:
         raise ValueError("Evidence navigation did not switch to the verified destination")
-    if not cleanup:
+    if not (cleanup() if callable(cleanup) else cleanup):
         report("ready_copy_only", slot=location["slot"], **identity, bytes=candidate["size"])
         return
     report("cleaning_source", slot=slot, **identity, bytes=candidate["size"])
@@ -300,7 +330,7 @@ def main():
     lock = (args.pool_root / "worker.lock").open("a")
     fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     clean_stale_spools(workspace)
-    settings = private_read(args.settings)
+    settings = runtime_settings(args.settings, args.workers)
     backend = Backend(settings)
     proxy = settings.get("proxy", "http://127.0.0.1:7897")
     source = Drive(args.source_owner, proxy)
@@ -309,7 +339,7 @@ def main():
     stopping, report_lock = threading.Event(), threading.Lock()
     signal.signal(signal.SIGTERM, lambda *_:stopping.set())
     signal.signal(signal.SIGINT, lambda *_:stopping.set())
-    executor = ThreadPoolExecutor(max_workers=args.workers)
+    executor = ThreadPoolExecutor(max_workers=4)
     active = {}
 
     def report(state, **fields):
@@ -318,12 +348,14 @@ def main():
             private_write(status_path, value)
             print(json.dumps(value), flush=True)
 
-    def transfer(candidate, credential, slot):
+    def transfer(candidate, credential, slot, task_settings):
         # Each task owns its HTTP sessions and token caches; no cross-thread credentials/session state.
-        origin = Drive(args.source_owner, proxy, stopping)
-        target = Drive(credential, proxy, stopping)
-        migrate(candidate, origin, {slot:target}, Backend(settings), workspace, report, 2 * 1024 ** 3,
-                cleanup=settings.get("cleanup_enabled") is True)
+        task_proxy = task_settings.get("proxy", "http://127.0.0.1:7897")
+        origin = Drive(args.source_owner, task_proxy, stopping)
+        target = Drive(credential, task_proxy, stopping)
+        migrate(candidate, origin, {slot:target}, Backend(task_settings), workspace, report,
+                task_settings["reserve_gib"] * 1024 ** 3,
+                cleanup=lambda: not stopping.is_set() and cleanup_allowed(args.settings, task_settings))
 
     while not stopping.is_set():
         processed = False
@@ -335,8 +367,22 @@ def main():
                 try:
                     future.result()
                 except Exception as error:
-                    retry[item["key"]] = time.time() + 120
+                    retry[item["key"]] = time.time() + settings["retry_seconds"]
                     report("retry", evaluation_id=item["evaluation_id"], task=item["task"], error_type=type(error).__name__)
+            updated = runtime_settings(args.settings, args.workers)
+            if connection_settings(updated) != connection_settings(settings):
+                if active:
+                    # Existing jobs keep their backend and proxy snapshot; do not admit new jobs until drained.
+                    stopping.wait(10)
+                    continue
+                backend = Backend(updated)
+                proxy = updated.get("proxy", "http://127.0.0.1:7897")
+                source = Drive(args.source_owner, proxy)
+                registered.clear()
+            if updated != settings:
+                report("configuration_reloaded", workers=updated["workers"], cleanup_enabled=updated["cleanup_enabled"])
+            settings = updated
+            reserve = settings["reserve_gib"] * 1024 ** 3
             drives, ids = {}, {source.profile["drive_id"]}
             for receipt in sorted(args.pool_root.glob("*/account.json")):
                 try:
@@ -366,25 +412,25 @@ def main():
                     continue
                 if key in {item["key"] for item in active.values()}:
                     continue
-                if len(active) >= args.workers:
+                if len(active) >= settings["workers"]:
                     break
                 try:
                     if args.once:
-                        migrate(candidate, source, drives, backend, workspace, report, 2 * 1024 ** 3,
-                                cleanup=settings.get("cleanup_enabled") is True)
+                        migrate(candidate, source, drives, backend, workspace, report, reserve,
+                                cleanup=lambda: not stopping.is_set() and cleanup_allowed(args.settings, settings))
                     else:
                         reservations = {}
                         for item in active.values():
                             reservations[item["slot"]] = reservations.get(item["slot"], 0) + item["size"]
-                        if shutil.disk_usage(workspace).free < candidate["size"] + sum(item["size"] for item in active.values()) + 2 * 1024 ** 3:
+                        if shutil.disk_usage(workspace).free < candidate["size"] + sum(item["size"] for item in active.values()) + reserve:
                             raise ValueError("Insufficient reserved transfer spool capacity")
                         slot = candidate["location"]["slot"] if candidate.get("location") else choose_slot(
-                            drives, candidate["size"] + 1024 * 1024, 2 * 1024 ** 3, reservations)[0]
-                        future = executor.submit(transfer, candidate, drives[slot].path, slot)
+                            drives, candidate["size"] + 1024 * 1024, reserve, reservations)[0]
+                        future = executor.submit(transfer, candidate, drives[slot].path, slot, dict(settings))
                         active[future] = {"key":key, "slot":slot, "size":candidate["size"],
                             "evaluation_id":candidate["evaluation_id"], "task":candidate["task"]}
                 except Exception as error:
-                    retry[key] = time.time() + 120
+                    retry[key] = time.time() + settings["retry_seconds"]
                     report("retry", evaluation_id=candidate["evaluation_id"], task=candidate["task"], error_type=type(error).__name__)
                 processed = True
                 if args.once:
@@ -398,7 +444,7 @@ def main():
         if args.once:
             executor.shutdown(wait=True)
             return
-        stopping.wait(1 if processed else 20)
+        stopping.wait(1 if processed else settings["poll_seconds"])
     executor.shutdown(wait=True, cancel_futures=True)
 
 

@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import Mock
 
-from archive_pool_worker import choose_slot, migrate, clean_stale_spools
+from archive_pool_worker import choose_slot, migrate, clean_stale_spools, runtime_settings, cleanup_allowed, private_write
 
 
 class MigrationTests(unittest.TestCase):
@@ -56,6 +56,24 @@ class MigrationTests(unittest.TestCase):
 
     def test_copy_only_never_calls_cleanup(self):
         self.run_migration(cleanup=False)
+        self.assertNotIn("reviewer_archive_pool_cleanup",self.events)
+
+    def test_cleanup_switch_is_checked_after_publish_and_navigation(self):
+        allowed = {"enabled":True}
+        original_call = self.backend.call.side_effect
+        def revoke(action, **fields):
+            result = original_call(action, **fields)
+            if action == "reviewer_resolve_evidence":
+                allowed["enabled"] = False
+            return result
+        self.backend.call.side_effect = revoke
+        self.run_migration(cleanup=lambda:allowed["enabled"])
+        self.assertEqual(self.events,["reviewer_archive_pool_publish","reviewer_resolve_evidence"])
+        self.assertEqual(self.report.call_args.args[0], "ready_copy_only")
+
+    def test_cleanup_callback_failure_cannot_delete(self):
+        with self.assertRaises(OSError):
+            self.run_migration(cleanup=Mock(side_effect=OSError("Unavailable settings")))
         self.assertNotIn("reviewer_archive_pool_cleanup",self.events)
 
     def test_bad_source_or_destination_never_publishes_or_deletes(self):
@@ -123,6 +141,49 @@ class MigrationTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             clean_stale_spools(self.root)
         self.assertTrue(keep.exists())
+
+
+class RuntimeSettingsTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.path = Path(self.temporary.name) / "settings.json"
+        self.settings = {"api_url":"https://example.test/backend", "organizer_email":"admin@example.test",
+                         "organizer_token_file":"/private/token", "cleanup_enabled":True}
+        private_write(self.path, self.settings)
+
+    def test_defaults_and_runtime_changes_do_not_mutate_active_task_snapshot(self):
+        snapshot = runtime_settings(self.path)
+        self.assertEqual(snapshot["workers"],2)
+        self.assertEqual(snapshot["reserve_gib"],2)
+        self.settings.update(workers=4, reserve_gib=3, poll_seconds=10, retry_seconds=30)
+        private_write(self.path, self.settings)
+        updated = runtime_settings(self.path)
+        self.assertEqual(updated["workers"],4)
+        self.assertEqual(updated["poll_seconds"],10)
+        self.assertEqual(snapshot["workers"],2)
+        self.assertTrue(cleanup_allowed(self.path, snapshot))
+
+    def test_invalid_options_are_rejected(self):
+        for name, value in [("workers",0),("workers",5),("workers",True),("reserve_gib",0),
+                            ("poll_seconds",1),("retry_seconds",-1),("cleanup_enabled","true")]:
+            with self.subTest(name=name, value=value):
+                private_write(self.path, {**self.settings, name:value})
+                with self.assertRaises(ValueError):
+                    runtime_settings(self.path)
+                self.assertFalse(cleanup_allowed(self.path, self.settings))
+
+    def test_cleanup_revoked_or_invalid_settings_fail_closed(self):
+        self.assertTrue(cleanup_allowed(self.path, self.settings))
+        for value in [{**self.settings, "cleanup_enabled":False},
+                      {**self.settings, "api_url":"https://other.test/backend"},
+                      {**self.settings, "proxy":"http://other.test"}, [], {}]:
+            private_write(self.path, value)
+            self.assertFalse(cleanup_allowed(self.path, self.settings))
+        self.path.write_text("{")
+        self.assertFalse(cleanup_allowed(self.path, self.settings))
+        self.path.unlink()
+        self.assertFalse(cleanup_allowed(self.path, self.settings))
 
 
 if __name__ == "__main__":

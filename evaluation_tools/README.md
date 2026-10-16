@@ -145,6 +145,17 @@ Python environment. The service discovers new successfully probed pool slots on
 the next poll without a restart. OAuth refresh is automatic while the grant is
 valid; revoked consent or a new tenant login requirement still requires the owner.
 
+The private settings are reloaded on every coordinator poll. Optional integer
+settings are `workers` (1-4, default 2), `reserve_gib` (1-1024, default 2),
+`poll_seconds` (10-3600, default 20), and `retry_seconds` (10-86400, default 120).
+Reducing concurrency lets current jobs finish without admitting excess new jobs.
+Connection/proxy changes wait for current jobs to drain; each job retains its own
+connection snapshot. Invalid settings stop new dispatch and disable local cleanup.
+`cleanup_enabled` is checked again immediately before deletion, not just when a
+transfer starts. The independent backend cleanup approval must also remain enabled.
+Adding verified accounts, refreshing credentials, discovering uploads, retrying,
+publishing navigation and approved cleanup require no manual service restart.
+
 Admin APIs `reviewer_archive_pool_status` and `reviewer_archive_pool_queue` expose
 service status and current registered candidates without account tokens. Local
 `worker-status.json` and the systemd journal record transfer phases. The reviewer
