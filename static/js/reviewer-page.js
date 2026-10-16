@@ -4,6 +4,8 @@
   const PREVIEW_STORAGE = "rsc-reviewer-preview-workflow-v4";
   const API = String(window.ROBO_SYN_CONFIG?.API_BASE_URL || "").trim();
   const LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname) && new URLSearchParams(location.search).has("review_preview");
+  const evidenceRoute = new URLSearchParams(location.search);
+  let evidenceRouteApplied = false;
   const TASKS = ["click_bell", "drawer_open_place", "mixer_operating", "table_rearrangement", "water_pouring", "handle_basket", "items_handover", "item_assembly", "manipulate_pipette", "sample_loading"];
   const STEPS = { click_bell: 361, drawer_open_place: 900, mixer_operating: 500, table_rearrangement: 361, water_pouring: 500, handle_basket: 500, items_handover: 350, item_assembly: 500, manipulate_pipette: 1000, sample_loading: 500 };
   const STAGES = [
@@ -96,6 +98,7 @@
   const cloneCommand = (job) => `git clone --single-branch --branch ${cloneBranch(job)} https://github.com/ZhaoRunyi/RoboSynChallenge_eval.git ${cloneDirectory(job)}\ngit -C ${cloneDirectory(job)} rev-parse HEAD`;
   const cloneDirectory = (job) => `"/path/to/RoboSynChallenge_${job.evaluation_id}${versionSuffix(job).replace(/-/g, "_")}${job.bundle_commit ? "_" + job.bundle_commit.slice(0, 12) : ""}"`;
   const resultFor = (job, task) => (job.results || []).find((result) => result.task === task);
+  const evidenceHref = (job, task, sha) => "?" + new URLSearchParams({evidence:job.evaluation_id, task, sha:sha || ""}).toString();
   const codeVerified = (job) => Boolean(job.bundle_commit && job.bundle_url || job.code_bundle_commit && job.code_bundle_url);
   const nextBlocker = (job) => {
     if (evaluationBlocked(job)) return HOLD_MESSAGE;
@@ -120,8 +123,8 @@
   async function request(action, fields = {}) {
     const job = fields.evaluation_id ? state.jobs.find(job => job.evaluation_id === fields.evaluation_id)
       : fields.participant_email ? state.jobs.find(job => job.email === fields.participant_email) : selected();
-    if (evaluationBlocked(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_send_issue"].includes(action)) throw new Error(HOLD_MESSAGE);
-    if (nonRecording(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action)) {
+    if (evaluationBlocked(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_send_issue", "reviewer_resolve_evidence"].includes(action)) throw new Error(HOLD_MESSAGE);
+    if (nonRecording(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_resolve_evidence"].includes(action)) {
       return simulateAction(action, fields);
     }
     if (LOCAL) return previewAction(action, fields);
@@ -355,7 +358,7 @@
     if (state.stage === 3) return runCommands(job) + step(4, "Refresh and check all 10 task results", "<p>After RSC_UPLOAD_OK appears in the terminal, use Refresh requests above. Every task must show Submitted / RSC_UPLOAD_OK, and all 10 reviewer-reported commands must be saved before continuing.</p>" + taskTable(job));
     const row = resultFor(job, state.task);
     const picker = `<div class="reviewer-task-picker"><select data-task-picker aria-label="Task to review">${TASKS.map(task => `<option value="${task}" ${task === state.task ? "selected" : ""}>${label(task)} · ${label(resultFor(job, task)?.status || "Not uploaded")}</option>`).join("")}</select><span>${(job.results || []).filter(result => result.status === "checked").length} / 10 accepted</span></div>`;
-    const evidence = row ? `<dl class="reviewer-meta"><div><dt>Episodes</dt><dd>${row.summary.episodes} / 100</dd></div><div><dt>Success rate</dt><dd>${Number(row.summary.success_rate).toFixed(1)}%</dd></div><div><dt>Average action steps</dt><dd>${Number(row.summary.average_steps).toFixed(1)} / ${STEPS[state.task]}</dd></div><div><dt>Archive SHA256</dt><dd>${escape(row.artifacts?.sha256 || "")}</dd></div></dl><div class="reviewer-links"><a href="${escape(safeHref(row.artifacts?.url))}" target="_blank" rel="noreferrer">${icon("folder-open")}Open task evidence</a></div>${row.status === "checked" ? notice("This task result has been reviewed and accepted.", true) : `<form data-review-form="accept" class="reviewer-form"><label class="reviewer-confirm"><input type="checkbox" name="video" required>I reviewed task videos and success/failure outcomes.</label><label class="reviewer-confirm"><input type="checkbox" name="trajectory" required>I checked episode state/action trajectories.</label><label class="reviewer-confirm"><input type="checkbox" name="checksum" required>The downloaded archive matches the recorded SHA256.</label><button class="button button-secondary">${icon("check")}Accept this task result</button></form>`}` : notice("No manifest has been uploaded for this task.", false, "warning");
+    const evidence = row ? `<dl class="reviewer-meta"><div><dt>Episodes</dt><dd>${row.summary.episodes} / 100</dd></div><div><dt>Success rate</dt><dd>${Number(row.summary.success_rate).toFixed(1)}%</dd></div><div><dt>Average action steps</dt><dd>${Number(row.summary.average_steps).toFixed(1)} / ${STEPS[state.task]}</dd></div><div><dt>Archive SHA256</dt><dd>${escape(row.artifacts?.sha256 || "")}</dd></div></dl><div class="reviewer-links"><a href="${escape(evidenceHref(job, state.task, row.artifacts?.sha256))}" data-review-action="open-evidence" target="_blank" rel="noreferrer">${icon("folder-open")}Open task evidence</a></div>${row.status === "checked" ? notice("This task result has been reviewed and accepted.", true) : `<form data-review-form="accept" class="reviewer-form"><label class="reviewer-confirm"><input type="checkbox" name="video" required>I reviewed task videos and success/failure outcomes.</label><label class="reviewer-confirm"><input type="checkbox" name="trajectory" required>I checked episode state/action trajectories.</label><label class="reviewer-confirm"><input type="checkbox" name="checksum" required>The downloaded archive matches the recorded SHA256.</label><button class="button button-secondary">${icon("check")}Accept this task result</button></form>`}` : notice("No manifest has been uploaded for this task.", false, "warning");
     return step(1, "Select the task to review", picker) + step(2, "Check evidence and accept this task", "<p>Inspect the videos and trajectories, then compare the downloaded ZIP with its recorded SHA256. Repeat for all 10 tasks.</p>" + evidence) + step(3, "Check the complete result table", taskTable(job));
   }
   function codeStage(job) {
@@ -547,6 +550,15 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       });
     }
     if (!selected()) { state.selected = state.jobs[0]?.evaluation_id || ""; state.stage = selected() ? firstOpen(selected()) : 0; }
+    if (!evidenceRouteApplied && evidenceRoute.has("evidence")) {
+      const target = state.jobs.find(job => job.evaluation_id === evidenceRoute.get("evidence"));
+      const task = evidenceRoute.get("task");
+      if (target && TASKS.includes(task)) {
+        state.selected = target.evaluation_id; state.stage = 4; state.task = task; state.view = "workspace";
+        if (resultFor(target, task)?.artifacts?.sha256 !== evidenceRoute.get("sha")) state.error = "Evidence reference changed. Check the latest task result.";
+        evidenceRouteApplied = true;
+      } else state.error = "This evidence request is not available to this account.";
+    }
   }
   async function perform(action, forceRefresh = false) {
     if (state.busy) return;
@@ -627,7 +639,21 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       const stageButton = event.target.closest("[data-review-stage]");
       if (stageButton && !stageButton.disabled && !state.busy) { browse(() => { state.stage = Number(stageButton.dataset.reviewStage); state.emailDraft = null; state.toast = ""; }); return; }
       const action = event.target.closest("[data-review-action]")?.dataset.reviewAction;
+      if (action === "open-evidence") event.preventDefault();
       if (!action || state.busy) return;
+      if (action === "open-evidence") {
+        const job = selected(), row = resultFor(job, state.task);
+        if (LOCAL) { window.open(safeHref(row?.artifacts?.url), "_blank", "noopener,noreferrer"); return; }
+        const target = window.open("about:blank", "_blank");
+        if (!target) { state.error = "Allow a new tab to open task evidence."; paint(); return; }
+        target.opener = null;
+        request("reviewer_resolve_evidence", {evaluation_id:job.evaluation_id, task:state.task, sha256:row?.artifacts?.sha256})
+          .then(value => {
+            if (!/^https:\/\//.test(value.download_url || "")) throw new Error("No verified evidence download is available.");
+            target.location.replace(value.download_url);
+          }).catch(error => { target.close(); state.error = error.message || "Evidence link could not be resolved."; paint(); });
+        return;
+      }
       if (evaluationBlocked(selected()) && ["next", "retry-code"].includes(action)) return;
       if (action === "copy" && state.view === "workspace" && evaluationBlocked(selected())) return;
       if (!["logout", "refresh", "copy", "previous", "close-email", "downloads", "email-status", "workspace"].includes(action) && !canEdit(selected())) return;

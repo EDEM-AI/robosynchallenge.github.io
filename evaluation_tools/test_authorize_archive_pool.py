@@ -51,7 +51,8 @@ class PoolAuthorizationTests(unittest.TestCase):
         def launch(command, **kwargs):
             self.assertEqual(command[1:3], ["authorize", "onedrive"])
             config = json.loads(base64.urlsafe_b64decode(command[3] + "=" * (-len(command[3]) % 4)))
-            self.assertEqual(config, {"access_scopes": "Files.ReadWrite User.Read offline_access"})
+            self.assertEqual(config["access_scopes"], "Files.ReadWrite User.Read offline_access")
+            self.assertNotIn("auth_url", config)
             self.assertNotIn("RCLONE_ONEDRIVE_DISABLE_SITE_PERMISSION", kwargs["env"])
             kwargs["stdout"].write(encoded + "\n")
             kwargs["stdout"].flush()

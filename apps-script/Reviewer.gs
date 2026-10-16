@@ -13,6 +13,7 @@ const REVIEW_TABLES = {
   ReviewCodePreparations: ["evaluation_id", "submission_id", "code_link", "participant_commit", "private_base_commit", "bundle_url", "bundle_commit", "policy_dirs_json", "selection_json", "attempt", "generation", "updated_at"],
   ReviewUploadAccess: ["evaluation_id", "token_hash", "expires_at", "revoked", "created_at"],
   ReviewArchiveUploads: ["evaluation_id", "task", "upload_id", "expected_sha256", "size", "status", "expires_at", "updated_at", "record_hash"],
+  ReviewArchiveLocations: ["evaluation_id", "task", "sha256", "upload_id", "record_hash", "slot", "zip_item_id", "zip_etag", "json_item_id", "json_etag", "size", "source_zip_id", "source_etag", "status", "updated_at"],
   ReviewTaskCommands: ["evaluation_id", "task", "bundle_commit", "command", "reviewer_email", "updated_at"],
   ReviewAccessChecks: ["evaluation_id", "report_json", "checked_at"],
   ReviewCheckpointChecks: ["evaluation_id", "context_json", "status", "message", "cutoff_at", "updated_at"],
@@ -973,6 +974,7 @@ function reviewSendIssue_(payload) {
 
 function handleReviewerAction_(action, payload) {
   payload = {...payload, action};
+  if (action.startsWith("reviewer_archive_pool_") || action === "reviewer_resolve_evidence") return handleArchivePool_(action, payload);
   if (!payload.upload_token && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) &&
       reviewNonRecordingForRequest_(reviewerIdentity_(payload), payload.evaluation_id)) {
     throw new Error("Non-recording account: actions are browser-local only; no evaluation or email was changed.");

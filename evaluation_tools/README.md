@@ -92,7 +92,7 @@ This tool stages authorization and verifies destination upload/download SHA256.
 It does **not** enable migration or prove cross-account evidence transfer. Those
 checks require the second account and are the next deployment gate.
 
-The intended website-side worker processes each completed task, not an entire
+The website-side worker processes each completed task, not an entire
 evaluation request: copy its registered ZIP/JSON to a capacity-checked destination,
 read back and verify the ZIP hash and JSON, publish a separately audited location
 mapping, resolve evidence links using existing reviewer authentication, and only
@@ -105,4 +105,50 @@ files into the recycle bin; capacity reclamation must be tested with synthetic
 files first. Any permanent deletion must target only individually verified,
 relocated evidence. Account tokens remain server-side. The long-running transfer
 worker belongs to the website backend deployment, not to Apps Script request
-execution or the participant evaluation runtime. It is not yet installed/enabled.
+execution or the participant evaluation runtime.
+
+### Worker Deployment
+
+Deploy `Reviewer.gs` and `ArchivePool.gs` through the selected-file deployment tool,
+then publish the updated reviewer page. Account credentials stay in private runtime
+files and backend Script Properties, never in public assets or evaluation branches.
+Create a mode-0600 worker settings file with `api_url`, `organizer_email`,
+`organizer_token_file`, optional `proxy`, and `cleanup_enabled` (default false).
+
+```bash
+python evaluation_tools/archive_pool_worker.py \
+  --settings /path/to/private/archive-pool-settings.json \
+  --pool-root /path/to/private/archive-pool \
+  --source-owner /path/to/private/onedrive-owner.json --once
+```
+
+`--once` processes one smallest eligible task for canary verification. The default
+long-running mode uses two bounded workers (`--workers 1..4`) and polls every 20
+seconds while transfers run. Each task has independent HTTP sessions. Account
+capacity and disk spool space are reserved before dispatch, with a 2-GiB safety
+margin; unprobed accounts and duplicate drive identities are excluded. Failed
+accounts do not prevent use of healthy accounts. Failed tasks retry with backoff.
+Private temporary spools are removed after each task and on graceful shutdown.
+
+Enable source cleanup only after the canary and frontend links pass: an admin must
+call `reviewer_archive_pool_enable_cleanup` with `enabled:true` and an explicit
+approval reason, and set `cleanup_enabled:true` in the private worker settings.
+Both gates are required. Cleanup permanently removes only the exact unchanged
+source ZIP under the configured ingress root. It never empties the recycle bin.
+The tiny original `result.json` stays at ingress so existing upload retries remain
+compatible. The immutable original manifest, command, result and SHA256 remain
+unchanged; a separate append-only location record supplies navigation.
+
+Install `rsc-archive-pool.service` in the trusted host's user systemd directory and
+enable it for restart recovery. The template uses the existing workspace and
+Python environment. The service discovers new successfully probed pool slots on
+the next poll without a restart. OAuth refresh is automatic while the grant is
+valid; revoked consent or a new tenant login requirement still requires the owner.
+
+Admin APIs `reviewer_archive_pool_status` and `reviewer_archive_pool_queue` expose
+service status and current registered candidates without account tokens. Local
+`worker-status.json` and the systemd journal record transfer phases. The reviewer
+page resolves evidence through the authenticated backend; its task links point to
+the reviewer workspace, not to a stale OneDrive URL. Historical raw OneDrive URLs
+in original manifests are not cloud-provider redirects and must not be used as
+the relocated archive's canonical navigation link.

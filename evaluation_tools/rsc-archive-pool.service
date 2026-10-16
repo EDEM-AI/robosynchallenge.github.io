@@ -1,0 +1,18 @@
+[Unit]
+Description=RoboSynChallenge verified evidence pool relocation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/challenge_ws/robosynchallenge_deploy_repo
+ExecStart=%h/miniconda3/envs/lerobot/bin/python %h/challenge_ws/robosynchallenge_deploy_repo/evaluation_tools/archive_pool_worker.py --settings %h/challenge_ws/evaluation_system/.runtime/archive-pool-settings.json --pool-root %h/challenge_ws/evaluation_system/.runtime/archive-pool --source-owner %h/challenge_ws/evaluation_system/.runtime/onedrive-owner.json --workers 2
+UMask=0077
+Restart=on-failure
+RestartSec=20
+TimeoutStopSec=300
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

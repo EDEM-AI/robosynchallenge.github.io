@@ -19,7 +19,28 @@ def private_json(path, value):
         json.dump(value, stream)
 
 
-def receive_authorization(helper, binary, directory, timeout):
+def microsoft_login_url(local_url, expected_email):
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, request, file, code, message, headers, new_url):
+            return None
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+    try:
+        opener.open(local_url, timeout=10)
+    except urllib.error.HTTPError as response:
+        if response.code not in (301, 302, 303, 307, 308):
+            raise
+        target = urllib.parse.urlsplit(response.headers["Location"])
+        if target.scheme != "https" or target.hostname != "login.microsoftonline.com":
+            raise ValueError("Unexpected Microsoft authorization endpoint")
+        query = dict(urllib.parse.parse_qsl(target.query))
+        query["prompt"] = "login"
+        if expected_email:
+            query["login_hint"] = expected_email
+        return urllib.parse.urlunsplit(target._replace(query=urllib.parse.urlencode(query)))
+    raise ValueError("Expected a Microsoft authorization redirect")
+
+
+def receive_authorization(helper, binary, directory, timeout, expected_email=""):
     version = subprocess.check_output([str(binary), "version"], text=True).splitlines()[0]
     if version != "rclone " + helper.RCLONE_VERSION:
         raise ValueError("Use the previously verified rclone binary")
@@ -45,10 +66,13 @@ def receive_authorization(helper, binary, directory, timeout):
             text = output.read_text()
             link = re.search(r"http://(?:127\.0\.0\.1|localhost):53682/auth\?[^\s\"<>]+", text)
             if link and not shown:
-                print("Open in your browser: " + link.group(0), flush=True)
+                print("Open Microsoft sign-in: " + microsoft_login_url(link.group(0), expected_email), flush=True)
                 shown = True
             time.sleep(0.5)
         if process.returncode:
+            for line in output.read_text().splitlines():
+                if len(line) < 800 and re.search(r"CRITICAL|ERROR|Failed to", line) and not re.search(r"access_token|refresh_token|client_secret", line):
+                    print(re.sub(r"https?://\S+", "[URL omitted]", line)[:400], file=sys.stderr, flush=True)
             raise ValueError("Microsoft authorization was denied or interrupted")
         for line in output.read_text().splitlines():
             token = helper.parse_authorization(line)
@@ -152,7 +176,7 @@ def main():
                 raise ValueError("Pending authorization requires a fresh browser login")
         else:
             print("Forward SSH port 53682, then sign in with the NEW destination OneDrive account.", flush=True)
-            token = receive_authorization(helper, args.rclone, directory, args.timeout)
+            token = receive_authorization(helper, args.rclone, directory, args.timeout, args.email)
             private_json(pending, token)
         email, drive = target_identity(helper, token, source, args.email)
         if args.authorize_only:
@@ -175,7 +199,15 @@ def main():
         return
     print("Destination confirmed: " + email + "; synthetic round-trip probe starting.", flush=True)
     from probe_onedrive import probe
-    result = probe(owner, args.probe_mib)
+    for attempt in range(3):
+        try:
+            result = probe(owner, args.probe_mib)
+            break
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt == 2:
+                raise
+            print("Temporary probe transport error; retrying without a new login.", flush=True)
+            time.sleep(3 * (attempt + 1))
     if not result.get("roundtrip_sha256_matches"):
         raise ValueError("Destination probe did not verify SHA256")
     private_json(receipt, {"slot": args.slot, "provider": "onedrive", "email": email,
@@ -191,4 +223,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         print("Pool authorization/probe stopped (" + type(error).__name__ + "). No production storage was changed.", file=sys.stderr)
+        if isinstance(error, ValueError):
+            print(str(error), file=sys.stderr)
         raise SystemExit(1)
