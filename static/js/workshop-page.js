@@ -4,7 +4,7 @@
   const program = [
     { start: "10:30", end: "10:40", minutes: 10, title: "Opening Remarks & Competition Introduction" },
     { start: "10:40", end: "11:10", minutes: 30, title: "Invited Talk 1: Stone Tao" },
-    { start: "11:10", end: "11:40", minutes: 30, title: "Invited Talk 2" },
+    { start: "11:10", end: "11:40", minutes: 30, title: "Invited Talk 2: Yueci Deng" },
     { start: "11:40", end: "12:00", minutes: 20, title: "Competition Results & Key Insights" },
     { start: "12:00", end: "12:35", minutes: 35, title: "Finalist Presentations" },
     { start: "12:35", end: "12:45", minutes: 10, title: "Awards & Closing Remarks" },
@@ -129,9 +129,16 @@
                 <p class="workshop-speaker-bio"><strong>Bio:</strong> Stone is a member of technical staff at Physical Intelligence, driving research and engineering on simulation. He currently is completing his PhD at UC San Diego advised by Henrik Christensen and previously Hao Su. His research investigates the intersection of simulation and robot learning and how that can be leveraged for training, evaluation, and deployment of robotic systems. His work spans scalable simulation infrastructure, reinforcement learning, sim-to-real, and synthetic data generation for robotics.</p>
               </article>
               <article class="card workshop-speaker">
-                <span class="workshop-speaker-icon">${icon("mic")}</span>
-                <p class="workshop-talk-label">Invited Talk 2</p>
-                <h3>Talk info to be announced</h3>
+                <div class="workshop-speaker-heading">
+                  <img class="workshop-speaker-photo" src="static/assets/workshop/yueci-deng.png" alt="Yueci Deng" width="1040" height="1046" loading="lazy">
+                  <div>
+                    <p class="workshop-talk-label">Invited Talk 2</p>
+                    <h3>Yueci Deng</h3>
+                    <p class="workshop-speaker-affiliation">CUHK-Shenzhen</p>
+                  </div>
+                </div>
+                <p class="workshop-speaker-talk">Talk info to be announced</p>
+                <p class="workshop-speaker-bio"><strong>Bio:</strong> Yueci is a PhD student at the Chinese University of Hong Kong, Shenzhen, supervised by Kui Jia. Previously, he was an architect at DexForce Technology, leading the development of DexVerse, a Sim2Real AI platform for embodied intelligence. His research investigates scalable systems connecting generative worlds, hybrid simulation, and sim-to-real learning, enabling embodied agents to learn continually from simulated and real-world rollouts. His work spans simulation infrastructure, automated data generation, robot learning, and training and evaluation systems for embodied intelligence.</p>
               </article>
             </div>
           </div>

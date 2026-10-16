@@ -59,8 +59,8 @@
 .workshop-program-table tbody tr:last-child > * { border-bottom: 0; }
 .workshop-speaker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 24px; }
 .workshop-speaker { padding: 28px; }
-.workshop-speaker-heading { display: flex; align-items: center; gap: 24px; }
-.workshop-speaker-photo { display: block; width: 120px; height: 160px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }
+.workshop-speaker-heading { display: flex; align-items: center; min-height: 160px; gap: 24px; }
+.workshop-speaker-photo { display: block; width: 120px; height: auto; max-height: 160px; flex-shrink: 0; object-fit: contain; border-radius: 6px; }
 .workshop-speaker-affiliation { margin-top: 10px !important; font-size: 15px; color: var(--ink-soft); }
 .workshop-speaker-talk { margin-top: 24px !important; font-weight: 600; }
 .workshop-speaker-bio { margin-top: 12px !important; font-size: 15px; color: var(--ink-soft); }
@@ -148,8 +148,8 @@
   .workshop-program-table tbody td { font-size: 14px; }
   .workshop-speaker-grid { grid-template-columns: 1fr; }
   .workshop-speaker { padding: 24px; }
-  .workshop-speaker-heading { gap: 16px; }
-  .workshop-speaker-photo { width: 96px; height: 128px; }
+  .workshop-speaker-heading { min-height: 128px; gap: 16px; }
+  .workshop-speaker-photo { width: 96px; max-height: 128px; }
   .workshop-speaker h3 { font-size: 23px; }
   .workshop-session-date { text-align: left; }
   .workshop-resource-links { gap: 16px; }
