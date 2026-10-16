@@ -34,16 +34,30 @@ def legal_selection(record, cutoff):
         return False
 
 
+def legal_code_selection(job, record, cutoff):
+    from code_version_policy import latest_code_allowed
+    if not latest_code_allowed(job):
+        return record.get("policy") != "latest_reachable" and legal_selection(record, cutoff)
+    try:
+        for key in ("authored_at", "committed_at"):
+            timestamp(record.get(key))
+        return (record.get("policy") == "latest_reachable" and
+                bool(re.fullmatch(r"[a-f0-9]{40}", str(record.get("revision", "")))) and
+                timestamp(record.get("cutoff_at")) == timestamp(cutoff))
+    except (ValueError, TypeError):
+        return False
+
+
 def audit_job(job, manifest=None, remote_tip=None):
     errors = []
     cutoff = job["version_cutoff_at"]
-    if timestamp(cutoff) > timestamp(DEADLINE) and not (job.get("preparation_attempt") or job.get("version_exception")):
+    if timestamp(cutoff) > timestamp(DEADLINE) and not (job.get("preparation_attempt") or job.get("version_exception") or job.get("submission_exception")):
         errors.append("Late version cutoff has no recorded correction or exception")
     code = (job.get("version_report") or {}).get("code") if job.get("bundle_commit") else job.get("code_selection")
     code = code or {}
     prepared = job.get("bundle_commit") or job.get("code_bundle_commit")
     if prepared:
-        if not legal_selection(code, cutoff) or "authored_at" not in code or code.get("revision") != job.get("code_participant_commit"):
+        if not legal_code_selection(job, code, cutoff) or "authored_at" not in code or code.get("revision") != job.get("code_participant_commit"):
             errors.append("Prepared code does not match a legal pinned selection")
         if remote_tip != prepared:
             errors.append("GitHub branch tip differs from the backend receipt")

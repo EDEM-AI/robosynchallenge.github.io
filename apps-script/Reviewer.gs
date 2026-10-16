@@ -22,6 +22,7 @@ const REVIEW_TABLES = {
   ReviewSubmissionWindows: ["window_id", "email", "token_hash", "status", "expires_at", "reason", "granted_by", "created_at"],
   ReviewVersionChecks: ["evaluation_id", "status", "report_json", "checked_at"],
   ReviewVersionDecisions: ["evaluation_id", "cutoff_at", "reason", "approved_by", "approved_at", "generation"],
+  ReviewCodePolicies: ["email", "token_hash", "mode", "reason", "approved_by", "approved_at"],
   ReviewAssignments: ["evaluation_id", "previous_reviewer", "reviewer_email", "reason", "changed_by", "changed_at"],
   ReviewProgressBackups: ["backup_id", "evaluation_id", "table_name", "row_key", "part", "snapshot_json", "reason", "created_at"],
   ReviewToolUpgrades: ["evaluation_id", "base_commit", "previous_bundle_commit", "selection_json", "backup_id", "updated_at"],
@@ -367,7 +368,7 @@ function reviewQueue_(payload, organizer) {
   if (organizer && viewer.role !== "admin") throw new Error("Organizer access required.");
   const snapshot = reviewReadTables_(workbook, ["Users", "Submissions", "Evaluations", "ReviewRuns", "ReviewTaskResults",
     "ReviewProgress", "ReviewMachines", "ReviewMessages", "ReviewPreparation", "ReviewCodePreparations", "ReviewCorrections",
-    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewCheckpointSources", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades", "ReviewAdjudications"]);
+    "ReviewAccessChecks", "ReviewCheckpointChecks", "ReviewCheckpointSources", "ReviewTaskCommands", "ReviewVersionChecks", "ReviewVersionDecisions", "ReviewCodePolicies", "ReviewSubmissionWindows", "ReviewArchiveUploads", "ReviewToolUpgrades", "ReviewAdjudications"]);
   const read = name => snapshot.rows[name];
   const runs = new Map(read("ReviewRuns").map((row) => [String(row.evaluation_id), row]));
   const adjudications = new Map(read("ReviewAdjudications").map(row => [String(row.evaluation_id), row]));
@@ -385,6 +386,7 @@ function reviewQueue_(payload, organizer) {
   const commands = read("ReviewTaskCommands");
   const versionChecks = new Map(read("ReviewVersionChecks").map(row => [String(row.evaluation_id), row]));
   const versionDecisions = new Map(read("ReviewVersionDecisions").map(row => [String(row.evaluation_id), row]));
+  const codePolicies = new Map(read("ReviewCodePolicies").map(row => [normalizeEmail_(row.email), row]));
   const windows = read("ReviewSubmissionWindows");
   const upgrades = new Map(read("ReviewToolUpgrades").map(row => [String(row.evaluation_id), row]));
   const archives = read("ReviewArchiveUploads");
@@ -393,6 +395,8 @@ function reviewQueue_(payload, organizer) {
     const owner = runs.get(String(evaluation.evaluation_id))?.reviewer_email;
     return organizer || ["admin", "observer", "supervisor"].includes(viewer.role) || normalizeEmail_(owner) === viewer.email;
   }).map(({ submission, evaluation, user }) => {
+    const codePolicy = reviewCodePolicyForUser_(user, codePolicies.get(normalizeEmail_(user.email)));
+    const submissionWindow = submissionWindows.get(submission.submission_window_id);
     const run = runs.get(String(evaluation.evaluation_id));
     const adjudication = adjudications.get(String(evaluation.evaluation_id));
     const evaluationBlocked = adjudication?.status === "invalid_pending_review";
@@ -405,7 +409,7 @@ function reviewQueue_(payload, organizer) {
     const correctedLinks = correction?.status === "corrected" ? reviewTaskLinks_(parseJson_(correction.task_checkpoint_links_json, {})) : null;
     const taskLinks = correctedLinks || declaredLinks || verifiedLinks || {};
     const cutoff = correction?.status === "corrected" && (!decision || Date.parse(decision.approved_at) <= Date.parse(correction.responded_at)) ? correction.responded_at : decision?.cutoff_at ||
-      submissionWindows.get(submission.submission_window_id)?.expires_at || POLICY_SUBMISSION_CLOSE_AT;
+      submissionWindow?.expires_at || POLICY_SUBMISSION_CLOSE_AT;
     const checkpointContext = reviewCheckpointContext_({ submission_id: submission.submission_id,
       preparation_attempt: attempt, version_generation: Number(decision?.generation || 0),
       version_cutoff_at: cutoff, task_checkpoint_links: taskLinks });
@@ -423,7 +427,8 @@ function reviewQueue_(payload, organizer) {
     const sourceCheck = sourceRow?.context_json === sourceContext ? sourceRow : null;
     const savedCode = codePreparations.get(String(evaluation.evaluation_id));
     const code = savedCode?.submission_id === submission.submission_id && savedCode?.code_link === codeLink &&
-      Number(savedCode.attempt) === attempt && Number(savedCode.generation) === Number(decision?.generation || 0) ? savedCode : null;
+      Number(savedCode.attempt) === attempt && Number(savedCode.generation) === Number(decision?.generation || 0) &&
+      (parseJson_(savedCode.selection_json, {}).policy === "latest_reachable") === Boolean(codePolicy) ? savedCode : null;
     const results = tasks.filter(row => String(row.evaluation_id) === String(evaluation.evaluation_id) && row.status !== "superseded")
       .map(row => ({ task: row.task, status: row.status, note: row.review_note,
         artifacts: parseJson_(row.result_json, {}).artifacts || {}, command: parseJson_(row.result_json, {}).eval_command || "",
@@ -435,6 +440,9 @@ function reviewQueue_(payload, organizer) {
       correction: correction ? { status: correction.response_status || correction.status, responded_at: correction.response_at || correction.responded_at, notes: correction.notes, round: attempt, deadline_at: correction.deadline_at || "" } : null,
       preparation_attempt: attempt,
       version_cutoff_at: cutoff,
+      code_version_policy: codePolicy,
+      submission_exception: submissionWindow ? { expires_at: submissionWindow.expires_at,
+        reason: submissionWindow.reason, approved_by: submissionWindow.granted_by, approved_at: submissionWindow.created_at } : null,
       version_exception: decision ? { reason: decision.reason, approved_by: decision.approved_by, approved_at: decision.approved_at } : null,
       version_generation: Number(decision?.generation || 0), version_status: versionCheck?.status || "pending",
       version_report: parseJson_(versionCheck?.report_json, {}),
@@ -600,7 +608,7 @@ function reviewPrepareCode_(payload) {
     if (![payload.bundle_commit, payload.participant_commit, payload.private_base_commit].every(value => /^[a-f0-9]{40}$/.test(String(value || ""))) ||
         selection.revision !== payload.participant_commit || JSON.stringify(selection).length > 4000 ||
         !Number.isFinite(Date.parse(selection.cutoff_at)) ||
-        ![selection.authored_at, selection.committed_at].every(value => Number.isFinite(Date.parse(value)) && Date.parse(value) < Date.parse(selection.cutoff_at)) ||
+        !reviewCodeTimestampsAllowed_(job, selection, Date.parse(selection.cutoff_at)) ||
         Date.parse(selection.cutoff_at) > Math.min(Date.now(), Date.parse(job.version_cutoff_at)) ||
         (Date.now() >= Date.parse(job.version_cutoff_at) && selection.cutoff_at !== job.version_cutoff_at) ||
         !Array.isArray(dirs) || !dirs.length || dirs.length > 30 || dirs.some(dir => !/^policy(?:\/[A-Za-z0-9_.-]+)*$/.test(dir) || dir.split("/").some(part => [".", ".."].includes(part)))) {
@@ -1006,6 +1014,7 @@ function handleReviewerAction_(action, payload) {
   if (action === "reviewer_reassign") return reviewReassign_(payload);
   if (action === "reviewer_version_check") return reviewVersionCheck_(payload);
   if (action === "reviewer_approve_version_exception") return reviewApproveVersionException_(payload);
+  if (action === "reviewer_code_policy") return reviewSetCodePolicy_(payload);
   if (action === "reviewer_configure_scoring") return reviewConfigureScoring_(payload);
   if (action === "reviewer_submission_window") return reviewSubmissionWindow_(payload);
   if (action === "reviewer_issue_upload_access") return reviewIssueUploadAccess_(payload);

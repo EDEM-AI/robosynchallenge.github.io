@@ -110,6 +110,14 @@ class MaintenanceTests(unittest.TestCase):
         code['committed_at'] = cutoff
         self.assertEqual(state(), 'invalid_final_receipt')
         code['committed_at'] = '2026-10-12T11:59:59Z'
+        job['code_version_policy'] = {'mode':'latest_reachable', 'reason':'Organizer approval',
+            'approved_by':'admin@example.com', 'approved_at':'2026-10-16T00:00:00Z'}
+        code.update(policy='latest_reachable', committed_at='2032-01-01T00:00:00Z')
+        self.assertEqual(state(), 'frozen')
+        del job['code_version_policy']
+        self.assertEqual(state(), 'invalid_final_receipt')
+        job['code_version_policy'] = {'mode':'latest_reachable', 'reason':'Organizer approval',
+            'approved_by':'admin@example.com', 'approved_at':'2026-10-16T00:00:00Z'}
         hf['0']['committed_at'] = cutoff
         self.assertEqual(state(), 'invalid_final_receipt')
         job['version_status'] = 'provisional'

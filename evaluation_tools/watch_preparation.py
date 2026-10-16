@@ -33,6 +33,7 @@ def source_urls(value):
 
 
 def audit_deadlines(jobs, timestamp=None):
+    from code_version_policy import latest_code_allowed
     current = datetime.now(timezone.utc).timestamp() if timestamp is None else timestamp
     def seconds(value):
         parsed = datetime.fromisoformat(str(value).replace('Z', '+00:00'))
@@ -53,8 +54,10 @@ def audit_deadlines(jobs, timestamp=None):
         code = code or {}
         code_valid = bool(re.fullmatch(r'[a-f0-9]{40}', code.get('revision', '')))
         try:
-            code_valid = code_valid and seconds(code.get('cutoff_at')) == limit and all(
-                seconds(code.get(field)) < limit for field in ('authored_at', 'committed_at'))
+            latest = latest_code_allowed(job)
+            code_times = [seconds(code.get(field)) for field in ('authored_at', 'committed_at')]
+            code_valid = code_valid and seconds(code.get('cutoff_at')) == limit and (
+                (code.get('policy') == 'latest_reachable') == latest) and all(latest or value < limit for value in code_times)
             if job.get('bundle_commit'):
                 code_valid = code_valid and code.get('revision') == job.get('code_participant_commit') and \
                     job.get('bundle_commit') == job.get('code_bundle_commit')
@@ -188,6 +191,8 @@ def main():
     parser.add_argument('--once', action='store_true')
     args = parser.parse_args()
     sys.path.insert(0, str(args.private_root.resolve() / 'tools'))
+    from code_version_policy import install
+    install(importlib.import_module('process_queue'))
     original = importlib.import_module('watch_queue')
     os.umask(0o077)
     state_file = args.settings.parent / 'preparation-maintenance-state.json'

@@ -55,6 +55,19 @@ class ReceiptTests(unittest.TestCase):
         job = {**self.job(), "version_cutoff_at":"2026-10-13T00:00:00Z"}
         self.assertTrue(audit_job(job)["errors"])
         self.assertFalse(audit_job({**job,"preparation_attempt":1})["errors"])
+        self.assertFalse(audit_job({**job,"submission_exception":{"reason":"Organizer approval"}})["errors"])
+
+    def test_code_only_approval_preserves_timestamp_and_receipt_validation(self):
+        from draft_participant_receipts import legal_code_selection
+        record = {"revision":"a"*40, "cutoff_at":DEADLINE,
+                  "authored_at":"2032-01-01T00:00:00Z", "committed_at":"2032-01-01T00:00:00Z",
+                  "policy":"latest_reachable"}
+        job = {"code_version_policy":{"mode":"latest_reachable", "reason":"Organizer approval",
+               "approved_by":"admin@example.com", "approved_at":"2026-10-16T00:00:00Z"}}
+        self.assertTrue(legal_code_selection(job, record, DEADLINE))
+        self.assertFalse(legal_code_selection({}, record, DEADLINE))
+        self.assertFalse(legal_selection(record, DEADLINE))
+        self.assertFalse(legal_code_selection(job, {**record,"authored_at":"invalid"}, DEADLINE))
 
     def test_branch_receipt_mismatch_is_rejected(self):
         record={"revision":"a"*40,"cutoff_at":DEADLINE,"committed_at":"2026-10-12T11:00:00Z","authored_at":"2026-10-12T11:00:00Z"}

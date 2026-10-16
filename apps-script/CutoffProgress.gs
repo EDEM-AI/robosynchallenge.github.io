@@ -133,8 +133,7 @@ function reviewReconcileFinalProgress_(payload) {
         Object.keys(selected.hf || {}).length !== 10 || Object.keys(REVIEW_TASK_STEPS).some(task => !selected.hf[task]?.accessible ||
         selected.hf[task].url !== job.task_checkpoint_links[task] || !/^[a-f0-9]{40}$/.test(selected.hf[task].revision || "") || selected.hf[task].cutoff_at !== job.version_cutoff_at)) throw new Error("Final progress check requires the current code and all ten checkpoint receipts.");
     const limit = Date.parse(job.version_cutoff_at);
-    if (JSON.stringify(selected).length > 30000 || ![selected.code.committed_at, selected.code.authored_at].every(value =>
-        Number.isFinite(Date.parse(value)) && Date.parse(value) < limit) || Object.values(selected.hf).some(row =>
+    if (JSON.stringify(selected).length > 30000 || !reviewCodeTimestampsAllowed_(job, selected.code, limit) || Object.values(selected.hf).some(row =>
         !Number.isFinite(Date.parse(row.committed_at)) || Date.parse(row.committed_at) >= limit ||
         !Number.isInteger(row.files_checked) || row.files_checked < 1 || row.files_checked > 10000)) throw new Error("Invalid final version timestamps or access receipts.");
     const old = reviewRows_("ReviewVersionChecks").find(row => row.evaluation_id === run.evaluation_id);
