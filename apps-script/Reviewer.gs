@@ -978,6 +978,7 @@ function reviewSendIssue_(payload) {
 
 function handleReviewerAction_(action, payload) {
   payload = {...payload, action};
+  if (action === "reviewer_private_leaderboard") return reviewPrivateLeaderboard_(payload);
   if (action.startsWith("reviewer_archive_pool_") || action === "reviewer_resolve_evidence") return handleArchivePool_(action, payload);
   if (!payload.upload_token && !["reviewer_login", "reviewer_queue", "reviewer_mail_status"].includes(action) &&
       reviewNonRecordingForRequest_(reviewerIdentity_(payload), payload.evaluation_id)) {

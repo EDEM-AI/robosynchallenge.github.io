@@ -52,6 +52,28 @@ The roster is a bounded snapshot of approved `Users` records with `registrations
 
 Send only after explicit organizer approval, using Gmail directly rather than Apps Script/MailApp. Keep one message per team with the existing HTML email shell; do not expose team addresses through shared To/CC lists. Store Gmail message IDs and ambiguous-delivery receipts privately. These notices create no response forms and do not change progress or admission deadlines.
 
+## Completed Evaluation Protection
+
+The website service installs `preparation_freeze.py` before loading the private
+queue watcher. Once `workflow.stages[3].done` is true (stage four, uploads complete),
+automatic preparation, retries and tool upgrades preserve its exact Git head,
+bundle identity, checkpoint receipts, results, commands and progress. Stage five
+is evidence review and is not required for this protection.
+
+Publication claims are held under the same backend lock as stage-four completion.
+An update claims the current generation before composing or pushing; stage four
+cannot complete during an unresolved publication. Successful registration releases
+the claim. An uncertain push/registration reply retains its private operation ID
+for retry, rather than allowing completion around an unregistered branch head.
+Claims do not automatically expire into permission to complete stage four.
+Automatic legacy branch retirement is disabled because its latest-request-only
+inventory cannot safely classify historical completed branches.
+
+Run the production entrypoint `evaluation_tools/watch_preparation.py`; the legacy
+private CLI does not install this website policy. Do not run old one-off rollout
+scripts alongside the service. Any manual reopening of completed evaluation data
+requires a separate organizer decision; merging a main PR does not authorize it.
+
 ## Archive Pool Authorization
 
 The current upload owner remains the ingress account. A second OneDrive account

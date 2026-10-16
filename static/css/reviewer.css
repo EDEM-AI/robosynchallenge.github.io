@@ -24,6 +24,26 @@ body { background: #fff; font-size: 16px; }
 .reviewer-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; height: calc(100vh - 216px); min-height: 480px; }
 .reviewer-overview-tools { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .reviewer-overview-tools .button { min-height: 38px; padding: 8px 14px; font-size: 14px; }
+.reviewer-overview-tools .button[aria-current="page"] { border-color: #247181; color: #185966; background: #edf7f5; }
+.reviewer-private-board { padding-bottom: 30px; }
+.reviewer-private-section { margin-top: 26px; min-width: 0; }
+.reviewer-private-scroll { width: 100%; overflow-x: auto; border-top: 1px solid var(--line); }
+.reviewer-private-table { width: 100%; min-width: 1220px; table-layout: fixed; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.reviewer-private-table th, .reviewer-private-table td { padding: 13px 10px; border-bottom: 1px solid var(--line); text-align: right; vertical-align: top; line-height: 1.5; overflow-wrap: anywhere; }
+.reviewer-private-table th { background: #f3f6f8; font-weight: 600; color: var(--ink-soft); }
+.reviewer-private-table th:first-child { width: 56px; }
+.reviewer-private-table th:nth-child(2) { width: 220px; }
+.reviewer-private-table th:last-child { width: 190px; }
+.reviewer-private-table th:nth-child(2), .reviewer-private-table td:nth-child(2), .reviewer-private-table th:last-child, .reviewer-private-table td:last-child { text-align: left; }
+.reviewer-private-table td > span, .reviewer-private-table td > small { display: block; }
+.reviewer-private-table small { color: var(--ink-soft); font-size: 12px; margin-top: 4px; }
+.reviewer-private-status { color: var(--ink-soft); }
+.reviewer-private-status.pending { color: #8a510f; }
+.reviewer-private-board .reviewer-private-order { margin-top: 24px; font-size: 13px; }
+@media (max-width: 600px) {
+  .reviewer-page:has(.reviewer-private-board) .reviewer-progress { grid-template-columns: minmax(0, 1fr); }
+  .reviewer-page:has(.reviewer-private-board) .reviewer-progress > span { grid-row: 3; overflow-wrap: anywhere; }
+}
 .reviewer-overview { min-width: 0; padding: 20px 0; border-top: 1px solid var(--line); }
 .reviewer-overview > .button { margin-bottom: 20px; }
 .reviewer-overview h2 { margin-bottom: 12px; }

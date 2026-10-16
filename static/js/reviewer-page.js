@@ -49,7 +49,8 @@
       ["task_mapping", "Task or checkpoint mismatch", "We found a mismatch between the documented task entrypoint/checkpoint and the evaluated policy. Please confirm the intended mapping and clarify the affected task."]
     ]
   ];
-  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "", view: ["#downloads", "#email-status"].includes(location.hash) ? location.hash.slice(1) : "workspace", mailStatus: [], sharedHfToken: "" };
+  const state = { credentials: null, role: "", jobs: [], selected: "", stage: 0, task: TASKS[0], policyDir: "", busy: false, error: "", toast: "", preview: null, drafts: new Map(), emailDraft: null, search: "", pendingSelection: "", view: ["#downloads", "#email-status", "#private-leaderboard"].includes(location.hash) ? location.hash.slice(1) : "workspace", mailStatus: [], sharedHfToken: "" };
+  const privateBoard = { tables: null, loading: false, error: "", requestId: 0 };
   try { state.credentials = JSON.parse(sessionStorage.getItem(STORAGE) || "null"); } catch { /* Require sign-in. */ }
   let saveChain = Promise.resolve();
   const pendingSaves = new Map();
@@ -123,8 +124,8 @@
   async function request(action, fields = {}) {
     const job = fields.evaluation_id ? state.jobs.find(job => job.evaluation_id === fields.evaluation_id)
       : fields.participant_email ? state.jobs.find(job => job.email === fields.participant_email) : selected();
-    if (evaluationBlocked(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_send_issue", "reviewer_resolve_evidence"].includes(action)) throw new Error(HOLD_MESSAGE);
-    if (nonRecording(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_resolve_evidence"].includes(action)) {
+    if (evaluationBlocked(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_private_leaderboard", "reviewer_send_issue", "reviewer_resolve_evidence"].includes(action)) throw new Error(HOLD_MESSAGE);
+    if (nonRecording(job) && !["reviewer_login", "reviewer_queue", "reviewer_mail_status", "reviewer_private_leaderboard", "reviewer_resolve_evidence"].includes(action)) {
       return simulateAction(action, fields);
     }
     if (LOCAL) return previewAction(action, fields);
@@ -183,6 +184,7 @@
       state.preview.jobs.forEach((job) => { job.workflow ||= { stages: STAGES.map(() => ({ done: false, checks: {} })), machine_id: "" }; });
     }
     if (state.credentials.email !== state.preview.reviewer_email || await hash(state.credentials.token) !== state.preview.reviewer_token_sha256) throw new Error("Invalid reviewer credentials.");
+    if (action === "reviewer_private_leaderboard") return previewPrivateLeaderboard();
     if (action === "reviewer_mail_status") return { ok: true, messages: state.preview.jobs.flatMap(job => (job.messages || []).map(message => ({ ...message, evaluation_id: job.evaluation_id, team_name: job.team_name, recipient: job.email, gmail_url: "https://mail.google.com/mail/u/?authuser=robosynchallenge%40gmail.com#search/" + encodeURIComponent(`in:sent subject:"${message.subject}"`) }))) };
     if (action === "reviewer_login") return { ok: true, reviewer: { email: state.credentials.email, role: "admin" } };
     if (action === "reviewer_queue") return { ok: true, reviewer: { email: state.credentials.email, role: "admin" },
@@ -417,8 +419,50 @@
   function commandBlock(command) {
     return `<div class="reviewer-command"><code data-copy-command>${escape(command)}</code><button type="button" class="reviewer-icon" data-review-action="copy" title="Copy command" aria-label="Copy command">${icon("copy")}</button></div>`;
   }
+  function previewPrivateLeaderboard() {
+    const jobs = state.preview.jobs.filter(job => !job.local_walkthrough);
+    const tables = ["overall", ...TASKS].map(id => ({ id, rows: jobs.map(job => {
+      const completed = TASKS.filter(task => resultFor(job, task)?.summary?.episodes === 100).length;
+      const summary = id === "overall" ? completed === 10 ? job.overall_summary : null : resultFor(job, id)?.summary;
+      const uploaded = flow(job).stages.slice(0, 4).every(stage => stage.done);
+      const scored = !evaluationBlocked(job) && uploaded && (id !== "overall" || completed === 10) && Number.isFinite(summary?.weighted_score);
+      return { evaluation_id: job.evaluation_id, model_name: job.artifact_name, team_name: job.team_name,
+        completed_tasks: completed, review_status: evaluationBlocked(job) ? "blocked" : !uploaded ? "evaluation_in_progress" : flow(job).stages[4].done && TASKS.every(task => resultFor(job, task)?.status === "checked") ? "reviewed" : "pending_review",
+        ...Object.fromEntries(["success_rate", "average_steps", "inference_ms", "inference_per_episode_ms", "total_inference_seconds", "action_efficiency", "inference_efficiency"].map(key => [key, summary?.[key] ?? null])),
+        weighted_score: scored ? summary.weighted_score : null, weighted_all: id === "overall" && scored ? summary.weighted_score : null,
+        score_status: summary?.score_status || (id === "overall" ? "incomplete_tasks" : "missing_or_invalid_result"), rank: null };
+    }) }));
+    tables.forEach(table => {
+      const metric = (a, b, descending) => Number.isFinite(a) !== Number.isFinite(b) ? Number.isFinite(a) ? -1 : 1 : Number.isFinite(a) ? descending ? b - a : a - b : 0;
+      const text = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+      table.rows.sort((a, b) => metric(a.weighted_score, b.weighted_score, true) || metric(a.success_rate, b.success_rate, true) || metric(a.average_steps, b.average_steps, false) || metric(a.inference_ms, b.inference_ms, false) || text(a.model_name, b.model_name) || text(a.evaluation_id, b.evaluation_id));
+      let rank = 0;
+      table.rows.forEach(row => { if (Number.isFinite(row.weighted_score)) row.rank = ++rank; });
+    });
+    return { ok: true, tables };
+  }
+  async function loadPrivateLeaderboard() {
+    if (!state.credentials || privateBoard.loading) return;
+    const credentials = state.credentials, requestId = ++privateBoard.requestId;
+    privateBoard.loading = true; privateBoard.error = ""; privateBoard.tables = null; paint();
+    try {
+      const response = await request("reviewer_private_leaderboard");
+      if (!Array.isArray(response.tables) || ["overall", ...TASKS].some((id, index) => response.tables[index]?.id !== id || !Array.isArray(response.tables[index]?.rows))) throw new Error("Incomplete private leaderboard response.");
+      if (state.credentials === credentials && requestId === privateBoard.requestId) privateBoard.tables = response.tables;
+    } catch (error) {
+      if (state.credentials === credentials && requestId === privateBoard.requestId) privateBoard.error = error.message || "Could not load private leaderboard.";
+    } finally {
+      if (requestId === privateBoard.requestId) { privateBoard.loading = false; if (state.view === "private-leaderboard") paint(); }
+    }
+  }
+  function privateLeaderboardPage(back) {
+    const value = (number, suffix = "") => Number.isFinite(number) ? escape(number.toFixed(2)) + suffix : "&mdash;";
+    const statuses = { pending_review: "Pending review", reviewed: "Reviewed", blocked: "Blocked / invalid", evaluation_in_progress: "Evaluation in progress" };
+    return `<section class="reviewer-overview reviewer-private-board" aria-busy="${privateBoard.loading}">${back}<h2>Private leaderboard</h2>${privateBoard.loading ? '<p role="status">Loading private leaderboard...</p>' : privateBoard.error ? `<p class="reviewer-error" role="alert">${escape(privateBoard.error)}</p>${button("private-leaderboard-retry", "Retry", "refresh-cw")}` : (privateBoard.tables || []).map(table => `<section class="reviewer-private-section" id="private-${escape(table.id)}" aria-labelledby="private-title-${escape(table.id)}"><h3 id="private-title-${escape(table.id)}">${table.id === "overall" ? "Overall - 10 tasks" : escape(label(table.id))}</h3><div class="reviewer-private-scroll" tabindex="0" role="region" aria-label="${escape(label(table.id))} leaderboard"><table class="reviewer-private-table"><thead><tr><th scope="col">Rank</th><th scope="col">Model / Team</th><th scope="col">${table.id === "overall" ? "Weighted all" : "Weighted score"}</th><th scope="col">Success</th><th scope="col">Action steps</th><th scope="col">Action efficiency</th><th scope="col">Inference / call</th><th scope="col">Inference / episode</th><th scope="col">Inference efficiency</th><th scope="col">Status</th></tr></thead><tbody>${table.rows.map(row => `<tr><td>${Number.isInteger(row.rank) ? row.rank : "&mdash;"}</td><td><strong>${escape(row.model_name)}</strong><span>${escape(row.team_name)}</span><small>${escape(row.evaluation_id)}</small></td><td><strong>${value(table.id === "overall" ? row.weighted_all : row.weighted_score)}</strong></td><td>${value(row.success_rate, "%")}</td><td>${value(row.average_steps)}</td><td>${value(row.action_efficiency, "%")}</td><td>${value(row.inference_ms, " ms")}</td><td>${value(row.inference_per_episode_ms, " ms")}</td><td>${value(row.inference_efficiency, "%")}</td><td><span class="reviewer-private-status ${row.review_status === "pending_review" ? "pending" : ""}">${escape(statuses[row.review_status] || label(row.review_status))}</span><small>${escape(row.completed_tasks)} / 10 tasks</small>${row.rank == null ? `<small>${escape(label(row.score_status))}</small>` : ""}</td></tr>`).join("") || '<tr><td colspan="10">No eligible evaluation requests.</td></tr>'}</tbody></table></div></section>`).join("")}<p class="reviewer-private-order">Order: weighted score (75% success, 20% action efficiency, 5% inference efficiency), success rate, fewer action steps, lower inference / call, model name, evaluation ID. Ordinal ranks use unrounded values. Unscored, incomplete and blocked rows are unranked.</p></section>`;
+  }
   function overviewPage() {
     const back = `<button type="button" class="button button-secondary" data-review-action="workspace">${icon("arrow-left")}Evaluation requests</button>`;
+    if (state.view === "private-leaderboard") return privateLeaderboardPage(back);
     if (state.view === "downloads") {
       const assigned = state.jobs.filter(job => !job.local_walkthrough && job.reviewer_email === state.credentials.email);
       const ready = assigned.filter(job => !evaluationBlocked(job) && job.bundle_commit && ["provisional", "final"].includes(job.version_status)).length;
@@ -457,6 +501,16 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         message.textContent = "WARNING: Workflow demo only. All fields are optional; no emails, uploads, branches or backend changes are made.";
         content.querySelector(".reviewer-stage-body").prepend(message);
       }
+    }
+    if (state.credentials && ["admin", "evaluator", "tester", "supervisor", "observer"].includes(state.role)) {
+      content.querySelector(".reviewer-overview-tools")?.insertAdjacentHTML("beforeend", button("private-leaderboard", "Private leaderboard", "list-ordered"));
+      content.querySelectorAll(".reviewer-overview-tools [data-review-action]").forEach(control => {
+        if (control.dataset.reviewAction === state.view) control.setAttribute("aria-current", "page");
+      });
+    }
+    if (state.view === "private-leaderboard") {
+      const refresh = content.querySelector("[data-review-action=refresh]");
+      if (refresh) { refresh.disabled = privateBoard.loading || state.busy; refresh.title = "Refresh private leaderboard"; refresh.setAttribute("aria-label", refresh.title); }
     }
     applyHoldControls(content);
     markRequiredFields(content);
@@ -559,6 +613,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         evidenceRouteApplied = true;
       } else state.error = "This evidence request is not available to this account.";
     }
+    if (state.view === "private-leaderboard") await loadPrivateLeaderboard();
   }
   async function perform(action, forceRefresh = false) {
     if (state.busy) return;
@@ -656,12 +711,18 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       }
       if (evaluationBlocked(selected()) && ["next", "retry-code"].includes(action)) return;
       if (action === "copy" && state.view === "workspace" && evaluationBlocked(selected())) return;
-      if (!["logout", "refresh", "copy", "previous", "close-email", "downloads", "email-status", "workspace"].includes(action) && !canEdit(selected())) return;
-      if (["downloads", "email-status", "workspace"].includes(action)) {
-        browse(() => { state.view = action; history.replaceState(null, "", location.pathname + location.search + (action === "workspace" ? "" : "#" + action)); });
+      if (!["logout", "refresh", "copy", "previous", "close-email", "downloads", "email-status", "private-leaderboard", "private-leaderboard-retry", "workspace"].includes(action) && !canEdit(selected())) return;
+      if (action === "private-leaderboard-retry") { loadPrivateLeaderboard(); return; }
+      if (["downloads", "email-status", "private-leaderboard", "workspace"].includes(action)) {
+        const privateNavigation = action === "private-leaderboard" || state.view === "private-leaderboard";
+        const change = () => { state.view = action; history.replaceState(null, "", location.pathname + location.search + (action === "workspace" ? "" : "#" + action)); };
+        if (privateNavigation) { change(); paint(); } else browse(change);
         if (action === "email-status") loadMailStatus();
+        if (action === "private-leaderboard") loadPrivateLeaderboard();
         return;
       }
+      if (action === "refresh" && state.view === "private-leaderboard") { if (LOCAL) state.preview = null; loadPrivateLeaderboard(); return; }
+      if (action === "logout") { privateBoard.requestId += 1; privateBoard.tables = null; privateBoard.loading = false; privateBoard.error = ""; state.role = ""; }
       if (action === "logout") { sessionStorage.removeItem(STORAGE); localChanges.clear(); commandDrafts.clear(); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
       if (action === "refresh") perform(async () => { await saveStage(); if (LOCAL) state.preview = null; }, true);
       if (action === "copy") {
@@ -757,10 +818,16 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         state.emailDraft = null; state.toast = nonRecording() ? "Local simulation only. No email was sent or saved." : LOCAL ? "Demo email recorded. No email was sent." : "Email sent and recorded.";
       });
     });
+    window.addEventListener("hashchange", () => {
+      state.view = ["#downloads", "#email-status", "#private-leaderboard"].includes(location.hash) ? location.hash.slice(1) : "workspace";
+      paint();
+      if (state.credentials && state.view === "private-leaderboard") loadPrivateLeaderboard();
+      if (state.credentials && state.view === "email-status") loadMailStatus();
+    });
     paint();
     if (state.credentials) perform(async () => {}, true);
     if (!LOCAL) window.setInterval(async () => {
-      if (!state.credentials || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
+      if (!state.credentials || state.view === "private-leaderboard" || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
           root()?.contains(document.activeElement) && document.activeElement.matches("input,textarea,select")) return;
       const waiting = state.jobs.some(job => !evaluationBlocked(job) && (["pending", "checking"].includes(job.hf_check_status) ||
         ["pending", "code_ready"].includes(job.preparation_status) || job.correction?.status === "awaiting"));
