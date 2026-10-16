@@ -126,7 +126,7 @@
                   </div>
                 </div>
                 <p class="workshop-speaker-talk">Talk info to be announced</p>
-                <p class="workshop-speaker-bio">Stone is a member of technical staff at Physical Intelligence, driving research and engineering on simulation. He currently is completing his PhD at UC San Diego advised by Henrik Christensen and previously Hao Su. His research investigates the intersection of simulation and robot learning and how that can be leveraged for training, evaluation, and deployment of robotic systems. His work spans scalable simulation infrastructure, reinforcement learning, sim-to-real, and synthetic data generation for robotics.</p>
+                <p class="workshop-speaker-bio"><strong>Bio:</strong> Stone is a member of technical staff at Physical Intelligence, driving research and engineering on simulation. He currently is completing his PhD at UC San Diego advised by Henrik Christensen and previously Hao Su. His research investigates the intersection of simulation and robot learning and how that can be leveraged for training, evaluation, and deployment of robotic systems. His work spans scalable simulation infrastructure, reinforcement learning, sim-to-real, and synthetic data generation for robotics.</p>
               </article>
               <article class="card workshop-speaker">
                 <span class="workshop-speaker-icon">${icon("mic")}</span>
