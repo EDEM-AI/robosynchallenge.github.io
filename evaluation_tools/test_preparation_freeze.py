@@ -66,6 +66,12 @@ class FreezeTests(unittest.TestCase):
         self.assertEqual(self.api.call_count,1)
         self.publish.assert_not_called()
 
+    def test_correction_cleared_command_rows_do_not_block_new_generation(self):
+        self.job.update(preparation_attempt=1, task_commands={"click_bell":"", "sample_loading":""})
+        self.assertEqual(preservation_reason(self.job),"")
+        self.assertEqual(self.upgrades.upgrade(self.args,self.job,"synthetic")["state"],"upgraded")
+        self.publish.assert_called_once()
+
     def test_claim_precedes_publish_and_operation_reaches_migration(self):
         self.upgrades.upgrade(self.args,self.job,"synthetic")
         actions = [call.args[3] for call in self.api.call_args_list]

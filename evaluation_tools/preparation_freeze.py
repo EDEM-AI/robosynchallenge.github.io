@@ -19,7 +19,7 @@ def preservation_reason(job):
         return "completed_snapshot_preserved"
     stages = (job.get("workflow") or {}).get("stages") or []
     if (len(stages) > 1 and stages[1].get("done") is True) or any(
-            job.get(key) for key in ("results", "uploads", "task_commands")):
+            job.get(key) for key in ("results", "uploads")) or any((job.get("task_commands") or {}).values()):
         return "in_progress_snapshot_preserved"
     return ""
 
