@@ -51,3 +51,58 @@ python evaluation_tools/draft_participant_receipts.py \
 The roster is a bounded snapshot of approved `Users` records with `registrations` containing email, team, status and intended_use; exclude credentials. Drafts use one recipient per exact registered team name, preferring the latest eligible submitting account. Other registered contacts remain in the private review manifest, not CC. Explicit organizer test registrations are excluded; learning-only or other ambiguous registrations are retained for organizer review, not silently discarded. Teams with no request receive distinct text. Pending checks never become a false success confirmation. Review `version-audit.json`, `drafts.json` and `drafts.md` before any separately authorized mailing.
 
 Send only after explicit organizer approval, using Gmail directly rather than Apps Script/MailApp. Keep one message per team with the existing HTML email shell; do not expose team addresses through shared To/CC lists. Store Gmail message IDs and ambiguous-delivery receipts privately. These notices create no response forms and do not change progress or admission deadlines.
+
+## Archive Pool Authorization
+
+The current upload owner remains the ingress account. A second OneDrive account
+must be authorized separately, not installed through `reviewer_configure_storage`:
+that existing action replaces the single production upload owner.
+
+After the organizer identifies and approves the destination account, forward SSH
+port 53682 and run:
+
+```bash
+python evaluation_tools/authorize_archive_pool.py \
+  --email NEW_ACCOUNT_EMAIL --slot onedrive-02 --probe-mib 100
+```
+
+To obtain authorization before approving any cloud file creation or testing, add
+`--authorize-only`. This reads identity/quota and saves the pending credential
+privately, then exits without creating a cloud folder or uploading/deleting files.
+The ordinary command can resume this pending authorization after test approval.
+
+`archive_pool_plan.py --queue PRIVATE_QUEUE.json --inventory PRIVATE_GRAPH.json`
+performs read-only candidate selection from private snapshots. It accepts only one
+completed upload and one submitted/checked result per task, paired ZIP/JSON files
+under the expected `latest` directory, registered SHA256, and source item IDs,
+eTags and sizes. It rejects ambiguous/incomplete records. A candidate is not a
+verified copy: the worker must still recheck current registration/eTags and verify
+the actual bytes before publishing a mapping or deleting anything.
+
+Use the trusted preparer's Python environment, which already supports the existing
+rclone authorization helper. The tool reads that helper from the private checkout;
+it does not edit the checkout or any generated evaluation branch. Credentials and
+the test receipt are written only under the Git-external private runtime directory.
+The organizer signs into Microsoft in the browser; passwords, cookies, authorization
+results and refresh tokens must not be pasted into chat. A mismatching account or
+the current ingress drive is rejected. Only the dedicated destination folder and a
+synthetic round-trip probe are created. The existing uploader is not reconfigured.
+
+This tool stages authorization and verifies destination upload/download SHA256.
+It does **not** enable migration or prove cross-account evidence transfer. Those
+checks require the second account and are the next deployment gate.
+
+The intended website-side worker processes each completed task, not an entire
+evaluation request: copy its registered ZIP/JSON to a capacity-checked destination,
+read back and verify the ZIP hash and JSON, publish a separately audited location
+mapping, resolve evidence links using existing reviewer authentication, and only
+then remove the unchanged source ZIP. Existing result manifests and their hashes
+must remain intact. Uploading/unregistered files are never candidates. Failed
+copies, verification or link publication retain the source and retry idempotently.
+
+Do not use an account-wide recycle-bin cleanup. Ordinary Graph deletion moves
+files into the recycle bin; capacity reclamation must be tested with synthetic
+files first. Any permanent deletion must target only individually verified,
+relocated evidence. Account tokens remain server-side. The long-running transfer
+worker belongs to the website backend deployment, not to Apps Script request
+execution or the participant evaluation runtime. It is not yet installed/enabled.
