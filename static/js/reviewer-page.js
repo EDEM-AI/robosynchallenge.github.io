@@ -75,6 +75,7 @@
   const localChanges = new Map();
   const holdRevisions = new Map();
   let serverJobs = [];
+  let progressJobs = null, progressRequestId = 0, progressLoading = false;
   const HOLD_MESSAGE = "Submission currently invalid; evaluation paused pending organizer review";
   const evaluationBlocked = (job) => Boolean(job && (job.evaluation_blocked === true || job.state === "invalid" || job.adjudication?.status === "invalid_pending_review"));
   const holdContext = (job) => JSON.stringify([job.state === "invalid", job.evaluation_blocked === true, job.adjudication]);
@@ -490,7 +491,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     const samePane = previousBody?.dataset.paneKey === paneKey;
     if (!state.credentials) content.innerHTML = `${heading(false)}<div class="reviewer-login-layout"><form data-review-form="login" class="reviewer-form reviewer-login"><h2>Reviewer sign in</h2><p>Preliminary simulation evaluation</p>${state.error ? `<p class="reviewer-error" role="alert">${escape(state.error)}</p>` : ""}<label>Email<input type="email" name="email" autocomplete="username" value="${LOCAL ? "1070055979@qq.com" : ""}" required></label><label>Evaluation token<input type="password" name="token" autocomplete="current-password" placeholder="Your assigned evaluation token" required></label><button class="button button-primary" ${state.busy ? "disabled" : ""}>${icon("log-in")}Sign in</button></form></div><div class="reviewer-login-meta"><a href="../#/leaderboard">Public leaderboard</a></div>`;
     else {
-      const realJobs = (usesLocalSimulation() ? serverJobs : state.jobs).filter((job) => !job.local_walkthrough);
+      const realJobs = (progressJobs || (usesLocalSimulation() ? serverJobs : state.jobs)).filter((job) => !job.local_walkthrough);
       const complete = realJobs.filter((job) => doneCount(job) === 5).length;
       const units = realJobs.reduce((sum, job) => sum + doneCount(job), 0);
       content.innerHTML = `${heading(true)}<div class="reviewer-progress"><strong>${["admin", "observer", "supervisor"].includes(state.role) ? "Global evaluation progress" : "My evaluation progress"}</strong><progress max="${Math.max(1, realJobs.length * 5)}" value="${units}" aria-label="Overall evaluation progress"></progress><span>${complete} / ${realJobs.length} requests completed · ${units} / ${realJobs.length * 5} stages</span></div><nav class="reviewer-overview-tools" aria-label="Evaluation overview">${button("downloads", "Download checkpoints", "download")}${button("email-status", "Email status", "mail")}</nav>${state.view !== "workspace" ? overviewPage() : `<div class="reviewer-layout"><aside class="reviewer-sidebar"><div class="reviewer-sidebar-head"><h2>${["admin", "observer", "supervisor"].includes(state.role) ? "All requests" : "Assigned requests"}</h2><span>${realJobs.length}${LOCAL ? " + demo" : ""}</span></div><input class="reviewer-search" type="search" placeholder="Search team or request" aria-label="Search requests" value="${escape(state.search)}"><div class="reviewer-queue">${queueHtml()}</div></aside>${jobDetail(selected())}</div>`}`;
@@ -561,6 +562,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
   }
   async function refresh() {
     const credentials = state.credentials;
+    const progressId = ++progressRequestId;
     const wasNonRecording = usesLocalSimulation();
     const previous = new Map(state.jobs.map(job => [job.evaluation_id, job]));
     const includeMail = state.view === "email-status";
@@ -573,6 +575,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     }
     state.jobs = response.jobs || [];
     serverJobs = structuredClone(state.jobs);
+    if (progressId === progressRequestId) progressJobs = serverJobs;
     for (const job of state.jobs) {
       const old = previous.get(job.evaluation_id);
       if (evaluationBlocked(job) || old && (holdContext(old) !== holdContext(job) || old.reviewer_email !== job.reviewer_email)) {
@@ -614,6 +617,25 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       } else state.error = "This evidence request is not available to this account.";
     }
     if (state.view === "private-leaderboard") await loadPrivateLeaderboard();
+  }
+  async function refreshProgress() {
+    if (!state.credentials || state.busy || progressLoading || document.hidden) return;
+    const credentials = state.credentials, requestId = ++progressRequestId;
+    progressLoading = true;
+    try {
+      const response = await request("reviewer_queue");
+      if (state.credentials !== credentials || requestId !== progressRequestId || !Array.isArray(response.jobs)) return;
+      progressJobs = response.jobs;
+      const jobs = progressJobs.filter(job => !job.local_walkthrough);
+      const units = jobs.reduce((sum, job) => sum + doneCount(job), 0);
+      const progress = root()?.querySelector(".reviewer-progress");
+      const meter = progress?.querySelector("progress"), caption = progress?.querySelector("span");
+      if (meter && caption) {
+        meter.max = Math.max(1, jobs.length * 5); meter.value = units;
+        caption.textContent = `${jobs.filter(job => doneCount(job) === 5).length} / ${jobs.length} requests completed · ${units} / ${jobs.length * 5} stages`;
+      }
+    } catch { /* Keep the last successful snapshot; manual refresh reports persistent failures. */ }
+    finally { progressLoading = false; }
   }
   async function perform(action, forceRefresh = false) {
     if (state.busy) return;
@@ -721,8 +743,8 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
         if (action === "private-leaderboard") loadPrivateLeaderboard();
         return;
       }
-      if (action === "refresh" && state.view === "private-leaderboard") { if (LOCAL) state.preview = null; loadPrivateLeaderboard(); return; }
-      if (action === "logout") { privateBoard.requestId += 1; privateBoard.tables = null; privateBoard.loading = false; privateBoard.error = ""; state.role = ""; }
+      if (action === "refresh" && state.view === "private-leaderboard") { perform(async () => { if (LOCAL) state.preview = null; }, true); return; }
+      if (action === "logout") { privateBoard.requestId += 1; privateBoard.tables = null; privateBoard.loading = false; privateBoard.error = ""; progressJobs = null; progressRequestId += 1; state.role = ""; }
       if (action === "logout") { sessionStorage.removeItem(STORAGE); localChanges.clear(); commandDrafts.clear(); state.credentials = null; state.jobs = []; state.mailStatus = []; state.selected = ""; state.emailDraft = null; state.drafts.clear(); state.error = ""; paint(); }
       if (action === "refresh") perform(async () => { await saveStage(); if (LOCAL) state.preview = null; }, true);
       if (action === "copy") {
@@ -826,8 +848,12 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
     });
     paint();
     if (state.credentials) perform(async () => {}, true);
+    if (!LOCAL) document.addEventListener("visibilitychange", () => {
+      if (state.view === "private-leaderboard") refreshProgress();
+    });
     if (!LOCAL) window.setInterval(async () => {
-      if (!state.credentials || state.view === "private-leaderboard" || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
+      if (state.view === "private-leaderboard") { await refreshProgress(); return; }
+      if (!state.credentials || state.busy || document.hidden || state.emailDraft || pendingSaves.size ||
           root()?.contains(document.activeElement) && document.activeElement.matches("input,textarea,select")) return;
       const waiting = state.jobs.some(job => !evaluationBlocked(job) && (["pending", "checking"].includes(job.hf_check_status) ||
         ["pending", "code_ready"].includes(job.preparation_status) || job.correction?.status === "awaiting"));

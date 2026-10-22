@@ -85,6 +85,11 @@ async function main() {
       window.testBoard=${JSON.stringify(board)};
       window.testJobs=${JSON.stringify(jobs)};
       window.testRole=sessionStorage.getItem('testRole')||'evaluator';
+      const originalInterval=window.setInterval;
+      window.setInterval=function(callback, delay, ...args) {
+        if(delay===45000) { window.testProgressTick=callback; return 1; }
+        return originalInterval(callback, delay, ...args);
+      };
       const originalFetch=window.fetch;
       window.fetch=async function(url, options) {
         if(String(url).startsWith('../') || String(url).startsWith(location.origin)) return originalFetch(url, options);
@@ -116,6 +121,16 @@ async function main() {
     assert.equal(await evaluate("[...document.querySelectorAll('.reviewer-private-table')].every(t=>t.querySelectorAll('tbody tr').length===4)"), true);
     assert.equal(await evaluate("document.querySelectorAll('.reviewer-private-table')[0].textContent.includes('Incomplete Tasks')"), true);
     assert.equal(await evaluate("document.querySelector('.reviewer-private-board').textContent.includes('@')"), false);
+    const oldProgress = await evaluate("document.querySelector('.reviewer-progress progress').value");
+    await evaluate("window.originalBoard=document.querySelector('.reviewer-private-table'); window.testJobs[0].workflow.stages[4].done=true; window.testProgressTick()");
+    assert.equal(await evaluate("document.querySelector('.reviewer-progress progress').value"), oldProgress + 1,
+      "A ready request's completed stage must update without a page reload");
+    assert.equal(await evaluate("window.originalBoard===document.querySelector('.reviewer-private-table')"), true,
+      "Background progress reads must not redraw the leaderboard");
+    assert.equal(await evaluate("window.testCalls.at(-1)"), "reviewer_queue");
+    await evaluate("window.testJobs[0].workflow.stages[4].done=false");
+    await click("refresh");
+    await until(`document.querySelector('.reviewer-progress progress').value===${oldProgress} && document.querySelectorAll('.reviewer-private-table').length===11 && !document.querySelector('[data-review-action=refresh]').disabled`);
     for (const [width, height, mobile, name] of [[1440,1000,false,"desktop"], [390,844,true,"mobile"], [320,740,true,"mobile-small"]]) {
       await rpc("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
       await sleep(100);
