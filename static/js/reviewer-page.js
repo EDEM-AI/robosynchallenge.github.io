@@ -393,7 +393,7 @@
     const task = state.task;
     const key = commandDraftKey(job, task);
     const value = commandDrafts.has(key) ? commandDrafts.get(key) : job.task_commands?.[task] || "";
-    const locked = resultFor(job, task)?.status === "checked";
+    const locked = resultFor(job, task)?.status === "checked" && !job.replacement_tasks?.includes(task);
     const saved = TASKS.filter(item => String(job.task_commands?.[item] || "").trim()).length;
     return `<form class="reviewer-form reviewer-task-command-form" data-review-form="commands" data-command-task="${task}"><label>Actual command for ${escape(label(task))}<textarea name="command_${task}" data-task-command rows="3" maxlength="4000" ${locked ? "readonly" : ""} required>${escape(value)}</textarea></label><small>Enter and save the command you actually run for this task. Your entry and the automatically recorded evidence command are retained separately and shared with the participant; they are not compared.</small>${resultFor(job, task)?.command ? `<div><small>Automatically recorded in evidence:</small>${commandBox(resultFor(job, task).command, "Copy evidence command")}</div>` : ""}<div class="reviewer-task-command-actions"><button class="button button-secondary" ${locked ? "disabled" : ""}>${icon("save")}Save task command</button><span>Commands saved: ${saved} / 10 tasks</span></div></form>`;
   }
