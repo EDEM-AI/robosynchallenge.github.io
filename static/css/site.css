@@ -714,7 +714,32 @@ code {
 }
 
 .leaderboard-table-compact tr.is-podium {
+  background: transparent;
+}
+
+.leaderboard-table-compact tbody td:nth-child(3) {
+  vertical-align: middle;
+}
+
+.preliminary-leaderboard .leaderboard-section {
+  scroll-margin-top: var(--leaderboard-jump-offset, 180px);
+}
+
+.preliminary-leaderboard .leaderboard-shell {
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.preliminary-leaderboard .leaderboard-table {
   background: rgba(220, 239, 210, 0.2);
+}
+
+.preliminary-leaderboard .leaderboard-table thead th,
+.preliminary-leaderboard .leaderboard-table tbody tr {
+  background: transparent;
+}
+
+.preliminary-leaderboard .leaderboard-model > strong {
+  color: var(--accent-dark);
 }
 
 .rank-number {
@@ -740,6 +765,15 @@ code {
 .leaderboard-model > strong {
   font-family: "Fraunces", Georgia, serif;
   font-size: 1.08rem;
+}
+
+.leaderboard-method {
+  display: block;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .leaderboard-model div {

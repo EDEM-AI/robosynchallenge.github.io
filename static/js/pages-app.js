@@ -2285,10 +2285,6 @@
     const stageTitle = leaderboardStageTitle(tables.flatMap((table) => table.rows));
     return `
       <section class="section shell leaderboard-overview">
-        <article class="leaderboard-warning" role="note" aria-label="Leaderboard reproducibility notice">
-          <strong>Reference results notice</strong>
-          <span>Published evaluation results may vary across reproduction runs. Treat the leaderboard numbers as reference results, not deterministic guarantees.</span>
-        </article>
         <div class="leaderboard-table-heading">
           <h2>${escapeHtml(stageTitle)} leaderboard</h2>
         </div>
@@ -2325,7 +2321,7 @@
             <b>View</b>
             <strong>${escapeHtml(activeView.label)}</strong>
             <span aria-hidden="true">|</span>
-            <i>${rows.length} published results</i>
+            <i>${rows.length} results</i>
           </small>
         </div>
         <div class="table-shell leaderboard-shell">
@@ -2333,8 +2329,8 @@
             <thead>
               <tr>
                 <th>Rank</th>
-                <th>Model</th>
-                <th>Team</th>
+                <th>${activeView.teamFirst ? "Team / Method" : "Model"}</th>
+                ${activeView.teamFirst ? "" : "<th>Team</th>"}
                 <th>Score</th>
                 <th>Success</th>
                 <th>Steps</th>
@@ -2348,22 +2344,22 @@
                     <td><strong class="rank-number">${index + 1}</strong></td>
                     <td>
                       <div class="leaderboard-model">
-                        <strong>${row.result_url ? `<a href="${escapeHtml(row.result_url)}" target="_blank" rel="noreferrer">${escapeHtml(row.model_name)}</a>` : escapeHtml(row.model_name)}</strong>
-                        <div>
-                          <span>${escapeHtml(row.rank_badge)}</span>
+                        <strong>${activeView.teamFirst ? escapeHtml(row.username_display) : row.result_url ? `<a href="${escapeHtml(row.result_url)}" target="_blank" rel="noreferrer">${escapeHtml(row.model_name)}</a>` : escapeHtml(row.model_name)}</strong>
+                        ${activeView.teamFirst ? `<small class="leaderboard-method">${escapeHtml(row.model_name)}</small>` : row.rank_badge || row.evaluation_id || row.protocol_url ? `<div>
+                          ${row.rank_badge ? `<span>${escapeHtml(row.rank_badge)}</span>` : ""}
                           ${row.evaluation_id ? `<a href="${routeHref(`results/${row.evaluation_id}`)}">View result -&gt;</a>` : ""}
                           ${row.protocol_url ? `<a href="${escapeHtml(row.protocol_url)}" target="_blank" rel="noreferrer">Protocol -&gt;</a>` : ""}
-                        </div>
+                        </div>` : ""}
                       </div>
                     </td>
-                    <td>${escapeHtml(row.username_display)}</td>
+                    ${activeView.teamFirst ? "" : `<td>${escapeHtml(row.username_display)}</td>`}
                     <td><strong class="score-weighted">${formatScore(row.weighted_score)}</strong></td>
                     <td><strong class="score-primary">${formatPercent(row.success_rate)}</strong></td>
                     <td>${formatSteps(row.action_steps)}</td>
                     <td>${formatInferenceMilliseconds(row.real_time)}</td>
                   </tr>
                 `).join("")
-                : `<tr><td colspan="7" class="empty-table">${escapeHtml(fallbackTitle || emptyMessage)}</td></tr>`}
+                : `<tr><td colspan="${activeView.teamFirst ? 6 : 7}" class="empty-table">${escapeHtml(fallbackTitle || emptyMessage)}</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -2572,7 +2568,9 @@
         renderSection(renderSubmissionDetailPage(route.id), "Submission");
         break;
       case "leaderboard":
-        renderSection(renderLeaderboardPage(route.view), "Leaderboard");
+        renderSection(window.ROBO_SYN_PRELIMINARY.render(route.view, renderLeaderboardTable), "Preliminary Leaderboard");
+        window.lucide?.createIcons();
+        window.ROBO_SYN_PRELIMINARY.init(route.view);
         break;
       case "results":
         renderSection(renderResultsPage(route.id), "Result Viewer");
@@ -2978,6 +2976,9 @@
     });
 
     window.addEventListener("hashchange", render);
+    window.addEventListener("rsc:preliminary-leaderboard", () => {
+      if (parseRoute(currentRoute()).name === "leaderboard") render();
+    });
   }
 
   if (!window.location.hash) {
