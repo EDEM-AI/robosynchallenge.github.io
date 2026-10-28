@@ -68,6 +68,8 @@ class PublicPreviewTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "index.html").write_text("preview")
+            (root / "faq").mkdir()
+            (root / "faq/index.html").write_text("faq-preview")
             (root / "apps-script").mkdir()
             (root / "apps-script/private.gs").write_text("secret")
             (root / "static").mkdir()
@@ -80,6 +82,9 @@ class PublicPreviewTests(unittest.TestCase):
             try:
                 base = "http://127.0.0.1:" + str(server.server_port)
                 self.assertEqual(urlopen(base + "/").read(), b"preview")
+                self.assertEqual(urlopen(base + "/faq/").read(), b"faq-preview")
+                self.assertEqual(urlopen(base + "/faq").read(), b"faq-preview")
+                self.assertEqual(urlopen(base + "/faq/index.html").read(), b"faq-preview")
                 config = urlopen(base + "/static/config.js").read().decode()
                 self.assertIn('API_BASE_URL:""', config)
                 self.assertNotIn("script.google.com", config)

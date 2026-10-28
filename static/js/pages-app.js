@@ -450,6 +450,127 @@
     },
   ];
 
+  const FINAL_FAQ_ITEMS = [
+    {
+      section: "I. Preliminary Results and Final-Round Scoring",
+      question: "When will the detailed preliminary rankings, scores for each task, and total number of participating teams be announced?",
+      answer: `<p>They have already been announced.</p>`,
+    },
+    {
+      question: "What evaluation criteria were used in the preliminary round, and which parameters were randomized?",
+      answer: `<p>The code used for our evaluation will subsequently be made available to the corresponding participants, who can inspect it themselves.</p>`,
+    },
+    {
+      question: "Do preliminary-round scores count toward the final-round score? If so, what is their weight?",
+      answer: `<p>No. Preliminary-round scores do not count toward the final-round score.</p>`,
+    },
+    {
+      section: "II. Final-Round Tasks and Success Criteria",
+      question: "Which tasks are included in the final round? Will open pan, which was not evaluated in the preliminary round, be included?",
+      answer: `<p>The original 10 tasks are included. <code>open pan</code> is not included.</p>`,
+    },
+    {
+      question: "What are the real-robot success criteria for each task?",
+      answer: `<p>The criteria correspond to those used in simulation and will be checked by evaluators. Records will be released later so that teams can check them themselves.</p>`,
+    },
+    {
+      question: "Does item_assembly require actual insertion to a specified depth? How are differences from the simulation criteria handled?",
+      answer: `<p>Yes. The simulation criteria are designed to accommodate the current simulator. The inevitable differences between simulation and reality are a central topic of this competition, and participants need to propose methods to overcome them.</p>`,
+    },
+    {
+      question: "After success, is an episode ended manually or automatically? Does the policy need to stop on its own?",
+      answer: `<p>It is ended manually.</p>`,
+    },
+    {
+      question: "After each test episode, does the policy need to reset the robot arms, or will staff reset them?",
+      answer: `<p>Staff will reset them.</p>`,
+    },
+    {
+      section: "III. Control Interfaces and Timeout Rules",
+      question: "Will the real-robot code, runtime interfaces, and basic environment configuration be made public? If so, when?",
+      answer: `<p>They will not be made public. The final-round real-world scenes, code interfaces, and related components will be aligned and adapted. Participants only need to refer to the simulation code to determine feasibility.</p>`,
+    },
+    {
+      question: "What is the real-robot control frequency? Can teams choose it themselves? How is the difference between 25 Hz in simulation and 10 Hz in the real-robot data handled?",
+      answer: `<p>The frequency is 10 Hz. Teams cannot choose it themselves. The tasks designed for this competition and their implementation in the simulator are not sensitive to execution frequency, so this difference is not a major issue. If participants consider the difference substantial, they may treat it as a sim-to-real gap and address it themselves.</p>`,
+    },
+    {
+      question: "Are task timeouts measured in steps or seconds, and what are the specific limits?",
+      answer: `<p>In steps, with the same limits as in simulation. If a major failure occurs, such as a risk of damage to the robot arms or objects, evaluators may stop the episode and mark it as timed out rather than wait until the step limit is reached.</p>`,
+    },
+    {
+      question: "Teams have reported that some official demonstrations would time out when converted using the current step limits. Will the limits be reviewed and adjusted?",
+      answer: `<p>No.</p>`,
+    },
+    {
+      question: "Are policy actions sent directly to the robot arms? Is any post-processing applied, such as interpolation, limiting, or filtering?",
+      answer: `<p>Actions are sent directly to the robot arms through the official SDK, without post-processing.</p>`,
+    },
+    {
+      question: "How is the gripper force set? Can each team specify it for each task? Are parameters such as joint torque standardized?",
+      answer: `<p>The default settings of the official AgileX SDK are used. Task-specific settings are not supported. Parameters such as joint torque follow the official AgileX SDK settings and are kept consistent across machines.</p>`,
+    },
+    {
+      section: "IV. Hardware Configuration and Sim-to-Real Alignment",
+      question: "Will a complete hardware list be provided, specifying the robot-arm model, grippers, cameras, and mounting brackets?",
+      answer: `<p>The robot-arm model, grippers, cameras, and related hardware are consistent with the simulation. Teams may also refer to the official AgileX configuration. We can release the 3D files for the main-view and wrist-view camera brackets provided by AgileX.</p>`,
+    },
+    {
+      question: "Are the joint zero positions, joint limits, and dual-arm mounting positions consistent between the real robots and simulation? How are real-robot data exceeding the simulation URDF limits explained?",
+      answer: `<p>They are consistent. No explanation is provided: this has not been observed. If necessary, participants may use generative models to make adjustments themselves.</p>`,
+    },
+    {
+      question: "Will the positions, orientations, intrinsics, and extrinsics of the third-person, overhead, and wrist cameras be provided? Is the left-offset third-person view intentional?",
+      answer: `<p>These have already been provided in simulation. There will be some unintentional differences between the real setup and simulation; these are sim-to-real differences that participants need to overcome.</p>`,
+    },
+    {
+      question: "Will the mounting dimensions and coordinate relationships between the robot arms, cameras, and tabletop be published?",
+      answer: `<p>The mounting dimensions and coordinates between the robot arms, cameras, and tabletop are consistent with the simulation. Regarding tabletop height, or the arm-to-table relationship, we can release the 3D file for the real-robot mounting plate.</p>`,
+    },
+    {
+      section: "V. Objects, Scenes, and Randomization",
+      question: "Will the physical-object lists, dimensions, models, and purchase links for each task be published? Are object appearances and sizes consistent with the simulation?",
+      answer: `<p>The physical objects are approximately consistent with the simulation. The physical-object lists, dimensions, models, and purchase links will not be published. During the final round, only the real-robot manipulation data we have already released may be used. Participants are neither supported nor permitted to purchase objects and collect real-robot data themselves.</p><p>Object appearances and sizes do not need to be aligned with the simulator. The actual object sizes, textures, and colors will not be published either; these variations should be covered through domain randomization in the simulator.</p>`,
+    },
+    {
+      question: "How should teams without models of the objects to be manipulated set up a local test scene?",
+      answer: `<p>We do not provide support for setting up real-robot scenes.</p>`,
+    },
+    {
+      question: "Will a list of real-world randomization settings and ranges be provided, including object positions, rotations, sizes, distributions, and lighting?",
+      answer: `<p>The ranges will be aligned with the simulation and will not be published before the competition.</p>`,
+    },
+    {
+      question: "Do the initial object poses follow the simulation randomization ranges, or are they sampled arbitrarily within the robot arms' reachable workspace?",
+      answer: `<p>The initial poses are aligned with the simulation.</p>`,
+    },
+    {
+      question: "Will tabletop height be randomized, especially for items_handover? How will tabletop height and robot-arm mounting height vary?",
+      answer: `<p>No differences will be deliberately introduced. The height will remain unchanged throughout testing.</p>`,
+    },
+    {
+      question: "Will the poses or other parameters of the overhead, third-person, and wrist cameras be randomized?",
+      answer: `<p>No differences will be deliberately introduced.</p>`,
+    },
+    {
+      question: "Will the lighting and scene configurations be published? How do lighting variations in real-robot evaluation relate to the existing dataset?",
+      answer: `<p>They will not be published. Lighting variations can be covered through domain randomization in simulation.</p>`,
+    },
+    {
+      section: "VI. Equipment Support and Participation Information",
+      question: "Will the organizers provide the final-round test equipment? Do teams need to purchase robot arms and task objects themselves?",
+      answer: `<p>The organizers will prepare the final-round test equipment. Whether teams purchase robot arms or task objects themselves is unrelated to this competition. The real-robot test environment will not be made public during the competition, and collecting additional real-robot data is not recommended.</p>`,
+    },
+    {
+      question: "Which teams will be invited to attend NeurIPS 2026 in Sydney: all finalist teams, award-winning teams, or only the champion?",
+      answer: `<p>Only award-winning teams will be invited. Team members do not have to attend in person, but they must send a representative, such as a friend, colleague, family member, or acquaintance, to collect the award. If no one attends, the award will be considered forfeited.</p>`,
+    },
+    {
+      question: "Can team names, member lists, and member order still be changed? Can supervisors be registered?",
+      answer: `<p>In principle, the final-round member list and member order cannot be changed. In special circumstances, please send an application signed by all original members to the competition email address.</p><p>Award-recipient lists for international competitions generally do not include supervisor positions. One or two supervisors may be added to certificates at the organizers' discretion; please apply after receiving an award.</p>`,
+    },
+  ];
+
   const BASELINE_SEEDS = BENCHMARK_SUMMARY.map((item) => ({
     model_name: item.model_name,
     username_display: "Official Baseline",
@@ -540,7 +661,10 @@
   }
 
   function routeHref(route) {
-    return `#/${String(route || "home").replace(/^\/+/, "")}`;
+    const path = String(route || "home").replace(/^\/+/, "");
+    if (path === "faq" || path === "faq/preliminary") return "faq/#preliminary";
+    if (path === "faq/finals") return "faq/#finals";
+    return `#/${path}`;
   }
 
   function accessRequestId() {
@@ -557,11 +681,20 @@
 
   function currentRoute() {
     const cleaned = window.location.hash.replace(/^#\/?/, "").replace(/^\/+/, "");
+    if (isFaqPath() && (!cleaned || cleaned === "preliminary" || cleaned === "finals")) {
+      return `faq/${cleaned || "preliminary"}`;
+    }
     return cleaned || "home";
   }
 
+  function isFaqPath() {
+    return /\/faq\/(?:index\.html)?$/.test(window.location.pathname);
+  }
+
   function navigate(route) {
-    window.location.hash = routeHref(route);
+    const href = routeHref(route);
+    if (href.startsWith("#")) window.location.hash = href;
+    else window.location.assign(new URL(href, document.baseURI).href);
   }
 
   function setPostLoginRoute(route) {
@@ -1935,23 +2068,30 @@
     `;
   }
 
-  function renderFaqPage() {
+  function renderFaqPage(stage = "preliminary") {
+    const finals = stage === "finals";
+    const items = finals ? FINAL_FAQ_ITEMS : FAQ_ITEMS;
     return `
       <section class="page-hero shell faq-hero">
         <span class="eyebrow">FAQ</span>
         <h1>Competition questions, answered.</h1>
         <p class="lead narrow">
-          Official guidance on ranking, evaluation, observation inputs, and model submission.
+          ${finals ? "Official questions and answers for the final round." : "Official guidance on ranking, evaluation, observation inputs, and model submission."}
         </p>
+        <nav class="faq-stage-switch" aria-label="Competition stage">
+          <a class="faq-stage-link" href="${routeHref("faq/preliminary")}" ${!finals ? 'aria-current="page"' : ""}>Preliminary</a>
+          <a class="faq-stage-link" href="${routeHref("faq/finals")}" ${finals ? 'aria-current="page"' : ""}>Final Round</a>
+        </nav>
       </section>
 
-      <section class="section shell faq-section" aria-label="Frequently asked questions">
+      <section class="section shell faq-section" aria-label="${finals ? "Final-round" : "Preliminary"} frequently asked questions">
         <div class="faq-list">
-          ${FAQ_ITEMS.map((item, index) => `
+          ${items.map((item, index) => `
+            ${item.section ? `<h2 class="faq-group-title">${escapeHtml(item.section)}</h2>` : ""}
             <article class="faq-item">
               <div class="faq-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</div>
               <div class="faq-content">
-                <h2><span>Q:</span> ${escapeHtml(item.question)}</h2>
+                <${finals ? "h3" : "h2"}><span>Q:</span> ${escapeHtml(item.question)}</${finals ? "h3" : "h2"}>
                 <div class="faq-answer"><strong>A:</strong><div>${item.answer}</div></div>
               </div>
             </article>
@@ -2522,7 +2662,8 @@
     if (route === "register") return { name: "register" };
     if (route === "evaluation") return { name: "evaluation" };
     if (route === "submit-policy") return { name: "submit-policy" };
-    if (route === "faq") return { name: "faq" };
+    if (route === "faq" || route === "faq/preliminary") return { name: "faq", stage: "preliminary" };
+    if (route === "faq/finals") return { name: "faq", stage: "finals" };
     if (route === "dashboard") return { name: "dashboard" };
     if (route === "leaderboard") return { name: "leaderboard", view: "overall" };
     if (route.startsWith("leaderboard/")) return { name: "leaderboard", view: route.slice("leaderboard/".length) || "overall" };
@@ -2534,6 +2675,11 @@
   }
 
   function render() {
+    if (isFaqPath() && !window.location.hash) {
+      const defaultFaq = new URL(window.location.href);
+      defaultFaq.hash = "preliminary";
+      window.history.replaceState(null, "", defaultFaq.href);
+    }
     const route = parseRoute(currentRoute());
     switch (route.name) {
       case "workshop":
@@ -2559,7 +2705,11 @@
         renderSection(renderSubmitPolicyPage(), currentUser() ? "Submit Policy" : "Sign In");
         break;
       case "faq":
-        renderSection(renderFaqPage(), "FAQ");
+        if (!isFaqPath()) {
+          window.location.replace(new URL(routeHref(`faq/${route.stage}`), document.baseURI).href);
+          return;
+        }
+        renderSection(renderFaqPage(route.stage), `${route.stage === "finals" ? "Final Round" : "Preliminary"} FAQ`);
         break;
       case "dashboard":
         renderSection(renderDashboardPage(), "Dashboard");
@@ -2981,7 +3131,7 @@
     });
   }
 
-  if (!window.location.hash) {
+  if (!isFaqPath() && !window.location.hash) {
     navigate("home");
   }
 

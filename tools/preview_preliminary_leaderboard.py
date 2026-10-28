@@ -71,6 +71,13 @@ def handler(root, snapshot):
 
         def do_GET(self):
             path = urlsplit(self.path).path
+            if path == "/faq":
+                self.send_response(301)
+                self.send_header("Location", "/faq/")
+                self.end_headers()
+                return
+            if path == "/faq/":
+                self.path = "/faq/index.html"
             if path == "/static/config.js":
                 self.send_json('window.ROBO_SYN_CONFIG = {API_BASE_URL:"", CONTACT_EMAIL:"robosynchallenge@gmail.com",'
                                'PRELIMINARY_LEADERBOARD_URL:"/__preview__/preliminary-leaderboard.json",'
@@ -87,7 +94,7 @@ def handler(root, snapshot):
             except ValueError:
                 self.send_error(404)
                 return
-            allowed = relative == Path("index.html") or relative.parts and relative.parts[0] in ("static", "material")
+            allowed = relative in (Path("index.html"), Path("faq/index.html")) or relative.parts and relative.parts[0] in ("static", "material")
             if not allowed and path != "/" or any(part.startswith(".") for part in relative.parts) or relative == Path("static/reviewer-preview.json"):
                 self.send_error(404)
                 return
