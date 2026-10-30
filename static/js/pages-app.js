@@ -465,17 +465,45 @@
       answer: `<p>No. Preliminary-round scores do not count toward the final-round score.</p>`,
     },
     {
+      question: "How is the final-round total score calculated? Does it use the preliminary-round formula of 75% success rate, 20% action efficiency, and 5% inference efficiency?",
+      answer: `<p>Yes.</p>`,
+    },
+    {
       section: "II. Final-Round Tasks and Success Criteria",
-      question: "Which tasks are included in the final round? Will open pan, which was not evaluated in the preliminary round, be included?",
-      answer: `<p>The original 10 tasks are included. <code>open pan</code> is not included.</p>`,
+      question: "Which tasks are included in the final round? Will open pan, which was not evaluated in the preliminary round, be included? How many trials will be run in each environment?",
+      answer: `<p>The original 10 tasks are included. <code>open pan</code> is not included.</p><p>20 trials per environment.</p>`,
     },
     {
       question: "What are the real-robot success criteria for each task?",
       answer: `<p>The criteria correspond to those used in simulation and will be checked by evaluators. Records will be released later so that teams can check them themselves.</p>`,
     },
     {
-      question: "Does item_assembly require actual insertion to a specified depth? How are differences from the simulation criteria handled?",
-      answer: `<p>Yes. The simulation criteria are designed to accommodate the current simulator. The inevitable differences between simulation and reality are a central topic of this competition, and participants need to propose methods to overcome them.</p>`,
+      question: "In table_rearrangement, the spoon and fork are placed in a different left-right order in the real-robot demonstrations and simulation. Which arrangement applies in the final round, or is it sufficient to align each utensil properly?",
+      answer: `<p>It is sufficient to align the spoon and fork properly.</p>`,
+    },
+    {
+      question: "In sample_loading, may the sample be placed in any valid hole, or must it be placed in the center or a specific hole? Must the gripper fully release it and leave it stable for a period of time?",
+      answer: `<p>Any valid hole is allowed. The gripper must fully release the sample, and the sample must remain stable for a period of time.</p>`,
+    },
+    {
+      question: "What is the minimum insertion depth for item_assembly? Must the gripper release the object, and must the object remain stable for a period of time?",
+      answer: `<p>The insertion depth is not fixed. The object must remain stable for a period of time.</p>`,
+    },
+    {
+      question: "In drawer_open_place, must the drawer be closed after placing the object inside for the task to count as successful?",
+      answer: `<p>The drawer must be closed.</p>`,
+    },
+    {
+      question: "In mixer_operating, must the button be pressed and the device actually started, or is touching the button or reaching an impulse threshold sufficient?",
+      answer: `<p>The button must be pressed and the device actually started.</p>`,
+    },
+    {
+      question: "Does real-robot evaluation of water_pouring use real water? Must water actually be poured into the cup, or is completing the pouring motion sufficient?",
+      answer: `<p>No water is used. Completing the motion is sufficient.</p>`,
+    },
+    {
+      question: "If a cup is knocked over during a task and the policy rights it before completing the task, does this still count as a failure? May the policy recover from intermediate mistakes?",
+      answer: `<p>In water_pouring, the cup may be knocked over before the pouring motion is completed, but not afterward. For other tasks, a similar principle applies: whether a mistake affects the final completion of the task is considered, and the policy may recover from intermediate mistakes that do not affect task completion.</p>`,
     },
     {
       question: "After success, is an episode ended manually or automatically? Does the policy need to stop on its own?",
@@ -491,20 +519,20 @@
       answer: `<p>They will not be made public. The final-round real-world scenes, code interfaces, and related components will be aligned and adapted. Participants only need to refer to the simulation code to determine feasibility.</p>`,
     },
     {
-      question: "What is the real-robot control frequency? Can teams choose it themselves? How is the difference between 25 Hz in simulation and 10 Hz in the real-robot data handled?",
-      answer: `<p>The frequency is 10 Hz. Teams cannot choose it themselves. The tasks designed for this competition and their implementation in the simulator are not sensitive to execution frequency, so this difference is not a major issue. If participants consider the difference substantial, they may treat it as a sim-to-real gap and address it themselves.</p>`,
+      question: "What is the real-robot control frequency? Can teams choose it themselves? How is the difference between 25 Hz in simulation and 10 Hz in the real-robot data handled? Does 10 Hz mean sending and executing one action every 0.1 seconds, and does it constrain action execution or model inference?",
+      answer: `<p>The frequency is 10 Hz. Teams cannot choose it themselves. The tasks designed for this competition and their implementation in the simulator are not sensitive to execution frequency, so this difference is not a major issue. If participants consider the difference substantial, they may treat it as a sim-to-real gap and address it themselves.</p><p>Yes. The actual physical timing is determined by the official AgileX SDK. The frequency constrains action execution.</p>`,
     },
     {
       question: "Are task timeouts measured in steps or seconds, and what are the specific limits?",
-      answer: `<p>In steps, with the same limits as in simulation. If a major failure occurs, such as a risk of damage to the robot arms or objects, evaluators may stop the episode and mark it as timed out rather than wait until the step limit is reached.</p>`,
-    },
-    {
-      question: "Teams have reported that some official demonstrations would time out when converted using the current step limits. Will the limits be reviewed and adjusted?",
-      answer: `<p>No.</p>`,
+      answer: `<p>In steps. The real-robot limit is changed to 1000 steps for every task. If a major failure occurs, such as a risk of damage to the robot arms or objects, evaluators may stop the episode and mark it as timed out rather than wait until the step limit is reached.</p>`,
     },
     {
       question: "Are policy actions sent directly to the robot arms? Is any post-processing applied, such as interpolation, limiting, or filtering?",
       answer: `<p>Actions are sent directly to the robot arms through the official SDK, without post-processing.</p>`,
+    },
+    {
+      question: "May teams add manually written rules or action corrections after the policy output?",
+      answer: `<p>Yes, but they may only read the information provided in obs, such as images and proprioception.</p>`,
     },
     {
       question: "How is the gripper force set? Can each team specify it for each task? Are parameters such as joint torque standardized?",
@@ -516,12 +544,16 @@
       answer: `<p>The robot-arm model, grippers, cameras, and related hardware are consistent with the simulation. Teams may also refer to the official AgileX configuration. We can release the 3D files for the main-view and wrist-view camera brackets provided by AgileX.</p>`,
     },
     {
-      question: "Are the joint zero positions, joint limits, and dual-arm mounting positions consistent between the real robots and simulation? How are real-robot data exceeding the simulation URDF limits explained?",
-      answer: `<p>They are consistent. No explanation is provided: this has not been observed. If necessary, participants may use generative models to make adjustments themselves.</p>`,
+      question: "Are the joint zero positions and dual-arm mounting positions consistent between the real robots and simulation?",
+      answer: `<p>They are consistent.</p>`,
     },
     {
-      question: "Will the positions, orientations, intrinsics, and extrinsics of the third-person, overhead, and wrist cameras be provided? Is the left-offset third-person view intentional?",
-      answer: `<p>These have already been provided in simulation. There will be some unintentional differences between the real setup and simulation; these are sim-to-real differences that participants need to overcome.</p>`,
+      question: "What did the investigation find about J5 and J6 in the real-robot data exceeding the simulation URDF limits? Which limits should be used for training and deployment?",
+      answer: `<p>The issue has been confirmed. Use the real-robot limits. This will be fixed in a new version of the RoboSynChallenge repository.</p>`,
+    },
+    {
+      question: "Will the positions, orientations, intrinsics, and extrinsics of the third-person, overhead, and wrist cameras be provided? Is the left-offset third-person view intentional? Does not deliberately introducing pose differences also mean that the intrinsics remain unchanged?",
+      answer: `<p>These have already been provided in simulation. There will be some unintentional differences between the real setup and simulation; these are sim-to-real differences that participants need to overcome.</p><p>We will not deliberately introduce differences. Camera intrinsics can differ due to manufacturing variations. The RealSense SDK can read the factory-calibrated intrinsics. We have performed an initial alignment in simulation. We will publish the intrinsics read through the official RealSense SDK for all setups and release CCTag calibration samples for each setup.</p>`,
     },
     {
       question: "Will the mounting dimensions and coordinate relationships between the robot arms, cameras, and tabletop be published?",
@@ -529,8 +561,8 @@
     },
     {
       section: "V. Objects, Scenes, and Randomization",
-      question: "Will the physical-object lists, dimensions, models, and purchase links for each task be published? Are object appearances and sizes consistent with the simulation?",
-      answer: `<p>The physical objects are approximately consistent with the simulation. The physical-object lists, dimensions, models, and purchase links will not be published. During the final round, only the real-robot manipulation data we have already released may be used. Participants are neither supported nor permitted to purchase objects and collect real-robot data themselves.</p><p>Object appearances and sizes do not need to be aligned with the simulator. The actual object sizes, textures, and colors will not be published either; these variations should be covered through domain randomization in the simulator.</p>`,
+      question: "Will the physical-object lists, dimensions, models, and purchase links for each task be published? Are object appearances and sizes consistent with the simulation? Are newly purchased objects used as task targets, distractors, or both?",
+      answer: `<p>The physical objects are approximately consistent with the simulation. The physical-object lists, dimensions, models, and purchase links will not be published. During the final round, only the real-robot manipulation data we have already released may be used. Participants are neither supported nor permitted to purchase objects and collect real-robot data themselves.</p><p>Object appearances and sizes do not need to be aligned with the simulator. The actual object sizes, textures, and colors will not be published either; these variations should be covered through domain randomization in the simulator.</p><p>Newly purchased objects are used as both task targets and distractors.</p>`,
     },
     {
       question: "How should teams without models of the objects to be manipulated set up a local test scene?",
@@ -541,8 +573,8 @@
       answer: `<p>The ranges will be aligned with the simulation and will not be published before the competition.</p>`,
     },
     {
-      question: "Do the initial object poses follow the simulation randomization ranges, or are they sampled arbitrarily within the robot arms' reachable workspace?",
-      answer: `<p>The initial poses are aligned with the simulation.</p>`,
+      question: "Do the initial object poses follow the simulation randomization ranges, or are they sampled arbitrarily within the robot arms' reachable workspace? How is the orientation reset for real-robot mixer tests?",
+      answer: `<p>The initial poses are aligned with the simulation.</p><p>For real-robot mixer tests, the beaker orientation will be physically feasible: its spout will point in the same direction as the robot arm's approach, without interfering with grasping. Evaluators will ensure this.</p>`,
     },
     {
       question: "Will tabletop height be randomized, especially for items_handover? How will tabletop height and robot-arm mounting height vary?",
@@ -553,8 +585,8 @@
       answer: `<p>No differences will be deliberately introduced.</p>`,
     },
     {
-      question: "Will the lighting and scene configurations be published? How do lighting variations in real-robot evaluation relate to the existing dataset?",
-      answer: `<p>They will not be published. Lighting variations can be covered through domain randomization in simulation.</p>`,
+      question: "Will the lighting and scene configurations be published? How do lighting variations in real-robot evaluation relate to the existing dataset? Does lighting remain fixed within an episode or change dynamically?",
+      answer: `<p>They will not be published. Lighting variations can be covered through domain randomization in simulation.</p><p>Lighting remains fixed within an episode.</p>`,
     },
     {
       section: "VI. Equipment Support and Participation Information",
@@ -568,6 +600,11 @@
     {
       question: "Can team names, member lists, and member order still be changed? Can supervisors be registered?",
       answer: `<p>In principle, the final-round member list and member order cannot be changed. In special circumstances, please send an application signed by all original members to the competition email address.</p><p>Award-recipient lists for international competitions generally do not include supervisor positions. One or two supervisors may be added to certificates at the organizers' discretion; please apply after receiving an award.</p>`,
+    },
+    {
+      section: "VII. Code Submission and Policy Interfaces",
+      question: "Will final-round evaluation still use submitted code and checkpoints? What interfaces, files, and submission requirements apply?",
+      answer: `<p>Yes. The interfaces are the same as in simulation. All code must be based on the final version of RoboSynChallenge available before the deadline, and all modifications must be placed under the repository's <code>policy/</code> directory.</p><p>Following the existing custom-policy requirements, provide:</p><ul><li><code>eval.sh</code>: the policy execution entrypoint.</li><li><code>deploy_policy.yml</code>: the policy deployment configuration.</li><li><code>deploy_policy.py</code>: the policy implementation, including <code>get_model(usr_args)</code> and <code>eval(env, model, observation)</code>.</li></ul><p>These files are normally placed under <code>policy/&lt;policy_name&gt;/</code>. A shared <code>eval.sh</code> may also be placed in a parent directory within <code>policy/</code>. Custom code, helper modules, and configuration required by the policy must also be placed under <code>policy/</code>. The README should describe dependency installation, the commands for each task, and the required arguments.</p>`,
     },
   ];
 

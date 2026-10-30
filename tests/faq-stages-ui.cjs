@@ -13,6 +13,35 @@ async function main() {
   const extract = value => value.match(/const FAQ_ITEMS = (\[[\s\S]*?\n  \]);/)[1];
   assert.equal(extract(source), extract(original), "All preliminary questions and answers remain unchanged");
   const questions = new Function("return " + extract(original))().map(item => item.question);
+  const finals = new Function("return " + source.match(/const FINAL_FAQ_ITEMS = (\[[\s\S]*?\n  \]);/)[1])();
+  assert.equal(finals.length, 37);
+  assert.equal(finals.filter(item => item.section).length, 7);
+  const answerFor = text => {
+    const matches = finals.filter(item => item.question.includes(text));
+    assert.equal(matches.length, 1, `Exactly one FAQ answers: ${text}`);
+    return matches[0].answer;
+  };
+  assert.equal(answerFor("75% success rate"), "<p>Yes.</p>");
+  for (const [question, expected] of [
+    ["How many trials", /20 trials per environment/],
+    ["task timeouts", /1000 steps for every task/],
+    ["J5 and J6", /confirmed.*real-robot limits.*will be fixed/s],
+    ["manually written rules", /only read.*obs/],
+    ["every 0.1 seconds", /official AgileX SDK.*constrains action execution/s],
+    ["intrinsics remain unchanged", /official RealSense SDK for all setups.*CCTag/s],
+    ["orientation reset", /beaker.*spout.*Evaluators will ensure/s],
+    ["lighting remain fixed", /Lighting remains fixed within an episode/],
+    ["In table_rearrangement", /align the spoon and fork properly/],
+    ["In sample_loading", /Any valid hole.*fully release.*remain stable/s],
+    ["minimum insertion depth", /depth is not fixed.*remain stable/s],
+    ["In drawer_open_place", /must be closed/],
+    ["In mixer_operating", /actually started/],
+    ["evaluation of water_pouring", /No water is used/],
+    ["intermediate mistakes", /before.*but not afterward.*may recover/s],
+    ["submitted code and checkpoints", /policy\/.*eval.sh.*deploy_policy.yml.*deploy_policy.py.*get_model.*README/s],
+    ["newly purchased objects", /both task targets and distractors/],
+  ]) assert.match(answerFor(question), expected);
+  assert.doesNotMatch(JSON.stringify(finals), /same limits as in simulation|this has not been observed|Will the limits be reviewed and adjusted/);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "rsc-faq-chrome-"));
   const chrome = spawn("google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu",
     "--disable-background-networking", "--remote-allow-origins=*", "--remote-debugging-port=0",
@@ -74,8 +103,8 @@ async function main() {
     assert.equal(await evaluate("new URL(document.querySelector('.faq-stage-link:last-child').href).pathname"), "/faq/");
     await evaluate("document.querySelector('.faq-stage-link:last-child').click()");
     await until("location.hash==='#finals' && document.querySelector('.faq-stage-link[aria-current]')?.textContent==='Final Round'");
-    assert.equal(await evaluate("document.querySelectorAll('.faq-item').length"), 28);
-    assert.equal(await evaluate("document.querySelectorAll('.faq-group-title').length"), 6);
+    assert.equal(await evaluate("document.querySelectorAll('.faq-item').length"), finals.length);
+    assert.equal(await evaluate("document.querySelectorAll('.faq-group-title').length"), 7);
     assert.equal(await evaluate("/TBD|to be confirmed|not yet available/i.test(document.querySelector('.faq-section').innerText)"), false, "Final copy contains no tentative markers");
     assert.equal(await evaluate("document.querySelector('.faq-section [role=status]')"), null);
     await rpc("Page.reload");
@@ -106,7 +135,7 @@ async function main() {
     await until("location.pathname==='/faq/' && location.hash==='#preliminary' && document.querySelectorAll('.faq-item').length>0");
     assert.equal(requests.some(url => /script\.google\.com/.test(url)), false, "Local preview never calls production backend");
     assert.deepEqual(errors, []);
-    console.log(JSON.stringify({ passed: true, preliminary_questions: questions.length, finals_questions: 28, finals_sections: 6,
+    console.log(JSON.stringify({ passed: true, preliminary_questions: questions.length, finals_questions: finals.length, finals_sections: 7,
       direct_links: true, default_preliminary: true, history: true, screenshots: ["desktop", "mobile", "mobile-small"] }));
   } finally {
     if (socket?.readyState === WebSocket.OPEN) {
