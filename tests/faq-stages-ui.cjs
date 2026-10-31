@@ -31,17 +31,38 @@ async function main() {
     ["intrinsics remain unchanged", /official RealSense SDK for all setups.*CCTag/s],
     ["orientation reset", /beaker.*spout.*Evaluators will ensure/s],
     ["lighting remain fixed", /Lighting remains fixed within an episode/],
-    ["In table_rearrangement", /align the spoon and fork properly/],
-    ["In sample_loading", /Any valid hole.*fully release.*remain stable/s],
-    ["minimum insertion depth", /depth is not fixed.*remain stable/s],
-    ["In drawer_open_place", /must be closed/],
-    ["In mixer_operating", /actually started/],
     ["evaluation of water_pouring", /No water is used/],
-    ["intermediate mistakes", /before.*but not afterward.*may recover/s],
+    ["first attempt fails", /second attempt is not allowed.*wait until the episode ends.*irreversible.*reachable workspace.*risk of damage/s],
+    ["How is a step defined", /one frame of commands.*one step.*cumulative count/s],
+    ["end-effector pose", /only joint-space outputs.*inverse kinematics/s],
+    ["May smoothing", /Smoothing is allowed.*policy\//s],
+    ["three real-robot cameras", /All three cameras are D435\./],
+    ["technical report include authors", /No authors outside.*author order must match/s],
+    ["actual contributions have changed", /requested with signatures from all team members/],
+    ["already registered as a team member", /identified as a supervisor.*list must not change/s],
+    ["listed on certificates", /One or two supervisors/],
     ["submitted code and checkpoints", /policy\/.*eval.sh.*deploy_policy.yml.*deploy_policy.py.*get_model.*README/s],
     ["newly purchased objects", /both task targets and distractors/],
   ]) assert.match(answerFor(question), expected);
-  assert.doesNotMatch(JSON.stringify(finals), /same limits as in simulation|this has not been observed|Will the limits be reviewed and adjusted/);
+  assert.equal(answerFor("serial or asynchronous"), "<p>Serial.</p>");
+  const criteria = answerFor("success criteria for each task");
+  const taskItems = [...criteria.matchAll(/<li><strong>(Real_\w+)<\/strong>: ([\s\S]*?)<\/li>/g)];
+  assert.equal(taskItems.length, 10);
+  const taskExpectations = {
+    Real_water_pouring: /Place both the bottle and cup stably on the table/,
+    Real_item_assembly: /long, thin tail.*short, thick head.*Once inserted, the task ends/s,
+    Real_manipulate_pipette: /Visibly press down.*release the button/s,
+    Real_handle_basket: /milk.*clear displacement.*Set the basket down stably/s,
+    Real_items_handover: /marker.*pen holder must not fall over/s,
+    Real_table_rearrangement: /spoon and fork.*approximately parallel/s,
+    Real_mixer_operating: /circle marked with a cross.*Successfully press the button/s,
+    Real_drawer_open_place: /Fully open the upper drawer.*tomato.*inside the open drawer\. The task ends/s,
+    Real_click_bell: /yellow area/,
+    Real_sample_loading: /stay in the rack without falling/,
+  };
+  assert.deepEqual(taskItems.map(item => item[1]), Object.keys(taskExpectations));
+  for (const [, task, text] of taskItems) assert.match(text, taskExpectations[task]);
+  assert.doesNotMatch(JSON.stringify(finals), /same limits as in simulation|this has not been observed|Will the limits be reviewed and adjusted|drawer must be closed|must fully release|must remain stable for a period|device actually started|may recover from intermediate mistakes|member list and member order cannot be changed/);
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "rsc-faq-chrome-"));
   const chrome = spawn("google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu",
     "--disable-background-networking", "--remote-allow-origins=*", "--remote-debugging-port=0",
@@ -105,6 +126,7 @@ async function main() {
     await until("location.hash==='#finals' && document.querySelector('.faq-stage-link[aria-current]')?.textContent==='Final Round'");
     assert.equal(await evaluate("document.querySelectorAll('.faq-item').length"), finals.length);
     assert.equal(await evaluate("document.querySelectorAll('.faq-group-title').length"), 7);
+    assert.equal(await evaluate("document.querySelectorAll('.faq-item ol > li').length"), 10, "All ten task criteria are rendered");
     assert.equal(await evaluate("/TBD|to be confirmed|not yet available/i.test(document.querySelector('.faq-section').innerText)"), false, "Final copy contains no tentative markers");
     assert.equal(await evaluate("document.querySelector('.faq-section [role=status]')"), null);
     await rpc("Page.reload");
@@ -125,6 +147,12 @@ async function main() {
         assert.equal(await evaluate("(() => {const [a,b]=[...document.querySelectorAll('.faq-stage-link')].map(link=>link.getBoundingClientRect());return a.right<=b.left && Math.abs(a.width-b.width)<1 && a.top===b.top;})()"), true, "Balanced, nonoverlapping stage controls");
         const screenshot = await rpc("Page.captureScreenshot", { format: "png" });
         fs.writeFileSync(`/tmp/rsc-faq-${stage}-${name}.png`, Buffer.from(screenshot.data, "base64"));
+        if (stage === "finals") {
+          await evaluate("document.querySelector('.faq-item ol').scrollIntoView({block:'start',behavior:'instant'})");
+          assert.equal(await evaluate("[...document.querySelectorAll('.faq-item ol > li')].every(item=>item.scrollWidth<=item.clientWidth+1)"), true, "Task criteria fit their containers");
+          const criteriaScreenshot = await rpc("Page.captureScreenshot", { format: "png" });
+          fs.writeFileSync(`/tmp/rsc-faq-criteria-${name}.png`, Buffer.from(criteriaScreenshot.data, "base64"));
+        }
       }
     }
     await rpc("Page.navigate", { url: base + "/faq/?default-check=1" });

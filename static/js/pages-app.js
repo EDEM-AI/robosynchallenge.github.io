@@ -475,35 +475,26 @@
     },
     {
       question: "What are the real-robot success criteria for each task?",
-      answer: `<p>The criteria correspond to those used in simulation and will be checked by evaluators. Records will be released later so that teams can check them themselves.</p>`,
+      answer: `<ol>
+        <li><strong>Real_water_pouring</strong>: Pick up the cup and bottle from the table. Bring them together and perform the motion of pouring water from the bottle into the cup. Place both the bottle and cup stably on the table. The task ends.</li>
+        <li><strong>Real_item_assembly</strong>: Pick up the two silicone tubes from the table. Connect the head of the right tube to the tail of the left tube. The tubes have roughly similar shapes, but the left tube has a long, thin tail and the right tube has a short, thick head so that they can be connected. Once inserted, the task ends.</li>
+        <li><strong>Real_manipulate_pipette</strong>: Pick up the pipette to the right of the beaker. Move it properly above the beaker. Visibly press down the button on top of the pipette, then release the button. The task ends.</li>
+        <li><strong>Real_handle_basket</strong>: Pick up the milk on the left and place it in the basket. Move the basket on the right toward the center of the field of view, grasping it and producing a clear displacement. Set the basket down stably. The task ends.</li>
+        <li><strong>Real_items_handover</strong>: Pick up the marker on the right and place it stably in the pen holder. The pen holder must not fall over. The task ends.</li>
+        <li><strong>Real_table_rearrangement</strong>: Pick up the spoon and fork scattered on either side of the plate. Place them stably on either side of the plate, approximately parallel to each other, to achieve a tidy arrangement. The task ends.</li>
+        <li><strong>Real_mixer_operating</strong>: Pick up the beaker on the right and place it stably in the correct position on the mixer, on the small circle marked with a cross. Successfully press the button on the left side of the mixer. The task ends.</li>
+        <li><strong>Real_drawer_open_place</strong>: Fully open the upper drawer on the right. Place the toy tomato on the left side of the table inside the open drawer. The task ends.</li>
+        <li><strong>Real_click_bell</strong>: Press the bell on the table, pressing the yellow area. The task ends.</li>
+        <li><strong>Real_sample_loading</strong>: Pick up the test tube on the right and insert it stably into the test-tube rack. It is sufficient for the tube to stay in the rack without falling. The task ends.</li>
+      </ol>`,
     },
     {
-      question: "In table_rearrangement, the spoon and fork are placed in a different left-right order in the real-robot demonstrations and simulation. Which arrangement applies in the final round, or is it sufficient to align each utensil properly?",
-      answer: `<p>It is sufficient to align the spoon and fork properly.</p>`,
+      question: "Does real-robot evaluation of water_pouring use real water?",
+      answer: `<p>No water is used.</p>`,
     },
     {
-      question: "In sample_loading, may the sample be placed in any valid hole, or must it be placed in the center or a specific hole? Must the gripper fully release it and leave it stable for a period of time?",
-      answer: `<p>Any valid hole is allowed. The gripper must fully release the sample, and the sample must remain stable for a period of time.</p>`,
-    },
-    {
-      question: "What is the minimum insertion depth for item_assembly? Must the gripper release the object, and must the object remain stable for a period of time?",
-      answer: `<p>The insertion depth is not fixed. The object must remain stable for a period of time.</p>`,
-    },
-    {
-      question: "In drawer_open_place, must the drawer be closed after placing the object inside for the task to count as successful?",
-      answer: `<p>The drawer must be closed.</p>`,
-    },
-    {
-      question: "In mixer_operating, must the button be pressed and the device actually started, or is touching the button or reaching an impulse threshold sufficient?",
-      answer: `<p>The button must be pressed and the device actually started.</p>`,
-    },
-    {
-      question: "Does real-robot evaluation of water_pouring use real water? Must water actually be poured into the cup, or is completing the pouring motion sufficient?",
-      answer: `<p>No water is used. Completing the motion is sufficient.</p>`,
-    },
-    {
-      question: "If a cup is knocked over during a task and the policy rights it before completing the task, does this still count as a failure? May the policy recover from intermediate mistakes?",
-      answer: `<p>In water_pouring, the cup may be knocked over before the pouring motion is completed, but not afterward. For other tasks, a similar principle applies: whether a mistake affects the final completion of the task is considered, and the policy may recover from intermediate mistakes that do not affect task completion.</p>`,
+      question: "Within the 1000-step limit of a single evaluation episode, may a team try again after the first attempt fails? Does completing the task on a second attempt count as success?",
+      answer: `<p>A second attempt is not allowed. After a failure, evaluators will wait until the episode ends. They will not declare failure early unless an irreversible experimental failure occurs, such as an object falling outside the reachable workspace or a risk of damage to the robot arms or objects.</p>`,
     },
     {
       question: "After success, is an episode ended manually or automatically? Does the policy need to stop on its own?",
@@ -523,16 +514,24 @@
       answer: `<p>The frequency is 10 Hz. Teams cannot choose it themselves. The tasks designed for this competition and their implementation in the simulator are not sensitive to execution frequency, so this difference is not a major issue. If participants consider the difference substantial, they may treat it as a sim-to-real gap and address it themselves.</p><p>Yes. The actual physical timing is determined by the official AgileX SDK. The frequency constrains action execution.</p>`,
     },
     {
-      question: "Are task timeouts measured in steps or seconds, and what are the specific limits?",
-      answer: `<p>In steps. The real-robot limit is changed to 1000 steps for every task. If a major failure occurs, such as a risk of damage to the robot arms or objects, evaluators may stop the episode and mark it as timed out rather than wait until the step limit is reached.</p>`,
+      question: "Are task timeouts measured in steps or seconds, and what are the specific limits? How is a step defined, and how can teams track the number of steps executed?",
+      answer: `<p>In steps. The real-robot limit is 1000 steps for every task. Sending one frame of commands to the robot arms counts as one step. Teams can keep their own cumulative count.</p>`,
+    },
+    {
+      question: "Are model inference and robot action execution serial or asynchronous during real-robot evaluation? Can the next Action Chunk be inferred while the current Action Chunk is executing?",
+      answer: `<p>Serial.</p>`,
+    },
+    {
+      question: "Does real-robot evaluation support both joint-space and end-effector pose (EEF) action outputs?",
+      answer: `<p>As in the preliminary round, only joint-space outputs are supported as the final output. If a model outputs EEF poses, teams must perform inverse kinematics (IK) themselves.</p>`,
     },
     {
       question: "Are policy actions sent directly to the robot arms? Is any post-processing applied, such as interpolation, limiting, or filtering?",
       answer: `<p>Actions are sent directly to the robot arms through the official SDK, without post-processing.</p>`,
     },
     {
-      question: "May teams add manually written rules or action corrections after the policy output?",
-      answer: `<p>Yes, but they may only read the information provided in obs, such as images and proprioception.</p>`,
+      question: "May teams add manually written rules or action corrections after the policy output? May smoothing be added within policy/ to address reported jitter at 10 Hz?",
+      answer: `<p>Yes, but they may only read the information provided in obs, such as images and proprioception. Smoothing is allowed; teams should implement it under <code>policy/</code> following the standard requirements.</p>`,
     },
     {
       question: "How is the gripper force set? Can each team specify it for each task? Are parameters such as joint torque standardized?",
@@ -540,8 +539,8 @@
     },
     {
       section: "IV. Hardware Configuration and Sim-to-Real Alignment",
-      question: "Will a complete hardware list be provided, specifying the robot-arm model, grippers, cameras, and mounting brackets?",
-      answer: `<p>The robot-arm model, grippers, cameras, and related hardware are consistent with the simulation. Teams may also refer to the official AgileX configuration. We can release the 3D files for the main-view and wrist-view camera brackets provided by AgileX.</p>`,
+      question: "Will a complete hardware list be provided, specifying the robot-arm model, grippers, cameras, and mounting brackets? Are the three real-robot cameras D435 or D435i?",
+      answer: `<p>The robot-arm model, grippers, cameras, and related hardware are consistent with the simulation. Teams may also refer to the official AgileX configuration. All three cameras are D435. We can release the 3D files for the main-view and wrist-view camera brackets provided by AgileX.</p>`,
     },
     {
       question: "Are the joint zero positions and dual-arm mounting positions consistent between the real robots and simulation?",
@@ -598,8 +597,20 @@
       answer: `<p>Only award-winning teams will be invited. Team members do not have to attend in person, but they must send a representative, such as a friend, colleague, family member, or acquaintance, to collect the award. If no one attends, the award will be considered forfeited.</p>`,
     },
     {
-      question: "Can team names, member lists, and member order still be changed? Can supervisors be registered?",
-      answer: `<p>In principle, the final-round member list and member order cannot be changed. In special circumstances, please send an application signed by all original members to the competition email address.</p><p>Award-recipient lists for international competitions generally do not include supervisor positions. One or two supervisors may be added to certificates at the organizers' discretion; please apply after receiving an award.</p>`,
+      question: "May the technical report include authors who are not registered team members? Must the author order match the team member order, or may it be adjusted separately?",
+      answer: `<p>No authors outside the registered team may be included. The author order must match the team member order.</p>`,
+    },
+    {
+      question: "If team members' actual contributions have changed, may the team member order be adjusted? Can a change still be requested with signatures from all members?",
+      answer: `<p>A change may be requested with signatures from all team members.</p>`,
+    },
+    {
+      question: "Can a supervisor who is already registered as a team member be changed to supervisor status without occupying a team member slot?",
+      answer: `<p>A team member may be identified as a supervisor, but the team member list must not change.</p>`,
+    },
+    {
+      question: "Can supervisors be listed on certificates?",
+      answer: `<p>Award-recipient lists for international competitions generally do not include supervisor positions. One or two supervisors may be added to certificates at the organizers' discretion; please apply after receiving an award.</p>`,
     },
     {
       section: "VII. Code Submission and Policy Interfaces",
