@@ -484,7 +484,7 @@
         <li><strong>Real_table_rearrangement</strong>: Pick up the spoon and fork scattered on either side of the plate. Place them stably on either side of the plate, approximately parallel to each other, to achieve a tidy arrangement. The task ends.</li>
         <li><strong>Real_mixer_operating</strong>: Pick up the beaker on the right and place it stably in the correct position on the mixer, on the small circle marked with a cross. Successfully press the button on the left side of the mixer. The task ends.</li>
         <li><strong>Real_drawer_open_place</strong>: Fully open the upper drawer on the right. Place the toy tomato on the left side of the table inside the open drawer. The task ends.</li>
-        <li><strong>Real_click_bell</strong>: Press the bell on the table, pressing the yellow area. The task ends.</li>
+        <li><strong>Real_click_bell</strong>: Press the main body of the bell. The task ends.</li>
         <li><strong>Real_sample_loading</strong>: Pick up the test tube on the right and insert it stably into the test-tube rack. It is sufficient for the tube to stay in the rack without falling. The task ends.</li>
       </ol>`,
     },

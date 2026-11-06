@@ -57,7 +57,7 @@ async function main() {
     Real_table_rearrangement: /spoon and fork.*approximately parallel/s,
     Real_mixer_operating: /circle marked with a cross.*Successfully press the button/s,
     Real_drawer_open_place: /Fully open the upper drawer.*tomato.*inside the open drawer\. The task ends/s,
-    Real_click_bell: /yellow area/,
+    Real_click_bell: /^Press the main body of the bell\. The task ends\.$/,
     Real_sample_loading: /stay in the rack without falling/,
   };
   assert.deepEqual(taskItems.map(item => item[1]), Object.keys(taskExpectations));
