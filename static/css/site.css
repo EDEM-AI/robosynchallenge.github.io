@@ -855,6 +855,134 @@ code {
   background: linear-gradient(160deg, rgba(216, 230, 243, 0.86), rgba(255, 255, 255, 0.9) 44%);
 }
 
+.data-panel-materials {
+  background: linear-gradient(160deg, rgba(225, 237, 230, 0.86), rgba(255, 255, 255, 0.9) 44%);
+}
+
+.data-panel-materials h2 {
+  font-size: 2.5rem;
+  letter-spacing: 0;
+  line-height: 1.12;
+}
+
+.data-panel-materials .data-count {
+  color: var(--success);
+}
+
+.material-list {
+  border-top: 1px solid var(--line);
+}
+
+.material-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 24px;
+  align-items: center;
+  gap: 20px;
+  min-height: 104px;
+  padding: 20px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.material-row:last-child {
+  border-bottom: 0;
+}
+
+.material-row:hover,
+.material-row:focus-visible {
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--accent-dark);
+}
+
+.material-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.material-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--success);
+}
+
+.material-icon svg,
+.material-open {
+  width: 22px;
+  height: 22px;
+  stroke-width: 1.5;
+}
+
+.material-open {
+  justify-self: end;
+  color: var(--accent-dark);
+}
+
+.material-info {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.material-info > strong {
+  font-size: 1.08rem;
+  font-weight: 600;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.material-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.material-meta > span + span {
+  border-left: 1px solid var(--line);
+  padding-left: 12px;
+}
+
+@media (max-width: 520px) {
+  .data-panel-materials h2 {
+    font-size: 2rem;
+  }
+
+  .material-row {
+    grid-template-columns: 36px minmax(0, 1fr) 20px;
+    gap: 12px;
+    padding-inline: 0;
+  }
+
+  .material-icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .material-info > strong {
+    font-size: 1rem;
+  }
+
+  .material-meta {
+    display: grid;
+    gap: 2px;
+  }
+
+  .material-meta > span + span {
+    border-left: 0;
+    padding-left: 0;
+  }
+}
+
 .evaluation-panel-sim .data-count {
   color: #345469;
 }

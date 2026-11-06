@@ -14,6 +14,32 @@
   const POLICY_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/policy/your_own_policy.html";
   const DATA_COLLECTION_TUTORIAL_URL = "https://edem-ai.github.io/RoboSynChallenge/html/tutorials/collect_data.html";
   const REPORT_URL = "material/RoboSynChallenge-report.pdf";
+  const FINAL_ROUND_MATERIALS = [
+    {
+      id: "cam_high",
+      title: "Main-View Camera Bracket",
+      detail: "cam_high",
+      format: "4 STEP files",
+      icon: "camera",
+      url: "https://drive.google.com/drive/folders/1DMHCsj2k3tk2Sjry5FyP5hfOD-6Xz-sL",
+    },
+    {
+      id: "cam_wrist",
+      title: "Wrist-View Camera Bracket",
+      detail: "cam_wrist",
+      format: "1 3MF file",
+      icon: "camera",
+      url: "https://drive.google.com/drive/folders/1o1nqSzUnBRD0umUxnfgSKMG_Crp0lajt",
+    },
+    {
+      id: "mounting_plate",
+      title: "Real-Robot Mounting Plate",
+      detail: "Piper",
+      format: "1 STEP file",
+      icon: "layers-3",
+      url: "https://drive.google.com/drive/folders/1Z8fP57A7ChdWGbW6Ckw9fHsZ5b91a5-3",
+    },
+  ];
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
   const ACCESS_REQUEST_INTAKE_CLOSED = true;
   const POLICY_SUBMISSION_INTAKE_CLOSED = true;
@@ -1866,6 +1892,23 @@
               `).join("")}
             </div>
           </article>
+
+          <article class="data-panel data-panel-materials" aria-labelledby="final-materials-title">
+            <header class="data-panel-header">
+              <div><span class="tag">Final round</span><h2 id="final-materials-title">Real-robot materials</h2></div>
+              <strong class="data-count">${FINAL_ROUND_MATERIALS.length}<small>resources</small></strong>
+            </header>
+            <p>3D files for the final-round real-robot setup.</p>
+            <div class="material-list">
+              ${FINAL_ROUND_MATERIALS.map((material) => `
+                <a class="material-row" data-material="${escapeHtml(material.id)}" href="${escapeHtml(material.url)}" target="_blank" rel="noopener noreferrer" title="View ${escapeHtml(material.title)} in Google Drive">
+                  <span class="material-icon" aria-hidden="true"><i data-lucide="${escapeHtml(material.icon)}"></i></span>
+                  <span class="material-info"><strong>${escapeHtml(material.title)}</strong><span class="material-meta"><span>${escapeHtml(material.detail)}</span><span>${escapeHtml(material.format)}</span></span></span>
+                  <i class="material-open" data-lucide="arrow-up-right" aria-hidden="true"></i>
+                </a>
+              `).join("")}
+            </div>
+          </article>
         </div>
       </section>
     `;
@@ -2739,6 +2782,7 @@
         break;
       case "data":
         renderSection(renderDataPage(), "Data");
+        window.lucide?.createIcons();
         break;
       case "login":
         renderSection(renderLoginPage(), "Sign In");
