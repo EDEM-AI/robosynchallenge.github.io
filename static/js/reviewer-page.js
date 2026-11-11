@@ -504,6 +504,7 @@ return `<article class="reviewer-detail"><header class="reviewer-detail-head"><d
       }
     }
     if (state.credentials && ["admin", "evaluator", "tester", "supervisor", "observer"].includes(state.role)) {
+      content.querySelector(".reviewer-overview-tools")?.insertAdjacentHTML("beforeend", `<a class="button button-secondary" href="/eval_backend/finals/">${icon("bot")}Real-finals workspace</a>`);
       content.querySelector(".reviewer-overview-tools")?.insertAdjacentHTML("beforeend", button("private-leaderboard", "Private leaderboard", "list-ordered"));
       content.querySelectorAll(".reviewer-overview-tools [data-review-action]").forEach(control => {
         if (control.dataset.reviewAction === state.view) control.setAttribute("aria-current", "page");

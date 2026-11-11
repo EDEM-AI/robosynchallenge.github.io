@@ -126,6 +126,7 @@ function finalsVersionReport_(submission, report) {
 }
 
 function handleFinalsAction_(action, payload) {
+  if (action === "finals_platform_rpc" || action.startsWith("finals_reviewer_") || action.startsWith("finals_admin_control_")) return finalsControl_(action, payload);
   if (action.startsWith("finals_admin_")) return finalsAdmin_(action, payload);
   const identity = finalsIdentity_(payload);
   const enabled = config_("FINALS_INTAKE_ENABLED", "false") === "true";
