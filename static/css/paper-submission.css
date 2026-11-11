@@ -1,0 +1,40 @@
+.paper-page, .paper-page * { letter-spacing: 0; }
+.paper-page [hidden] { display: none !important; }
+.paper-heading { padding-top: 24px; }
+.paper-heading .eyebrow { text-transform: none; }
+.paper-heading h1 { margin: 12px 0; font: 500 36px/1.15 "Fraunces", Georgia, serif; }
+.paper-heading .lead { margin: 0 0 16px; }
+.paper-content { padding-top: 28px; }
+.paper-form .section-heading h2 { font-size: 28px; }
+.paper-form > p { max-width: 780px; color: var(--ink-soft); line-height: 1.7; }
+.paper-page svg { width: 18px; height: 18px; flex: 0 0 18px; }
+.paper-reference { display: inline-flex; align-items: center; gap: 8px; color: var(--accent-dark); }
+.paper-upload { margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--line); }
+.paper-upload h3 { margin: 0 0 12px; font-size: 24px; }
+.paper-upload .section-actions { margin-top: 0; }
+.paper-page .field { min-width: 0; }
+.paper-page input { min-width: 0; }
+.paper-page .form-status:empty { display: none; }
+.paper-page .form-status { overflow-wrap: anywhere; margin: 16px 0 0; }
+#paper-account > .helper-note { margin: 8px 0 16px; }
+#paper-preview-note { margin: 8px 0 0; }
+.paper-page .button:disabled { opacity: .6; cursor: not-allowed; }
+.paper-page :is(a, button, input):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.paper-identity { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; margin: 0; overflow-wrap: anywhere; }
+.paper-identity span { color: var(--ink-soft); font-size: 14px; }
+.paper-history { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
+.paper-history h2 { font: 500 24px/1.3 "Fraunces", Georgia, serif; }
+.paper-history ul { list-style: none; padding: 0; }
+.paper-history li { display: grid; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.paper-history li span { font-size: 14px; color: var(--ink-soft); }
+.paper-back { margin-top: 24px; }
+@media (max-width: 860px) {
+  .paper-route .header-row { padding: 14px 16px; }
+  .paper-form { padding: 24px; }
+  .paper-heading h1 { font-size: 30px; }
+}
+@media (max-width: 480px) {
+  .paper-route .brand-event-logo { display: none; }
+  .paper-form { padding: 20px; }
+  .paper-form .section-heading h2 { font-size: 26px; }
+}

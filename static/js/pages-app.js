@@ -1244,6 +1244,7 @@
 
   function clearSessionState() {
     window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    window.sessionStorage.removeItem("rsc-finals-session-v1");
     state = freshClientState();
   }
 
@@ -1612,6 +1613,7 @@
 
     if (title) document.title = `${title} | RoboSynChallenge`;
     document.body.classList.toggle("workshop-route", parseRoute(currentRoute()).name === "workshop");
+    document.body.classList.toggle("paper-route", parseRoute(currentRoute()).name === "paper-submission");
     appEl.innerHTML = `<div class="page-shell">${html}</div>`;
     renderHeader();
     renderFlashes(true);
@@ -2119,7 +2121,7 @@
         </p>
         <p class="helper-note"><strong>Each evaluation request must cover all 10 tasks.</strong> Include the checkpoint mapping and run commands in one submission. Partial-task requests are not valid.</p>
         <div class="cta-row">
-          <a href="${routeHref("submit-policy")}" class="button button-primary">Submit Policy</a>
+          <a href="finals/" class="button button-primary">Submit for the finals</a>
           <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-secondary">Policy tutorial ↗</a>
           <a href="${routeHref("leaderboard")}" class="button button-ghost">View leaderboard</a>
         </div>
@@ -2137,7 +2139,7 @@
             <div class="randomization-list">
               <div><strong>Simulation only.</strong><span>No physical robot is used in the preliminary round.</span></div>
               <div><strong>Same metrics.</strong><span>Success rate, action steps, and inference time are reported.</span></div>
-              <div><strong>Finalists advance.</strong><span>Approximately 30-40 teams move to the real-robot final round.</span></div>
+              <div><strong>Finalists advance.</strong><span>The 21 invited teams advance to the real-robot final round.</span></div>
             </div>
           </article>
 
@@ -2746,6 +2748,7 @@
 
   function parseRoute(route) {
     if (route === "workshop") return { name: "workshop" };
+    if (route === "workshop/submit") return { name: "paper-submission" };
     if (route === "home") return { name: "home" };
     if (route === "data") return { name: "data" };
     if (route === "benchmark") return { name: "leaderboard" };
@@ -2776,6 +2779,17 @@
       case "workshop":
         renderSection(window.ROBO_SYN_WORKSHOP.render(CONTACT_EMAIL), "Workshop");
         window.ROBO_SYN_WORKSHOP.init(appEl);
+        break;
+      case "paper-submission":
+        renderSection(window.ROBO_SYN_PAPERS.render(), "Submit a Paper");
+        window.ROBO_SYN_PAPERS.init(appEl, state.session, (session, user) => {
+          state.session = session;
+          state.user = normalizeUser(user);
+          saveSessionState();
+          renderHeader();
+        });
+        document.querySelector("[data-nav-menu]")?.classList.remove("is-open");
+        window.scrollTo({top:0, behavior:"instant"});
         break;
       case "home":
         renderSection(renderHome(), "Home");
@@ -2938,6 +2952,7 @@
       };
       state.user = normalizeUser(data.user || { email });
       if (!state.session.session_id) throw new Error("Login response did not include a session_id.");
+      window.sessionStorage.removeItem("rsc-finals-session-v1");
       saveSessionState();
       remoteState.submissionsLoaded = false;
       remoteState.submissionsError = "";

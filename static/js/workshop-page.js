@@ -163,9 +163,9 @@
               </div>
               <div class="workshop-papers">
                 <h3>Submitted papers</h3>
-                <p class="workshop-prose">Finalist teams may submit papers to the RoboSynChallenge workshop. Submission details and the paper collection will be announced here.</p>
-                <table class="workshop-paper-table"><caption class="workshop-visually-hidden">Finalist papers</caption><thead><tr><th scope="col">Paper</th><th scope="col">Team</th></tr></thead><tbody><tr><td colspan="2" class="workshop-table-empty">${icon("files")} Coming soon</td></tr></tbody></table>
-                <button class="button workshop-button-pending" type="button" disabled>${icon("file-up")} Submit a paper &middot; Coming soon</button>
+                <p class="workshop-prose">Preliminary-round and finalist teams are invited to submit technical reports to the RoboSynChallenge workshop.</p>
+                <table class="workshop-paper-table"><caption class="workshop-visually-hidden">Submitted papers</caption><thead><tr><th scope="col">Paper</th><th scope="col">Team</th></tr></thead><tbody><tr><td colspan="2" class="workshop-table-empty">${icon("files")} Coming soon</td></tr></tbody></table>
+                <a class="button button-primary" href="#/workshop/submit">${icon("file-up")} Submit a paper</a>
               </div>
             </div>
           </div>

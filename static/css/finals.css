@@ -1,0 +1,73 @@
+/* Reuse the preliminary submission's form, button and authentication styles. */
+.finals-page { min-height: 100vh; }
+.finals-page, .finals-page * { letter-spacing: 0; }
+.finals-page [hidden] { display: none !important; }
+.finals-page .header-row { flex-wrap: wrap; padding-block: 12px; }
+.finals-page .brand { margin-right: auto; }
+.finals-page .user-badge { max-width: 240px; overflow-wrap: anywhere; }
+.finals-faq { font-weight: 500; color: var(--ink-soft); }
+.finals-status:has(#notice:empty) { display: none; }
+.finals-status { padding-top: 20px; }
+#notice { margin: 0; color: var(--accent-dark); overflow-wrap: anywhere; }
+.finals-page #login-section { padding-block: 52px; }
+.finals-page .auth-card h1 { font-size: 32px; }
+.finals-page .auth-card .lead { margin-bottom: 24px; }
+.finals-page .auth-footnote { margin-bottom: 0; font-size: 14px; line-height: 1.6; }
+.finals-heading { padding-top: 40px; }
+.finals-heading h1 { margin: 12px 0; font: 500 36px/1.15 "Fraunces", Georgia, serif; }
+.finals-heading .lead { margin: 0 0 16px; }
+.finals-submission { padding-top: 28px; }
+.finals-form .section-heading h2 { font-size: 28px; }
+.finals-form > .helper-note { margin-bottom: 24px; }
+.finals-page .helper-note a { color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+.finals-page .field { min-width: 0; }
+.finals-page input, .finals-page textarea { min-width: 0; }
+.finals-page :is(input, textarea, button, summary, a):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.finals-page button:disabled { cursor: wait; opacity: .65; }
+.finals-page .button svg { width: 18px; height: 18px; flex: 0 0 18px; }
+.finals-page .finals-remove { width: 40px; height: 40px; padding: 0; }
+.finals-page .finals-remove:hover { color: var(--danger); }
+.finals-checkpoint { border-bottom: 1px solid var(--line); margin-bottom: 20px; padding-bottom: 20px; }
+.finals-checkpoint-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 12px; }
+.finals-count { float: right; color: var(--ink-soft); font-size: 14px; font-weight: 400; white-space: nowrap; margin-left: 12px; }
+.finals-task { border-top: 1px solid var(--line); }
+.finals-task > summary { display: flex; align-items: center; gap: 12px; padding: 16px 4px; list-style: none; }
+.finals-task > summary::-webkit-details-marker { display: none; }
+.finals-task > summary > span:first-child { flex: 1; }
+.finals-task > summary svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.finals-task[open] > summary svg { transform: rotate(180deg); }
+.finals-task-status { font-size: 13px; font-weight: 400; color: var(--ink-soft); }
+.finals-task[data-complete="true"] .finals-task-status { color: var(--success); }
+.finals-task .form-grid { padding: 0 4px 20px; }
+.finals-confirm { align-items: flex-start; line-height: 1.6; }
+.finals-confirm input { flex: 0 0 18px; margin: 3px 0 0; }
+.finals-page .section-actions { margin-top: 0; }
+.finals-history { margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--line); }
+.finals-history h2 { font: 500 23px/1.3 "Fraunces", Georgia, serif; }
+#requests { padding-left: 20px; overflow-wrap: anywhere; line-height: 1.7; }
+.preliminary-report > p { max-width: 780px; line-height: 1.7; color: var(--ink-soft); }
+.preliminary-report .cta-row { margin-top: 28px; }
+@media (max-width: 860px) {
+  .finals-page .header-row { grid-template-areas: "brand brand" "faq actions"; padding: 14px 16px; }
+  .finals-page .brand { justify-content: flex-start; }
+  .finals-page .brand-event-logo { margin-left: auto; }
+  .finals-faq { grid-area: faq; font-size: 14px; }
+  .finals-page .header-actions { flex-wrap: wrap; }
+  .finals-page .user-badge { max-width: 175px; padding: 6px 10px; font-size: 13px; }
+  .finals-page .header-actions .button { padding: 8px 12px; font-size: 13px; }
+  .finals-page .auth-card, .finals-form { padding: 24px; }
+  .finals-heading h1 { font-size: 30px; }
+  .finals-task > summary { gap: 8px; }
+}
+@media (max-width: 480px) {
+  .finals-page .brand-event-logo { display: none; }
+  .finals-page .brand { gap: 10px; }
+  .finals-page .brand-copy strong { font-size: 17px; }
+  .finals-page .brand-copy small { font-size: 12px; }
+  .finals-page .auth-card, .finals-form { padding: 20px; }
+  .finals-page .header-actions { gap: 6px; }
+  .finals-page .user-badge { max-width: 148px; }
+  .finals-heading { padding-top: 28px; }
+  .finals-task-status { font-size: 12px; }
+  .finals-count { float: none; display: inline-block; }
+}
