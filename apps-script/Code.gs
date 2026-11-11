@@ -172,6 +172,8 @@ function doPost(e) {
     if (action === "send_access_notification") return handleSendAccessNotification_(payload);
     if (action === "update_full_name") return handleFullNameUpdateSubmit_(payload);
     if (action === "login") return json_(handleLogin_(payload));
+    if (action.startsWith("finals_")) return json_(handleFinalsAction_(action, payload));
+    if (action.startsWith("paper_")) return json_(handlePaperAction_(action, payload));
     if (action === "my_submissions") return json_(handleMySubmissions_(payload));
     if (action === "review_response_submit") return handleReviewResponseSubmit_(payload);
     if (action === "submit_policy") return json_(handleSubmitPolicy_(payload));
@@ -180,7 +182,7 @@ function doPost(e) {
     if (action.startsWith("reviewer_")) return json_(handleReviewerAction_(action, payload));
     throw new Error(`Unknown action: ${action}`);
   } catch (error) {
-    if (action.startsWith("reviewer_") || action === "review_response_submit" || error.code === "SUBMISSIONS_CLOSED") console.error(error);
+    if (action.startsWith("reviewer_") || action.startsWith("paper_") || action === "review_response_submit" || error.code === "SUBMISSIONS_CLOSED") console.error(error);
     else recordError_("doPost", error);
     return json_({ ok: false, error: String(error.message || error), ...(error.code ? { error_code: error.code } : {}) });
   }

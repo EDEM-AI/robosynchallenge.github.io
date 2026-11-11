@@ -1,0 +1,16 @@
+[Unit]
+Description=RoboSynChallenge finals version freezing and branch preparation
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/edemlab/challenge_ws/robosynchallenge_deploy_repo
+ExecStart=/home/edemlab/miniconda3/envs/lerobot/bin/python evaluation_tools/finals_version_freeze.py --settings /home/edemlab/challenge_ws/evaluation_system/.runtime/finals-prepare-settings.json --private-tools /home/edemlab/challenge_ws/robosynchallenge_heldout_private/tools
+Environment=GIT_TERMINAL_PROMPT=0
+Restart=on-failure
+RestartSec=30
+UMask=0077
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
