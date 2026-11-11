@@ -24,6 +24,12 @@ admin('enroll',{platform:'platform_1',reviewer:'eval@example.test',token,signing
 assert.throws(()=>admin('enroll',{platform:'platform_1',reviewer:'other@example.test',token,signing_key_hex:signing}),/silently/);
 const index={manifest_sha256:hash,tasks:Object.fromEntries(tasks.map(t=>[t,Array.from({length:20},(_,i)=>({seed:i,image:t+'/'+i+'.png',sha256:hash}))]))};
 admin('register_part',{platform:'platform_1',part:1,index});
+assert.throws(()=>rpc('register_references',{index}),/organizer enrollment/);
+admin('enroll',{platform:'platform_2',reviewer:'other@example.test',token:'u'.repeat(40),signing_key_hex:signing,reference_manifest_sha256:hash});
+const register=index=>ctx.finalsControl_('finals_platform_rpc',{platform:'platform_2',platform_token:'u'.repeat(40),operation:'register_references',body:{index}});
+assert.throws(()=>register({...index,manifest_sha256:'0'.repeat(64)}),/organizer enrollment/);
+assert.equal(register(index).registered,true);
+assert.equal(register(index).registered,true);
 const identity={request_id:req,task:'click_bell'};
 admin('assign',{...identity,platform:'platform_1',bundle_sha:bundle});
 assert.equal(rpc('queue').cards.length,20);assert.equal(rpc('queue').cards.filter(c=>c.variant).length,3);

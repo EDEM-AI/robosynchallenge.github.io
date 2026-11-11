@@ -117,11 +117,23 @@ function fcRecipe_(body) {
   fcCheck_(/^[A-Za-z0-9._:/-]+@sha256:[a-f0-9]{64}$/.test(recipe.image),"Pin the container image digest.");
   return recipe;
 }
+function fcRegisterPart_(platform,part,index) {
+  fcCheck_(FC_PLATFORMS.indexOf(platform)+1===part,"Part must match platform.");
+  fcCheck_(index && /^[a-f0-9]{64}$/.test(index.manifest_sha256),"Verified manifest hash required.");
+  fcCheck_(fcSame_(Object.keys(index.tasks).sort(),FINALS_TASKS.slice().sort()),"All ten task references required.");
+  FINALS_TASKS.forEach(t=>{
+    const rs=index.tasks[t];fcCheck_(rs.length===20 && new Set(rs.map(r=>r.seed)).size===20,"Twenty unique seeds required.");
+    rs.forEach(r=>{fcCheck_(Number.isSafeInteger(r.seed) && r.seed>=0 && /^[a-f0-9]{64}$/.test(r.sha256),"Invalid seed or image hash.");finalsPath_(r.image,"Reference path");});
+  });
+  const old=fcGet_("part:"+platform,null);fcCheck_(!old || fcSame_(old,index),"Reference part is immutable.");
+  fcPut_("part:"+platform,index);return {registered:true};
+}
 function fcAdmin_(who,action,b) {
   fcCheck_(who.role==="admin","Organizer access required.");
   if (action==="software_fixture") {
-    const identifier="real_control_software_fixture";
-    if(!finalsRows_().some(r=>r.request_id===identifier)) appendRow_("FinalsRequests",{request_id:identifier,team_id:"organizer_software_fixture",email:who.email,retry_key:"control_software_fixture",fingerprint:reviewerHash_(identifier),revision:1,status:"test_submitted",created_at:now_(),is_test:true,
+    fcCheck_(!b.version || /^[a-z0-9]{1,12}$/.test(b.version),"Invalid software fixture version.");
+    const identifier="real_control_software_fixture"+(b.version?"_"+b.version:"");
+    if(!finalsRows_().some(r=>r.request_id===identifier)) appendRow_("FinalsRequests",{request_id:identifier,team_id:"organizer_software_fixture"+(b.version?"_"+b.version:""),email:who.email,retry_key:identifier,fingerprint:reviewerHash_(identifier),revision:1,status:"test_submitted",created_at:now_(),is_test:true,
       submission_json:JSON.stringify({method_name:"Organizer GPU software fixture",repository:"https://github.com/ZhaoRunyi/robosynchallenge_real",version_cutoff_at:config_("FINALS_DEADLINE_AT",""),checkpoints:[],dependency_notes:"Official isolated GPU fixture. No robot, participant or scores.",tasks:FINALS_TASKS.map(task=>({task,policy_path:"policy/gpu_policy",checkpoint_ids:[],no_weights_reason:"Software fixture",run_notes:"Authenticated software test only"}))})});
     return {request_id:identifier,is_test:true};
   }
@@ -137,20 +149,13 @@ function fcAdmin_(who,action,b) {
     const reviewer=reviewRows_("Reviewers").find(r=>r.email===b.reviewer && String(r.active)==="true" && ["admin","evaluator"].includes(r.role));
     fcCheck_(reviewer,"An active evaluator is required.");
     const value={platform:b.platform,reviewer:b.reviewer,token_hash:reviewerHash_(b.token),active:true};
+    if(b.reference_manifest_sha256){fcCheck_(/^[a-f0-9]{64}$/.test(b.reference_manifest_sha256),"Invalid reference manifest digest.");value.reference_manifest_sha256=b.reference_manifest_sha256;}
     const old=fcGet_("platform:"+b.platform,null); fcCheck_(!old || fcSame_(old,value),"Existing enrollment cannot be silently replaced.");
     PropertiesService.getScriptProperties().setProperty("FINALS_KEY_"+b.platform,b.signing_key_hex);
     fcPut_("platform:"+b.platform,value); return {enrolled:true};
   }
   if (action==="register_part") {
-    fcCheck_(FC_PLATFORMS.indexOf(b.platform)+1===b.part,"Part must match platform.");
-    const index=b.index;fcCheck_(index && /^[a-f0-9]{64}$/.test(index.manifest_sha256),"Verified manifest hash required.");
-    fcCheck_(fcSame_(Object.keys(index.tasks).sort(),FINALS_TASKS.slice().sort()),"All ten task references required.");
-    FINALS_TASKS.forEach(t=>{
-      const rs=index.tasks[t];fcCheck_(rs.length===20 && new Set(rs.map(r=>r.seed)).size===20,"Twenty unique seeds required.");
-      rs.forEach(r=>{fcCheck_(Number.isSafeInteger(r.seed) && r.seed>=0 && /^[a-f0-9]{64}$/.test(r.sha256),"Invalid seed or image hash.");finalsPath_(r.image,"Reference path");});
-    });
-    const old=fcGet_("part:"+b.platform,null);fcCheck_(!old || fcSame_(old,index),"Reference part is immutable.");
-    fcPut_("part:"+b.platform,index);return {registered:true};
+    return fcRegisterPart_(b.platform,b.part,b.index);
   }
   if (action==="assign_owner") {
     fcRequest_(b.request_id);const reviewer=reviewRows_("Reviewers").find(r=>r.email===b.email && String(r.active)==="true" && ["admin","evaluator"].includes(r.role));
@@ -207,6 +212,11 @@ function fcAdmin_(who,action,b) {
 
 function fcRpc_(who,action,b) {
   if (action==="queue") return {cards:fcCards_(who)};
+  if (action==="register_references") {
+    const enrolled=fcGet_("platform:"+who.platform,null);
+    fcCheck_(enrolled && enrolled.reference_manifest_sha256 && b.index && b.index.manifest_sha256===enrolled.reference_manifest_sha256,"Reference manifest must match organizer enrollment.");
+    return fcRegisterPart_(who.platform,FC_PLATFORMS.indexOf(who.platform)+1,b.index);
+  }
   const a=fcAssignment_(who,b),runtimeKey="runtime:"+b.request_id+":"+b.task;
   if(action==="diagnose") {
     const job=fcGet_(runtimeKey,null);
