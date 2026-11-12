@@ -75,7 +75,7 @@
     const body={request_id:selected,...values},job=current();let action;
     if(kind==='owner')action='finals_admin_control_assign_owner';
     if(kind==='route'){action='finals_admin_control_assign';body.bundle_sha=job.preparation?.bundle_sha;}
-    if(kind==='recipe'){action='finals_admin_control_runtime_approve';try{body.recipe=JSON.parse(values.recipe);}catch{error='Invalid recipe JSON.';render();return;}}
+    if(kind==='recipe'){action='finals_admin_control_runtime_approve';try{body.recipe={...JSON.parse(values.recipe),transport:'chunk-v2'};}catch{error='Invalid recipe JSON.';render();return;}}
     if(kind==='rebuild')action='finals_reviewer_rebuild';
     if(kind==='issue'){action='finals_reviewer_issue';if(!window.confirm('Send this email to '+job.email+'?'))return;const fingerprint=JSON.stringify([selected,values.subject,values.text]);if(!mailKeys.has(fingerprint))mailKeys.set(fingerprint,crypto.randomUUID().replaceAll('-',''));body.retry_key=mailKeys.get(fingerprint);}
     if(kind==='discard'){action='finals_reviewer_discard';body.task=job.attempts.find(a=>a.id===body.attempt_id)?.task;if(!window.confirm('Discard this invalid experiment and delete its evidence?'))return;}

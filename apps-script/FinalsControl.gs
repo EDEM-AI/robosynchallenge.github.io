@@ -3,6 +3,7 @@ const FC_PLATFORMS = ["platform_1", "platform_2", "platform_3"];
 const FC_SETTINGS = ["base", "highlight", "blue_cloth", "patterned_cloth", "distractors"];
 const FC_VARIANTS = {click_bell:"pink_bell", drawer_open_place:"drawer_swap", table_rearrangement:"plate_color", items_handover:"pen_color", water_pouring:"cup_color"};
 let fcCache_ = null;
+let fcRequestCache_ = null;
 
 function fcRows_() {
   SHEETS.FinalsControl = ["key", "value_json", "updated_at"];
@@ -36,7 +37,8 @@ function fcAudit_(actor, event, detail) {
   appendRow_("FinalsEvents",{event_id:id_("realevent"),actor,event,detail_json:JSON.stringify(detail),created_at:now_()});
 }
 function fcRequest_(id) {
-  const row = finalsRows_().find(r=>r.request_id===id);
+  if(!fcRequestCache_)fcRequestCache_=finalsRows_();
+  const row = fcRequestCache_.find(r=>r.request_id===id);
   fcCheck_(row,"Unknown finals request.");
   return row;
 }
@@ -120,6 +122,7 @@ function fcRecipe_(body) {
   fcCheck_(Array.isArray(recipe.install) && recipe.install.length<=20 && recipe.install.every(cmd=>Array.isArray(cmd) && cmd.length>0 && cmd.every(v=>typeof v==="string" && v.length<4000)),"Install commands must be argument arrays.");
   fcCheck_(typeof recipe.instruction==="string" && recipe.instruction.length<4000,"Task instruction required.");
   fcCheck_(/^[A-Za-z0-9._:/-]+@sha256:[a-f0-9]{64}$/.test(recipe.image),"Pin the container image digest.");
+  fcCheck_(!recipe.transport || recipe.transport==="chunk-v2","Unsupported policy transport.");
   return recipe;
 }
 function fcRegisterPart_(platform,part,index) {
@@ -135,6 +138,7 @@ function fcRegisterPart_(platform,part,index) {
 }
 function fcAdmin_(who,action,b) {
   fcCheck_(who.role==="admin","Organizer access required.");
+  if(action.startsWith("team_"))return fsAdmin_(who,action,b);
   if (action==="software_fixture") {
     fcCheck_(!b.version || /^[a-z0-9]{1,12}$/.test(b.version),"Invalid software fixture version.");
     const identifier="real_control_software_fixture"+(b.version?"_"+b.version:"");
@@ -190,6 +194,7 @@ function fcAdmin_(who,action,b) {
     })};
   }
   if (action==="runtime_cancel") {
+    if(typeof fsJob_==="function" && fsJob_(b.request_id))return fsAdmin_(who,"team_cancel",b);
     const key=fcRuntimeKey_(b),job=fcGet_(key,null);fcCheck_(job,"Runtime not found.");
     fcCheck_(!fcList_("attempt:").some(a=>a.request_id===b.request_id && a.task===b.task && a.status==="running"),"Close the active attempt first.");
     job.status="cancelled";job.note=finalsText_(b.reason,"Cancellation reason",2000);fcPut_(key,job);return {cancelled:true};
@@ -204,6 +209,7 @@ function fcAdmin_(who,action,b) {
   }
   if (action==="runtime_update") {
     const key=fcRuntimeKey_(b),job=fcGet_(key,null);fcCheck_(job && job.generation===b.generation && job.recipe_sha===b.recipe_sha,"Stale runtime update.");
+    fcCheck_(job.recipe.transport!=="chunk-v2","Chunk runtimes must be updated through their single team service.");
     fcCheck_(job.status!=="cancelled","Cancelled runtime rejects late worker updates.");
     fcCheck_(["building","validating","blocked","rebuilding","ready"].includes(b.status),"Invalid runtime status.");
     fcCheck_(!fcList_("attempt:").some(a=>a.request_id===b.request_id && a.task===b.task && a.status==="running"),"Active rollout prevents endpoint replacement.");
@@ -222,6 +228,7 @@ function fcAdmin_(who,action,b) {
 }
 
 function fcRpc_(who,action,b) {
+  if(action.startsWith("stream_"))return fsStream_(who,action,b);
   if (action==="queue") return {cards:fcCards_(who)};
   if (action==="register_references") {
     const enrolled=fcGet_("platform:"+who.platform,null);
@@ -234,6 +241,7 @@ function fcRpc_(who,action,b) {
     return {request_id:a.request_id,task:a.task,platform:a.platform,runtime:job?{status:job.status,generation:job.generation,note:job.note||"",cloud_id:job.cloud_id||"",updated_at:job.updated_at,proof:job.proof||null}:null};
   }
   if (action==="request_rebuild") {
+    if(typeof fsJob_==="function" && fsJob_(b.request_id))return fsAdmin_({role:"admin",email:who.email},"team_rebuild",b);
     const reason=finalsText_(b.reason,"Rebuild reason",2000),job=fcGet_(runtimeKey,null);fcCheck_(job,"No approved runtime recipe.");
     fcCheck_(job.status!=="cancelled","Cancelled runtime cannot be automatically restarted.");
     fcCheck_(!fcList_("attempt:").some(x=>x.request_id===b.request_id && x.task===b.task && x.status==="running"),"Close or discard the interrupted attempt before rebuilding.");
@@ -246,11 +254,13 @@ function fcRpc_(who,action,b) {
     const slot=a.plan[b.slot-1],reference=fcReference_(a,slot);fcCheck_(reference && reference.sha256===b.reference_sha256,"Reference image mismatch.");
     const attempts=fcList_("attempt:"),old=attempts.find(x=>x.start_key===b.idempotency_key);
     if (old) {fcCheck_(old.reviewer===who.email && old.start_hash===fcHash_(b) && old.status==="running","Start receipt cannot be replayed.");return {attempt_id:old.id,endpoint:fcGet_("endpoint:"+b.request_id+":"+b.task,null),resumed_receipt:true};}
+    if(typeof fsStart_==="function")fsStart_(who,b);
     const job=fcGet_(runtimeKey,null),meta=fcMeta_(b.request_id);fcCheck_(job && job.status==="ready" && meta.submission_checked && meta.platform_checks[a.platform],"Submission, model and platform checks must pass before starting.");
     fcCheck_(!attempts.some(x=>x.status==="running" && x.platform===a.platform),"Platform already has an active rollout.");
     fcCheck_(!attempts.some(x=>x.request_id===b.request_id && x.task===b.task && x.slot===b.slot && x.status!=="deleted"),"Slot already has a valid attempt.");
     const id=Utilities.getUuid().replace(/-/g,"");
     fcPut_("attempt:"+id,{id,request_id:b.request_id,task:b.task,slot:b.slot,platform:a.platform,reviewer:who.email,status:"running",created_at:now_(),start_key:b.idempotency_key,start_hash:fcHash_(b),outbox:{operation:"waiting",generation:1}});
+    if(typeof fsJob_==="function" && fsJob_(b.request_id)){const lease=fsLease_(fsTeam_(b.request_id));lease.attempt_id=id;fcPut_("lease:"+lease.team_id,lease);}
     return {attempt_id:id,endpoint:fcGet_("endpoint:"+b.request_id+":"+b.task,null),resumed_receipt:false};
   }
   const attempt=fcGet_("attempt:"+b.attempt_id,null);
@@ -260,11 +270,13 @@ function fcRpc_(who,action,b) {
     fcCheck_(typeof b.success==="boolean","Explicit outcome required.");const status=b.success?"success":"failure";
     fcCheck_(["running",status].includes(attempt.status),"Attempt is closed.");
     if(attempt.status==="running") {attempt.status=status;attempt.outbox.operation="upload";attempt.finished_at=now_();fcPut_("attempt:"+attempt.id,attempt);}
+    if(typeof fsDropLease_==="function" && fsJob_(b.request_id))fsDropLease_(b.request_id,attempt);
     return {status};
   }
   if (action==="discard") {
     const reason=finalsText_(b.reason,"Invalid experiment reason",2000);
     if (attempt.status!=="deleted") {attempt.status="deleted";attempt.reason=reason;attempt.outbox={operation:"delete",generation:attempt.outbox.generation+1};delete attempt.receipt;fcPut_("attempt:"+attempt.id,attempt);const meta=fcMeta_(b.request_id);meta.accepted[b.task]=false;fcPut_("review:"+b.request_id,meta);}
+    if(typeof fsDropLease_==="function" && fsJob_(b.request_id))fsDropLease_(b.request_id,attempt);
     return {status:"deleted"};
   }
   if (action==="upload_receipt") {
@@ -285,12 +297,12 @@ function fcRpc_(who,action,b) {
 }
 
 function finalsControl_(action,payload) {
-  fcCache_=null;
+  fcCache_=null;fcRequestCache_=null;
   const platform=action==="finals_platform_rpc";
   const who=platform?fcPlatform_(payload):reviewerIdentity_(payload),body=payload.body||{};
   if (action==="finals_reviewer_list") return fcOverview_(who);
   return withReviewLock_(()=>{
-    fcCache_=null;
+    fcCache_=null;fcRequestCache_=null;
     let result;
     if (platform) result=fcRpc_(who,payload.operation,body);
     else if (action.startsWith("finals_admin_control_")) result=fcAdmin_(who,action.slice("finals_admin_control_".length),body);
@@ -315,7 +327,7 @@ function finalsControl_(action,payload) {
       }
       else throw new Error("Unknown reviewer operation.");
     }
-    if (!["queue","attempt_state"].includes(payload.operation) && action!=="finals_admin_control_runtime_queue") fcAudit_(who.email||who.name,action,{operation:payload.operation||null,request_id:body.request_id||null,task:body.task||null,attempt_id:body.attempt_id||null});
+    if (!["queue","stream_poll","attempt_state"].includes(payload.operation) && !["finals_admin_control_runtime_queue","finals_admin_control_team_queue"].includes(action)) fcAudit_(who.email||who.name,action,{operation:payload.operation||null,request_id:body.request_id||null,task:body.task||null,attempt_id:body.attempt_id||null});
     return {ok:true,...result};
   });
 }
