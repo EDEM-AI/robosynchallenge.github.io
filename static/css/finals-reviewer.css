@@ -13,6 +13,14 @@
 .finals-review-check input { width:18px; height:18px; flex-shrink:0; accent-color:var(--accent); }
 .finals-review-notes { margin:14px 0; padding:12px 0; border-bottom:1px solid var(--line); }
 .finals-review-notes pre { white-space:pre-wrap; overflow-wrap:anywhere; font:14px/1.6 ui-monospace,monospace; }
+.finals-evidence { min-width:150px; max-width:480px; }
+.finals-evidence dl { margin:14px 0; padding:0 0 10px; border-bottom:1px solid var(--line); }
+.finals-evidence dt { font-weight:600; margin-top:8px; }
+.finals-evidence dd { margin:3px 0 0; overflow-wrap:anywhere; }
+.finals-evidence code { white-space:normal; font-size:12px; }
+.finals-evidence-attempt { padding:12px 0; border-bottom:1px solid var(--line); }
+.finals-evidence-attempt h4 { margin:0 0 10px; font-size:14px; }
+.finals-evidence-attempt .finals-evidence { min-width:0; max-width:100%; }
 .finals-review-metrics { display:flex; flex-wrap:wrap; gap:16px; margin:16px 0; color:var(--ink-soft); }
 .finals-review-toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:16px; font-size:14px; }
 .finals-review-toolbar span { margin-left:auto; overflow-wrap:anywhere; }

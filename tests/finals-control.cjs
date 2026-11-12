@@ -61,14 +61,64 @@ manifest.signature={algorithm:'HMAC-SHA256',value:crypto.createHmac('sha256',Buf
 const receipt={manifest,files:['evidence.zip','result.json'].map(n=>({target:'drive:root/'+req+'/click_bell/'+attempt.attempt_id+'/'+n,size:12,sha256:hash,verification:'server_metadata'}))};
 assert.equal(rpc('upload_receipt',{...identity,attempt_id:attempt.attempt_id,generation:1,receipt}).registered,true);
 assert.equal(review('list').requests[0].progress.collected,1);
+assert.equal(review('list').requests[0].attempts[0].evidence.length,2);
+assert.equal(review('list').requests[0].attempts[0].evidence[0].sha256,hash);
+assert.ok(!JSON.stringify(review('list')).includes(manifest.signature.value));
+assert.equal(ctx.finalsControl_('finals_reviewer_list',{email:'other@example.test'}).requests.length,0);
 assert.throws(()=>review('check',{request_id:req,check:'accept',task:'click_bell',checked:true}),/Twenty/);
 rpc('discard',{...identity,attempt_id:attempt.attempt_id,reason:'Placement incorrect'});
 assert.equal(rpc('upload_receipt',{...identity,attempt_id:attempt.attempt_id,generation:1,receipt}).registered,false);
 assert.equal(review('list').requests[0].progress.collected,0);
+assert.equal(review('list').requests[0].attempts[0].evidence.length,0);
 assert.equal(rpc('queue').cards.find(c=>c.slot===2).status,'pending');
 const rebuild=rpc('request_rebuild',{...identity,reason:'Network unavailable'});assert.equal(rebuild.generation,2);
 assert.equal(rpc('request_rebuild',{...identity,reason:'retry'}).generation,2);
 assert.throws(()=>admin('runtime_update',ready),/Stale/);
+
+// Exercise all five gates with 200 signed in-memory attempts, not cloud uploads.
+for(const task of tasks){
+  admin('assign',{request_id:req,task,platform:'platform_1',bundle_sha:bundle});
+  admin('runtime_approve',{request_id:req,task,recipe});
+  const current=admin('runtime_queue').jobs.find(j=>j.task===task);
+  admin('runtime_update',{...ready,task,recipe_sha:current.recipe_sha,generation:current.generation,
+    endpoint:{...endpoint,task,generation:current.generation}});
+}
+assert.deepEqual(Array.from(review('list').requests[0].progress.steps),[true,true,true,false,false]);
+function uploadSlot(task,slot,suffix='first'){
+  const id={request_id:req,task},card=rpc('queue').cards.find(c=>c.task===task&&c.slot===slot);
+  const started=rpc('start',{...start,...id,slot,idempotency_key:sha(task+slot+suffix).slice(0,32)});
+  const success=slot%2===0;
+  rpc('finish',{...id,attempt_id:started.attempt_id,success});
+  const signed={schema:'rsc-real-evidence-v1',identity:{...id,attempt_id:started.attempt_id,slot,
+    reviewer:'eval@example.test',platform:'platform_1',bundle_sha:bundle,plan_sha:card.plan_sha,
+    success,seed:card.seed,setting:card.setting,variant:card.variant},files:{},journal_root:hash};
+  signed.signature={algorithm:'HMAC-SHA256',value:crypto.createHmac('sha256',Buffer.from(signing,'hex')).update(ctx.fcCanonical_(signed)).digest('hex')};
+  rpc('upload_receipt',{...id,attempt_id:started.attempt_id,generation:1,receipt:{manifest:signed,
+    files:['evidence.zip','result.json'].map(n=>({target:'drive:root/'+req+'/'+task+'/'+started.attempt_id+'/'+n,size:12,sha256:hash,verification:'server_metadata'}))}});
+  return started.attempt_id;
+}
+let replacement;
+for(const task of tasks)for(let slot=1;slot<=20;slot++){
+  const id=uploadSlot(task,slot);if(task==='click_bell'&&slot===1)replacement=id;
+}
+assert.deepEqual(Array.from(review('list').requests[0].progress.steps),[true,true,true,true,false]);
+for(const task of tasks)review('check',{request_id:req,check:'accept',task,checked:true});
+assert.equal(review('list').requests[0].progress.completed,5);
+const unaffected=JSON.stringify(review('list').requests[0].attempts.filter(a=>a.task!=='click_bell'));
+rpc('discard',{...identity,attempt_id:replacement,reason:'Invalid placement in one recorded slot'});
+assert.equal(review('list').requests[0].progress.collected,199);
+assert.equal(Object.values(review('list').requests[0].review.accepted).filter(Boolean).length,9);
+uploadSlot('click_bell',1,'replacement');
+assert.equal(review('list').requests[0].progress.completed,4);
+review('check',{request_id:req,check:'accept',task:'click_bell',checked:true});
+assert.equal(review('list').requests[0].progress.completed,5);
+assert.equal(JSON.stringify(review('list').requests[0].attempts.filter(a=>a.task!=='click_bell')),unaffected);
+console.log('Finals five-stage lifecycle: 200 signed slots, mixed successes/failures, task acceptance and isolated single-slot replacement passed.');
+
+admin('runtime_cancel',{...identity,reason:'Test complete'});
+assert.throws(()=>admin('runtime_update',{...ready,generation:2,status:'blocked'}),/Cancelled/);
+assert.throws(()=>rpc('request_rebuild',{...identity,reason:'Late failed health probe'}),/Cancelled/);
+assert.equal(admin('runtime_queue').jobs[0].status,'cancelled');
 tables.Reviewers[0].active='false';assert.throws(()=>rpc('queue'),/no longer active/);
 assert.equal(Object.keys(tables).filter(n=>!['Reviewers','FinalsRequests'].includes(n)).every(n=>n.startsWith('Finals')),true);
 console.log('Finals control: auth, isolation, immutable routes, stage gates, runtime proofs, idempotent starts, signed uploads, invalidation, rebuild generations and revocation passed.');

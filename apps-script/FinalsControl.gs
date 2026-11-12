@@ -64,6 +64,11 @@ function fcStages_(id) {
     FINALS_TASKS.every(t=>meta.accepted[t]===true) && collected===200];
   return {steps,completed:steps.filter(Boolean).length,collected,total:200,ready:jobs.filter(j=>j.status==="ready").length};
 }
+function fcEvidenceFiles_(attempt) {
+  if (attempt.status==="deleted" || attempt.outbox.operation!=="complete" || !attempt.receipt) return [];
+  return attempt.receipt.files.map(file=>({target:file.target,size:file.size,sha256:file.sha256,
+    object_id:file.object_id||null,verification:file.verification}));
+}
 function fcOverview_(who) {
   const roster=JSON.parse(config_("FINALS_ROSTER_JSON","[]")).concat(JSON.parse(config_("FINALS_TEST_ROSTER_JSON","[]"))),latest={};
   finalsRows_().forEach(r=>{if(!latest[r.team_id] || Number(r.revision)>Number(latest[r.team_id].revision)) latest[r.team_id]=r;});
@@ -71,7 +76,7 @@ function fcOverview_(who) {
     ...finalsPublic_(r),team_name:(roster.find(t=>t.team_id===r.team_id)||{}).team_name||r.team_id,
     email:r.email,review:fcMeta_(r.request_id),progress:fcStages_(r.request_id),preparation:fcPrepared_(r.request_id),
     runtimes:fcList_("runtime:"+r.request_id+":"),assignments:fcList_("assignment:"+r.request_id+":"),
-    attempts:fcList_("attempt:").filter(a=>a.request_id===r.request_id).map(a=>({id:a.id,task:a.task,slot:a.slot,status:a.status,reviewer:a.reviewer,uploaded:a.outbox.operation==="complete",reason:a.reason||""})),
+    attempts:fcList_("attempt:").filter(a=>a.request_id===r.request_id).map(a=>({id:a.id,task:a.task,slot:a.slot,status:a.status,reviewer:a.reviewer,uploaded:a.outbox.operation==="complete",reason:a.reason||"",evidence:fcEvidenceFiles_(a)})),
     messages:fcList_("mail:").filter(m=>m.request_id===r.request_id).map(m=>({id:m.id,subject:m.subject,text:m.text,to:m.to,status:m.status,sent_at:m.sent_at||null}))
   }));
   // Endpoints and platform credentials are deliberately absent from browser responses.
@@ -194,6 +199,7 @@ function fcAdmin_(who,action,b) {
   }
   if (action==="runtime_update") {
     const key=fcRuntimeKey_(b),job=fcGet_(key,null);fcCheck_(job && job.generation===b.generation && job.recipe_sha===b.recipe_sha,"Stale runtime update.");
+    fcCheck_(job.status!=="cancelled","Cancelled runtime rejects late worker updates.");
     fcCheck_(["building","validating","blocked","rebuilding","ready"].includes(b.status),"Invalid runtime status.");
     fcCheck_(!fcList_("attempt:").some(a=>a.request_id===b.request_id && a.task===b.task && a.status==="running"),"Active rollout prevents endpoint replacement.");
     if (b.status==="ready") {
@@ -224,6 +230,7 @@ function fcRpc_(who,action,b) {
   }
   if (action==="request_rebuild") {
     const reason=finalsText_(b.reason,"Rebuild reason",2000),job=fcGet_(runtimeKey,null);fcCheck_(job,"No approved runtime recipe.");
+    fcCheck_(job.status!=="cancelled","Cancelled runtime cannot be automatically restarted.");
     fcCheck_(!fcList_("attempt:").some(x=>x.request_id===b.request_id && x.task===b.task && x.status==="running"),"Close or discard the interrupted attempt before rebuilding.");
     if (!["queued","building","validating","rebuilding"].includes(job.status)) {job.generation++;job.status="rebuilding";job.note=reason;job.updated_at=now_();fcPut_(runtimeKey,job);}
     return {status:job.status,generation:job.generation};
