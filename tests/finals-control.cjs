@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto');
-const tables={},properties={},sha=x=>crypto.createHash('sha256').update(x).digest('hex');
+const tables={},properties={},reads={},sha=x=>crypto.createHash('sha256').update(x).digest('hex');
 const ctx=vm.createContext({console,SHEETS:{},Date,JSON,Set,Map,
-  rows_:name=>{assert.notEqual(name,'Reviewers');return tables[name]||[];},reviewRows_:name=>tables[name]||[],appendRow_:(name,row)=>(tables[name]??=[]).push({...row,_rowNumber:(tables[name]||[]).length+2}),
+  rows_:name=>{assert.notEqual(name,'Reviewers');reads[name]=(reads[name]||0)+1;return tables[name]||[];},reviewRows_:name=>tables[name]||[],appendRow_:(name,row)=>(tables[name]??=[]).push({...row,_rowNumber:(tables[name]||[]).length+2}),
   updateRow_:(name,n,row)=>Object.assign(tables[name][n-2],row),
   reviewerIdentity_:p=>({role:p.role||'evaluator',email:p.email||'eval@example.test'}),
   config_:(k,d)=>properties[k]??d,reviewerHash_:sha,withReviewLock_:fn=>fn(),
@@ -84,6 +84,9 @@ for(const task of tasks){
     endpoint:{...endpoint,task,generation:current.generation}});
 }
 assert.deepEqual(Array.from(review('list').requests[0].progress.steps),[true,true,true,false,false]);
+reads.FinalsRequests=0;reads.FinalsVersions=0;
+assert.equal(admin('runtime_queue').jobs.length,10);
+assert.equal(reads.FinalsRequests,1);assert.equal(reads.FinalsVersions,1);
 function uploadSlot(task,slot,suffix='first'){
   const id={request_id:req,task},card=rpc('queue').cards.find(c=>c.task===task&&c.slot===slot);
   const started=rpc('start',{...start,...id,slot,idempotency_key:sha(task+slot+suffix).slice(0,32)});

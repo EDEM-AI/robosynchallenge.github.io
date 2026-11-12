@@ -182,7 +182,12 @@ function fcAdmin_(who,action,b) {
   }
   if (action==="runtime_queue") {
     fcPut_("worker:runtime",{last_seen:now_(),status:b.status||"online"});
-    return {jobs:fcList_("runtime:").map(j=>({...j,submission:JSON.parse(fcRequest_(j.request_id).submission_json),versions:finalsVersionRows_().find(r=>r.request_id===j.request_id)||null,active_attempt:fcList_("attempt:").some(a=>a.request_id===j.request_id && a.task===j.task && a.status==="running")}))};
+    const requests=finalsRows_(),versions=finalsVersionRows_();
+    const active=new Set(fcList_("attempt:").filter(a=>a.status==="running").map(a=>a.request_id+":"+a.task));
+    return {jobs:fcList_("runtime:").map(j=>{
+      const row=requests.find(r=>r.request_id===j.request_id);fcCheck_(row,"Unknown finals request.");
+      return {...j,submission:JSON.parse(row.submission_json),versions:versions.find(r=>r.request_id===j.request_id)||null,active_attempt:active.has(j.request_id+":"+j.task)};
+    })};
   }
   if (action==="runtime_cancel") {
     const key=fcRuntimeKey_(b),job=fcGet_(key,null);fcCheck_(job,"Runtime not found.");
