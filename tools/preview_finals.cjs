@@ -13,6 +13,8 @@ const config = JSON.parse(fs.readFileSync(configPath));
 fs.mkdirSync(stateDir, {recursive:true, mode:0o700});
 const statePath = path.join(stateDir, 'requests.json');
 const rows = fs.existsSync(statePath) ? JSON.parse(fs.readFileSync(statePath)) : [];
+const mailPath = path.join(stateDir,'receipt-mails.json');
+const mail = fs.existsSync(mailPath) ? JSON.parse(fs.readFileSync(mailPath)) : {};
 const paperPath = path.join(stateDir, 'papers.json');
 const papers = fs.existsSync(paperPath) ? JSON.parse(fs.readFileSync(paperPath)) : [];
 const previewProperties = {PAPER_INTAKE_ENABLED:'true', PAPER_DRIVE_ROOT_ID:'paper-preview', PAPER_TEST_DRIVE_ROOT_ID:'paper-test-preview'};
@@ -52,6 +54,11 @@ const context = vm.createContext({
     fs.renameSync(statePath+'.tmp',statePath); rows.push(row);
   },
   reviewerHash_:hash, withReviewLock_:fn=>fn(), checkRateLimit_:(kind,email,n,ms)=>rate(kind+email,n,ms),
+  fcNotify_:(key,subject,text,to,context)=>{
+    if(mail[key])return;
+    mail[key]={subject,text,to,...context,status:'preview_only'};
+    fs.writeFileSync(mailPath+'.tmp',JSON.stringify(mail),{mode:0o600});fs.renameSync(mailPath+'.tmp',mailPath);
+  },
   id_:prefix=>prefix+'_'+crypto.randomUUID().replaceAll('-','').slice(0,14), now_:()=>new Date().toISOString(),
 });
 vm.runInContext(fs.readFileSync(path.join(root,'apps-script/Finals.gs'),'utf8'), context);
@@ -90,11 +97,11 @@ http.createServer(async (req,res) => {
   }
   const preview = pathname === '/finals/preview/preliminary/';
   const material = ['/material/RoboSynChallenge-2026-submission-template.zip','/material/RoboSynChallenge-report.pdf'].includes(pathname);
-  const allowed = material || preview || pathname === '/' || pathname === '/finals/' || pathname === '/faq/' || /^\/static\/(css|js|assets)\/[a-zA-Z0-9_./-]+$/.test(pathname);
+  const allowed = material || preview || pathname === '/' || pathname === '/faq/' || /^\/static\/(css|js|assets|templates)\/[a-zA-Z0-9_./-]+$/.test(pathname);
   if(!allowed || pathname.split('/').includes('..')) return reply(res,404,{ok:false});
   const name = preview ? 'finals/preview/preliminary/index.html' : pathname === '/' ? 'index.html' : pathname === '/finals/' ? 'finals/index.html' : pathname === '/faq/' ? 'faq/index.html' : pathname.slice(1);
   const file=path.resolve(root,name);
   if(!file.startsWith(root+path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) return reply(res,404,{ok:false});
   res.writeHead(200, {'Content-Type':types[path.extname(file)]||'application/octet-stream','Cache-Control':'no-store'});
   fs.createReadStream(file).pipe(res);
-}).listen(Number(portText),'127.0.0.1',()=>console.log('Finals preview: http://127.0.0.1:'+portText+'/finals/'));
+}).listen(Number(portText),'127.0.0.1',()=>console.log('Finals preview: http://127.0.0.1:'+portText+'/#/submit-policy'));

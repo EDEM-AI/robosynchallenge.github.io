@@ -5,6 +5,7 @@ const vm = require('node:vm');
 const rows = [];
 const preparations = [];
 const versions = [];
+const notices = new Map();
 const config = { FINALS_INTAKE_ENABLED:'true', FINALS_DEADLINE_AT:'2099-01-01T00:00:00Z',
   FINALS_ROSTER_JSON:JSON.stringify([{email:'finalist@example.test',team_id:'team1',team_name:'Team',enabled:true}]) };
 let active = true, sequence = 0;
@@ -16,6 +17,7 @@ const ctx = vm.createContext({ console, Date:class extends Date { static now(){r
   reviewerIdentity_:p=>({role:p.fixture_role||'evaluator'}), requiredEmail_:s=>String(s).trim().toLowerCase(),
   PropertiesService:{getScriptProperties:()=>({setProperties:values=>Object.assign(config,values)})},
   reviewerHash_:x=>crypto.createHash('sha256').update(x).digest('hex'), withReviewLock_:fn=>fn(),
+  fcNotify_:(key,subject,text,to,context)=>{if(!notices.has(key))notices.set(key,{subject,text,to,...context});},
   checkRateLimit_:()=>{}, id_:prefix=>prefix+'_'+(++sequence), now_:()=>new Date().toISOString() });
 vm.runInContext(fs.readFileSync(require('node:path').join(__dirname,'../apps-script/Finals.gs'),'utf8'),ctx);
 const call=(action,payload)=>ctx.handleFinalsAction_(action,payload);
@@ -37,6 +39,23 @@ assert.equal(result.request.submission.commit,undefined);
 assert.equal(result.request.submission.checkpoints[0].revision,undefined);
 assert.equal(call('finals_submit',{...payload,submission:{...submission,commit:'a'.repeat(40),version_cutoff_at:'2000-01-01T00:00:00Z'}}).already_recorded,true);
 assert.equal(call('finals_submit',payload).already_recorded,true);assert.equal(rows.length,1);
+assert.equal(notices.size,1);
+const receiptMail=[...notices.values()][0];
+assert.equal(receiptMail.to,'finalist@example.test');
+assert.equal(receiptMail.request_id,result.request.request_id);
+assert.match(receiptMail.text,/confirms receipt only/);
+assert.match(receiptMail.text,/#\/submit-policy/);
+assert.ok(receiptMail.text.includes('Submission revision: 1'));
+const notify=ctx.fcNotify_;
+ctx.fcNotify_=()=>{throw Error('Queue unavailable');};
+assert.throws(()=>call('finals_submit',{...payload,submission_key:'retry_queue_failure_01'}),/Queue unavailable/);
+assert.equal(rows.length,1);
+ctx.fcNotify_=notify;
+const append=ctx.appendRow_;
+ctx.appendRow_=()=>{throw Error('Storage unavailable');};
+assert.throws(()=>call('finals_submit',{...payload,submission_key:'retry_append_failure_1'}),/Storage unavailable/);
+assert.equal(rows.length,1);
+ctx.appendRow_=append;
 assert.throws(()=>call('finals_submit',{...payload,submission:{...submission,method_name:'Changed'}}),/different content/);
 for(const bad of [
   {...submission,code_ref:'a'.repeat(40)},

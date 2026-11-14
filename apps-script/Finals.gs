@@ -93,6 +93,28 @@ function finalsPublic_(row) {
     created_at: row.created_at, is_test: row.is_test === true || row.is_test === "true", submission: JSON.parse(row.submission_json) };
 }
 
+function finalsQueueReceipt_(row, teamName) {
+  const submission = JSON.parse(row.submission_json);
+  const testing = row.is_test === true || row.is_test === "true";
+  const text = ["Dear " + (teamName || "participant") + ",", "",
+    "We have received your real-robot finals policy submission.",
+    testing ? "This is a test-account submission, not an official competition entry." : "",
+    "Request ID: " + row.request_id, "Submission revision: " + row.revision,
+    "Received at (UTC): " + row.created_at,
+    "Method: " + submission.method_name, "Code repository: " + submission.repository,
+    "Code branch: " + (submission.code_ref || "repository default branch"),
+    "Task coverage: all 10 official tasks", "Checkpoint sources: " + submission.checkpoints.length,
+    "Version cutoff (UTC, exclusive): " + submission.version_cutoff_at, "",
+    "This email confirms receipt only. It does not confirm eligibility, repository/checkpoint access, code validation, or evaluation completion.",
+    "The organizers will select code and checkpoint versions according to the published deadline policy. You do not need to reply to this automated receipt.",
+    "View your submission or submit an updated revision before the deadline:",
+    "https://robosyn-bench.net/#/submit-policy", "",
+    "Finals FAQ: https://robosyn-bench.net/faq/#finals", "", "RoboSynChallenge Organizing Team"].join("\n");
+  fcNotify_(reviewerHash_("finals-submission-receipt:" + row.request_id),
+    (testing ? "[TEST] " : "") + "[RoboSynChallenge] Finals Policy Submission Received - " + row.request_id,
+    text, requiredEmail_(row.email), {kind:"submission_receipt", request_id:row.request_id});
+}
+
 function finalsVersionRows_() {
   SHEETS.FinalsVersions = ["request_id", "fingerprint", "resolved_at", "version_json"];
   return rows_("FinalsVersions");
@@ -153,6 +175,7 @@ function handleFinalsAction_(action, payload) {
     const receipt = existing.find(row => row.retry_key === key);
     if (receipt) {
       if (receipt.fingerprint !== fingerprint) throw new Error("Retry key belongs to different content.");
+      finalsQueueReceipt_(receipt, identity.team.team_name);
       return { ok: true, already_recorded: true, request: finalsPublic_(receipt) };
     }
     if (!enabled || !Number.isFinite(deadlineMs) || Date.now() >= deadlineMs) throw new Error("Finals intake is not currently open.");
@@ -161,6 +184,9 @@ function handleFinalsAction_(action, payload) {
     const row = { request_id: id_("real"), team_id: identity.team.team_id, email: identity.email,
       retry_key: key, fingerprint, revision, status: identity.team.is_test ? "test_submitted" : "submitted",
       created_at: now_(), submission_json: JSON.stringify(submission), is_test: Boolean(identity.team.is_test) };
+    // Queue intent first under the same lock. The sender requires the saved
+    // request before delivery, so an unsuccessful append cannot send a receipt.
+    finalsQueueReceipt_(row, identity.team.team_name);
     appendRow_("FinalsRequests", row);
     return { ok: true, already_recorded: false, request: finalsPublic_(row) };
   });

@@ -47,6 +47,8 @@ const {once} = require('node:events');
     const restored=await api('finals_status',{session_id});
     assert.equal(restored.requests.length,1);assert.equal(restored.requests[0].request_id,id);
     assert.equal((await api('finals_submit',{session_id,submission,submission_key})).already_recorded,true);
+    const mail=Object.values(JSON.parse(fs.readFileSync(path.join(directory,'state/receipt-mails.json'))));
+    assert.equal(mail.length,1);assert.equal(mail[0].to,users[0].email);assert.equal(mail[0].request_id,id);
     session_id=await login(users[1].email);
     const other=await api('finals_status',{session_id});
     assert.equal(other.eligible,false);assert.equal(other.intake_open,false);assert.deepEqual(other.requests,[]);

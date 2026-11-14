@@ -138,3 +138,17 @@ ctx.finalsControlMailTick();assert.equal(sent,1);
 ctx.finalsControlMailTick();assert.equal(sent,1);assert.ok(queries.some(q=>q.includes('rscfinalsnotice')));
 assert.equal(admin('mail_status').messages[0].status,'sent');
 console.log('Finals mail: uncertain sends reconciled through a unique body reference despite Gmail Message-ID rewriting; no duplicate send.');
+deliveryUncertain=false;
+ctx.fcNotify_('orphan-receipt','Receipt','Uncommitted request','admin@example.test',
+  {kind:'submission_receipt',request_id:'missing_request'});
+ctx.finalsControlMailTick();assert.equal(sent,1);
+const persisted=tables.FinalsRequests.find(r=>r.request_id===req);
+persisted.email='participant@example.test';
+ctx.fcNotify_('wrong-recipient','Receipt','Wrong recipient','other@example.test',
+  {kind:'submission_receipt',request_id:req});
+ctx.finalsControlMailTick();assert.equal(sent,1);
+ctx.fcNotify_('saved-receipt','Receipt','Saved request',persisted.email,
+  {kind:'submission_receipt',request_id:req});
+ctx.finalsControlMailTick();assert.equal(sent,2);
+ctx.finalsControlMailTick();assert.equal(sent,2);
+console.log('Submission receipts: unsaved requests never send; saved requests deliver once.');

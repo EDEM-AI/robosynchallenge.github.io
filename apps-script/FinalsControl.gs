@@ -54,9 +54,9 @@ function fcMayReview_(who,id,write) {
   if (!write && ["admin","observer","supervisor"].includes(who.role)) return;
   fcCheck_(who.role==="admin" || (who.role==="evaluator" && fcMeta_(id).owner===who.email),"This request is not assigned to you.");
 }
-function fcNotify_(key, subject, text, email) {
+function fcNotify_(key, subject, text, email, context) {
   if (fcGet_("mail:"+key,null)) return;
-  fcPut_("mail:"+key,{id:key,to:email || "robosynchallenge@gmail.com",subject,text,status:"pending",created_at:now_()});
+  fcPut_("mail:"+key,{...context,id:key,to:email || "robosynchallenge@gmail.com",subject,text,status:"pending",created_at:now_()});
 }
 function fcStages_(id) {
   const meta=fcMeta_(id),prepared=fcPrepared_(id),jobs=fcList_("runtime:"+id+":"),assignments=fcList_("assignment:"+id+":"),attempts=fcList_("attempt:").filter(a=>a.request_id===id && a.status!=="deleted");
@@ -335,7 +335,12 @@ function finalsControl_(action,payload) {
 function finalsControlMailTick() {
   // Persist a sending state before the external side effect. Uncertain sends are
   // reconciled by Message-ID instead of blindly sending another notification.
-  const pending=withReviewLock_(()=>{fcCache_=null;return fcList_("mail:").filter(m=>["pending","sending"].includes(m.status)).slice(0,10);});
+  const pending=withReviewLock_(()=>{
+    fcCache_=null;
+    const requests=Object.fromEntries(finalsRows_().map(r=>[r.request_id,r]));
+    return fcList_("mail:").filter(m=>["pending","sending"].includes(m.status) &&
+      (m.kind!=="submission_receipt" || requests[m.request_id]?.email===m.to)).slice(0,10);
+  });
   pending.forEach(mail=>{
     const messageId="finals-"+mail.id+"@robosyn-bench.net";
     const marker="rscfinalsnotice"+reviewerHash_(mail.id);
