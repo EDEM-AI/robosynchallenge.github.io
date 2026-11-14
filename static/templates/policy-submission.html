@@ -1,32 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Finals Policy Submission | RoboSynChallenge</title>
-  <link rel="stylesheet" href="../static/css/site.css">
-  <link rel="stylesheet" href="../static/css/pages.css">
-  <link rel="stylesheet" href="../static/css/finals.css">
-  <script defer src="../static/config.js"></script>
-  <script defer src="../static/js/lucide.min.js"></script>
-  <script defer src="../static/js/finals-redirect.js?v=20261114-unified-submit"></script>
-</head>
-<body class="finals-page">
-  <div class="site-chrome"></div>
-  <header class="site-header">
-    <div class="shell header-row">
-      <a class="brand" href="../#/home">
-        <span class="brand-mark">RS</span>
-        <span class="brand-copy"><strong>RoboSynChallenge</strong><small>NeurIPS 2026 Competition</small></span>
-        <img class="brand-event-logo" src="../static/assets/neurips-logo.svg" alt="NeurIPS">
-      </a>
-      <a class="finals-faq" href="../faq/#finals">Finals FAQ</a>
-      <div id="account" class="header-actions" hidden>
-        <div class="user-badge"><span id="identity"></span><small id="test-badge" hidden>Test account</small></div>
-        <button id="logout" class="button button-secondary" type="button">Sign out</button>
-      </div>
-    </div>
-  </header>
+<template>
   <main class="page-shell">
     <div class="shell finals-status"><p id="notice" class="form-status" role="status" aria-live="polite"></p></div>
     <section id="login-section" class="section shell auth-grid single">
@@ -54,7 +26,7 @@
           <p>We strongly encourage you to submit a technical report. Submitted reports will be included in the preliminary-stage technical reports.</p>
           <p>We recommend posting your report on arXiv and citing the RoboSynChallenge paper.</p>
           <div id="report-links" class="cta-row">
-            <a class="button button-primary" href="../#/workshop/submit"><i data-lucide="file-up" aria-hidden="true"></i> Submit a paper</a>
+            <a class="button button-primary" href="/#/workshop/submit"><i data-lucide="file-up" aria-hidden="true"></i> Submit a paper</a>
             <a id="report-paper" class="button button-secondary" href="https://arxiv.org/abs/2608.12416" target="_blank" rel="noopener noreferrer"><i data-lucide="book-open" aria-hidden="true"></i> RoboSynChallenge paper</a>
           </div>
         </div>
@@ -66,13 +38,13 @@
         <h1>Submit your evaluation artifact.</h1>
         <p class="lead">Code repository, Hugging Face checkpoints, data source, and run notes.</p>
         <p class="helper-note">Submission deadline: <strong>November 15, 2026, 23:59 AoE</strong> (UTC&minus;12)</p>
-        <p class="helper-note"><a href="../#/workshop/submit">Submit your technical report</a></p>
+        <p class="helper-note"><a href="/#/workshop/submit">Submit your technical report</a></p>
       </header>
       <section class="section shell finals-submission">
         <form id="submission" class="panel-stack" hidden>
           <div class="card finals-form">
             <div class="section-heading left"><span class="eyebrow">Policy submission</span><h2>Required fields</h2></div>
-            <p class="helper-note"><strong>Each evaluation request must cover all 10 tasks.</strong> <a href="../faq/#finals">Submission FAQ</a></p>
+            <p class="helper-note"><strong>Each evaluation request must cover all 10 tasks.</strong> <a href="/faq/#finals">Submission FAQ</a></p>
             <div class="form-grid">
               <label class="field"><span>Method name</span><input name="method_name" placeholder="Policy artifact name" required maxlength="200"></label>
               <label class="field"><span>Code branch (optional)</span><input name="code_ref" placeholder="Repository default branch" maxlength="200" spellcheck="false"></label>
@@ -106,5 +78,4 @@
       </section>
     </div>
   </main>
-</body>
-</html>
+</template>

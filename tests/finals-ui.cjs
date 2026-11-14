@@ -81,8 +81,8 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
       await page.getByRole('button',{name:'Submit finals request'}).click();
       await page.waitForFunction(()=>document.querySelector('#notice').textContent.includes('Received'));
       assert.ok(retryKey);
-      await page.goto(base+'/finals/',{waitUntil:'domcontentloaded'});
-      await page.locator('#submission').waitFor({state:'visible'});
+      assert.equal((await page.request.get(base+'/finals/')).status(),404);
+      assert.equal((await page.request.get(base+'/finals/index.html')).status(),404);
       assert.equal(new URL(page.url()).pathname,'/');
       assert.equal(new URL(page.url()).hash,'#/submit-policy');
       eligible=false;
@@ -113,6 +113,6 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
     await page.screenshot({path:dir+'/preliminary-preview-'+width+'.png'});
     await context.close();
   }
-  console.log('Finals UI: canonical Submit Policy, main-site login, legacy redirect, ten-task submission, drafts, nonfinalist isolation, 1440/390/320 widths passed.');
+  console.log('Finals UI: canonical Submit Policy, main-site login, old entry removed, ten-task submission, drafts, nonfinalist isolation, 1440/390/320 widths passed.');
   } finally {await browser.close();await new Promise(resolve=>server.close(resolve));}
 })().catch(error=>{console.error(error);process.exit(1);});

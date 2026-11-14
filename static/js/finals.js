@@ -149,10 +149,10 @@
   window.ROBO_SYN_FINALS = {
     async mount(root, identity) {
       try {
-        const response = await fetch('finals/index.html?v=20261114-unified-submit');
+        const response = await fetch('static/templates/policy-submission.html?v=20261114-canonical-only');
         if (!response.ok) throw new Error('Could not load the submission form. Please reload.');
         const document = new DOMParser().parseFromString(await response.text(), 'text/html');
-        const main = document.querySelector('main');
+        const main = document.querySelector('template')?.content.querySelector('main');
         if (!main) throw new Error('Submission form unavailable. Please reload.');
         for (const link of main.querySelectorAll('a[href]')) {
           link.href = new URL(link.getAttribute('href'), response.url).href;
