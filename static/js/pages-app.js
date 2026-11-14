@@ -2084,30 +2084,7 @@
       return renderLoginPage();
     }
 
-    if (backendConfigured() && !remoteState.submissionAccessLoading &&
-        (remoteState.submissionAccessSession !== state.session.session_id || (!remoteState.submissionAccess && !remoteState.submissionAccessError))) void loadSubmissionAccess();
-    const submissionForm = backendConfigured() ? renderPolicySubmissionForm() : `
-      <section class="section shell" data-policy-submit>
-        ${renderBackendUnavailableCard("Policy submission backend unavailable")}
-      </section>
-    `;
-
-    return `
-      <section class="page-hero shell data-hero">
-        <span class="eyebrow">Policy submission</span>
-        <h1>Submit your evaluation artifact.</h1>
-        <p class="lead data-lead">
-          Provide the code repository, Hugging Face checkpoint, data source, and run notes needed by
-          the organizers to evaluate your policy.
-        </p>
-        <div class="cta-row">
-          <a href="${routeHref("evaluation")}" class="button button-secondary">Evaluation overview</a>
-          <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-ghost">Policy tutorial ↗</a>
-        </div>
-      </section>
-
-      ${submissionForm}
-    `;
+    return '<div class="finals-page" data-finals-submit><p class="shell" role="status">Loading submission form...</p></div>';
   }
 
   function renderEvaluationPage() {
@@ -2121,7 +2098,7 @@
         </p>
         <p class="helper-note"><strong>Each evaluation request must cover all 10 tasks.</strong> Include the checkpoint mapping and run commands in one submission. Partial-task requests are not valid.</p>
         <div class="cta-row">
-          <a href="finals/" class="button button-primary">Submit for the finals</a>
+          <a href="${routeHref("submit-policy")}" class="button button-primary">Submit Policy</a>
           <a href="${POLICY_TUTORIAL_URL}" target="_blank" rel="noreferrer" class="button button-secondary">Policy tutorial ↗</a>
           <a href="${routeHref("leaderboard")}" class="button button-ghost">View leaderboard</a>
         </div>
@@ -2809,6 +2786,10 @@
         break;
       case "submit-policy":
         renderSection(renderSubmitPolicyPage(), currentUser() ? "Submit Policy" : "Sign In");
+        if (currentUser()) {
+          const root = appEl.querySelector('[data-finals-submit]');
+          if (root) window.ROBO_SYN_FINALS.mount(root, {session_id:state.session.session_id, email:currentUser().email});
+        }
         break;
       case "faq":
         if (!isFaqPath()) {

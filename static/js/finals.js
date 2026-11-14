@@ -1,8 +1,8 @@
 (() => {
   "use strict";
-  const $ = id => document.getElementById(id);
-  const key = "rsc-finals-session-v1";
-  let session = null, status = null, pending = null;
+  function init(root, identity) {
+  const $ = id => root.querySelector('#' + id);
+  let session = identity, status = null, pending = null;
   function message(text) { $("notice").textContent = text; }
   async function api(action, payload = {}) {
     const url = window.ROBO_SYN_CONFIG?.API_BASE_URL;
@@ -91,13 +91,9 @@
   }
   async function refresh() {
     status = await api("finals_status");
-    // Keep the workshop upload identity in sync when entering from finals.
-    sessionStorage.setItem("robosynchallenge-session-v1", JSON.stringify({version:1,
-      session:{session_id:session.session_id}, user:{email:session.email, team_name:status.team_name || "", role:"participant"}}));
-    $("login-section").hidden = true; $("account").hidden = false;
+    // The main-site session remains authoritative for policy and paper uploads.
+    $("login-section").hidden = true;
     $("finalist-content").hidden = !status.eligible;
-    $("identity").textContent = status.team_name || session.email;
-    $("test-badge").hidden = !status.is_test;
     $("not-finalist").hidden = status.eligible; $("history").hidden = !status.eligible;
     $("submission").hidden = !status.intake_open;
     $("requests").replaceChildren();
@@ -111,15 +107,6 @@
     else message(status.eligible ? "Finals submissions are not open at this time." : "");
   }
   $("add-checkpoint").onclick = () => { checkpoint(); saveDraft(); };
-  $("logout").onclick = () => { sessionStorage.removeItem(key); sessionStorage.removeItem("robosynchallenge-session-v1"); location.reload(); };
-  $("login").onsubmit = async e => {
-    e.preventDefault(); const button = e.target.querySelector("button"); button.disabled = true;
-    try {
-      const email = get(e.target,"email"); const data = await api("login", { email, token: get(e.target,"token") });
-      session = { email, session_id: data.session_id }; sessionStorage.setItem(key, JSON.stringify(session));
-      e.target.elements.token.value = ""; await refresh();
-    } catch (error) { message(error.message); } finally { button.disabled = false; }
-  };
   function updateTaskStatus() {
     const sources = new Set([...$("checkpoints").children].map(row => get(row, "id")).filter(Boolean));
     let count = 0;
@@ -156,7 +143,27 @@
     } catch (error) { message(error.name === "AbortError" ? "Outcome unknown. Your retry key is retained; retry the unchanged submission safely." : error.message); }
     finally { $("submit-button").disabled = false; }
   };
-  try { session = JSON.parse(sessionStorage.getItem(key) || "null"); } catch { sessionStorage.removeItem(key); }
   if (session?.session_id) refresh().catch(error => message(error.message));
   window.lucide?.createIcons();
+  }
+  window.ROBO_SYN_FINALS = {
+    async mount(root, identity) {
+      try {
+        const response = await fetch('finals/index.html?v=20261114-unified-submit');
+        if (!response.ok) throw new Error('Could not load the submission form. Please reload.');
+        const document = new DOMParser().parseFromString(await response.text(), 'text/html');
+        const main = document.querySelector('main');
+        if (!main) throw new Error('Submission form unavailable. Please reload.');
+        for (const link of main.querySelectorAll('a[href]')) {
+          link.href = new URL(link.getAttribute('href'), response.url).href;
+        }
+        if (!root.isConnected) return;
+        root.innerHTML = main.innerHTML;
+        root.querySelector('#login-section').hidden = true;
+        init(root, identity);
+      } catch (error) {
+        if (root.isConnected) root.textContent = error.message;
+      }
+    }
+  };
 })();
