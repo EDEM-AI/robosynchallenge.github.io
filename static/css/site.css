@@ -873,6 +873,14 @@ code {
   border-top: 1px solid var(--line);
 }
 
+.material-group-title {
+  margin: 26px 0 12px;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
 .material-row {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) 24px;

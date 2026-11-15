@@ -28,7 +28,7 @@ async function main() {
     ["J5 and J6", /confirmed.*real-robot limits.*will be fixed/s],
     ["manually written rules", /only read.*obs/],
     ["every 0.1 seconds", /official AgileX SDK.*constrains action execution/s],
-    ["intrinsics remain unchanged", /official RealSense SDK for all setups.*CCTag/s],
+    ["intrinsics remain unchanged", /official RealSense SDK for all setups.*AprilTag.*all three setups.*Real-robot materials/s],
     ["orientation reset", /beaker.*spout.*Evaluators will ensure/s],
     ["lighting remain fixed", /Lighting remains fixed within an episode/],
     ["evaluation of water_pouring", /No water is used/],

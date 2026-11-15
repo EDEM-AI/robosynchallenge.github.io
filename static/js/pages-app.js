@@ -40,6 +40,32 @@
       url: "https://drive.google.com/drive/folders/1Z8fP57A7ChdWGbW6Ckw9fHsZ5b91a5-3",
     },
   ];
+  const CALIBRATION_MATERIALS = [
+    {
+      id: "platform_1_calibration",
+      title: "Platform 1",
+      detail: "10 samples + AprilTag board",
+      format: "ZIP · 15.5 MiB",
+      icon: "scan-line",
+      url: "https://drive.google.com/drive/folders/1wcmo4X6ORqHjak1zpE0CrrcTAdv_uugS",
+    },
+    {
+      id: "platform_2_calibration",
+      title: "Platform 2",
+      detail: "10 samples + AprilTag board",
+      format: "ZIP · 15.2 MiB",
+      icon: "scan-line",
+      url: "https://drive.google.com/drive/folders/1e3rxgLlyiqyNHdSjCFWFYhA_nUf-mop-",
+    },
+    {
+      id: "platform_3_calibration",
+      title: "Platform 3",
+      detail: "38 samples + AprilTag board",
+      format: "ZIP · 21.6 MiB",
+      icon: "scan-line",
+      url: "https://drive.google.com/drive/folders/1NZ9nY81MkPaeYHyAoEcHJpO7oYuqwjXw",
+    },
+  ];
   const DEFAULT_VIDEO_URL = "static/assets/demo-eval.mp4";
   const ACCESS_REQUEST_INTAKE_CLOSED = true;
   const POLICY_SUBMISSION_INTAKE_CLOSED = true;
@@ -578,7 +604,7 @@
     },
     {
       question: "Will the positions, orientations, intrinsics, and extrinsics of the third-person, overhead, and wrist cameras be provided? Is the left-offset third-person view intentional? Does not deliberately introducing pose differences also mean that the intrinsics remain unchanged?",
-      answer: `<p>These have already been provided in simulation. There will be some unintentional differences between the real setup and simulation; these are sim-to-real differences that participants need to overcome.</p><p>We will not deliberately introduce differences. Camera intrinsics can differ due to manufacturing variations. The RealSense SDK can read the factory-calibrated intrinsics. We have performed an initial alignment in simulation. We will publish the intrinsics read through the official RealSense SDK for all setups and release CCTag calibration samples for each setup.</p>`,
+      answer: `<p>These have already been provided in simulation. There will be some unintentional differences between the real setup and simulation; these are sim-to-real differences that participants need to overcome.</p><p>We will not deliberately introduce differences. Camera intrinsics can differ due to manufacturing variations. The RealSense SDK can read the factory-calibrated intrinsics. We have performed an initial alignment in simulation. We will publish the intrinsics read through the official RealSense SDK for all setups. AprilTag calibration samples and printable boards for all three setups are available under <a href="/#/data">Real-robot materials</a>.</p>`,
     },
     {
       question: "Will the mounting dimensions and coordinate relationships between the robot arms, cameras, and tabletop be published?",
@@ -1898,11 +1924,16 @@
           <article class="data-panel data-panel-materials" aria-labelledby="final-materials-title">
             <header class="data-panel-header">
               <div><span class="tag">Final round</span><h2 id="final-materials-title">Real-robot materials</h2></div>
-              <strong class="data-count">${FINAL_ROUND_MATERIALS.length}<small>resources</small></strong>
+              <strong class="data-count">${FINAL_ROUND_MATERIALS.length + CALIBRATION_MATERIALS.length}<small>resources</small></strong>
             </header>
-            <p>3D files for the final-round real-robot setup.</p>
+            <p>3D hardware files and camera calibration samples for the final-round real-robot setups.</p>
+            ${[
+              { title: "3D hardware files", items: FINAL_ROUND_MATERIALS },
+              { title: "Camera calibration", items: CALIBRATION_MATERIALS },
+            ].map((group) => `
+            <h3 class="material-group-title">${escapeHtml(group.title)}</h3>
             <div class="material-list">
-              ${FINAL_ROUND_MATERIALS.map((material) => `
+              ${group.items.map((material) => `
                 <a class="material-row" data-material="${escapeHtml(material.id)}" href="${escapeHtml(material.url)}" target="_blank" rel="noopener noreferrer" title="View ${escapeHtml(material.title)} in Google Drive">
                   <span class="material-icon" aria-hidden="true"><i data-lucide="${escapeHtml(material.icon)}"></i></span>
                   <span class="material-info"><strong>${escapeHtml(material.title)}</strong><span class="material-meta"><span>${escapeHtml(material.detail)}</span><span>${escapeHtml(material.format)}</span></span></span>
@@ -1910,6 +1941,7 @@
                 </a>
               `).join("")}
             </div>
+            `).join("")}
           </article>
         </div>
       </section>

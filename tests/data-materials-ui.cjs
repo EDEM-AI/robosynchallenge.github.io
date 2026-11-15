@@ -15,11 +15,14 @@ async function main() {
     assert.equal(source.match(panel)[0], original.match(panel)[0], `${type} data panel remains unchanged`);
   }
   const materials = new Function("return " + source.match(/const FINAL_ROUND_MATERIALS = (\[[\s\S]*?\n  \]);/)[1])();
+  const calibration = new Function("return " + source.match(/const CALIBRATION_MATERIALS = (\[[\s\S]*?\n  \]);/)[1])();
   assert.deepEqual(materials.map(item => item.id), ["cam_high", "cam_wrist", "mounting_plate"]);
-  assert.equal(new Set(materials.map(item => item.url)).size, 3);
+  assert.deepEqual(calibration.map(item => item.id), ["platform_1_calibration", "platform_2_calibration", "platform_3_calibration"]);
+  materials.push(...calibration);
+  assert.equal(new Set(materials.map(item => item.url)).size, 6);
   for (const item of materials) {
     assert.match(item.url, /^https:\/\/drive\.google\.com\/drive\/folders\/[\w-]+$/);
-    assert.match(item.title + item.detail + item.format, /^[\x20-\x7e]+$/);
+    assert.match(item.title + item.detail + item.format, /^[\x20-\x7e\u00b7]+$/);
   }
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "rsc-materials-chrome-"));
   const chrome = spawn("google-chrome", ["--headless=new", "--no-sandbox", "--disable-gpu", "--disable-background-networking",
@@ -75,7 +78,8 @@ async function main() {
     for (const [width, height, mobile, name] of [[1440, 1000, false, "desktop"], [390, 844, true, "mobile"], [320, 740, true, "mobile-small"]]) {
       await rpc("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile });
       await rpc("Page.navigate", { url: base + "/#/data" });
-      await until("document.querySelectorAll('.material-row').length===3 && document.querySelectorAll('.material-row svg').length===6");
+      await until("document.querySelectorAll('.material-row').length===6 && document.querySelectorAll('.material-row svg').length===12");
+      assert.deepEqual(await evaluate("[...document.querySelectorAll('.material-group-title')].map(el=>el.textContent)"), ["3D hardware files", "Camera calibration"]);
       await evaluate("document.fonts.ready");
       await until("[...document.querySelectorAll('.data-panel > img')].every(img=>img.complete && img.naturalWidth>0)");
       assert.equal(await evaluate("document.querySelectorAll('.data-columns > .data-panel').length"), 3);
