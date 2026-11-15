@@ -62,12 +62,14 @@ def preview_queue(queue, call, prepare, state_dir, now, retries, interval=300):
         path = state_dir / (identifier + '-preview.json')
         try:
             retry = retries.get(identifier, {})
-            if retry.get('fingerprint') == job['fingerprint'] and retry.get('next_at', 0) > now:
+            receipt = json.loads(path.read_text()) if path.exists() else None
+            failed_at = retry.get('failed_at', retry.get('next_at', 0) - min(1800, 30 * 2 ** min(retry.get('attempts', 0), 6)))
+            recovered = receipt and receipt.get('fingerprint') == job['fingerprint'] and datetime.fromisoformat(receipt['checked_at']).timestamp() > failed_at
+            if retry.get('fingerprint') == job['fingerprint'] and retry.get('next_at', 0) > now and not recovered:
                 publish(call, job, 'preview_retry', attempts=retry['attempts'],
                         next_retry_at=iso(retry['next_at']), error_type=retry['error_type'], note=retry['note'])
                 results.append({'request_id':identifier, 'status':'preview_retry'})
                 continue
-            receipt = json.loads(path.read_text()) if path.exists() else None
             if not receipt or receipt.get('fingerprint') != job['fingerprint'] or now - datetime.fromisoformat(receipt['checked_at']).timestamp() >= interval:
                 def progress(**fields):
                     publish(call, job, fields['state'])
@@ -79,7 +81,7 @@ def preview_queue(queue, call, prepare, state_dir, now, retries, interval=300):
         except Exception as error:
             old = retries.get(identifier, {})
             attempts = old.get('attempts', 0) + 1 if old.get('fingerprint') == job['fingerprint'] else 1
-            retry = {'fingerprint':job['fingerprint'], 'attempts':attempts,
+            retry = {'fingerprint':job['fingerprint'], 'attempts':attempts, 'failed_at':now,
                      'next_at':now + min(1800, 30 * 2 ** min(attempts, 6)),
                      'error_type':type(error).__name__, 'note':error_note(error)}
             retries[identifier] = retry

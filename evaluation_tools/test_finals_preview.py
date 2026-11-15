@@ -70,8 +70,14 @@ class PreviewTests(unittest.TestCase):
             self.assertEqual(prepare.call_count,2)
             self.assertEqual(preview_queue(queue,call,prepare,state,now+1200,retries),[])
             self.assertEqual(prepare.call_count,2)
+            from finals_version_freeze import private_json
+            receipt['checked_at']=datetime.fromtimestamp(now+303,timezone.utc).isoformat()
+            private_json(state/'real_fixture-preview.json',receipt)
+            preview_queue(queue,call,prepare,state,now+304,retries)
+            self.assertEqual(prepare.call_count,2)
+            self.assertEqual(retries,{})
             self.job['fingerprint']='new'
-            preview_queue(queue,call,prepare,state,now+303,retries)
+            preview_queue(queue,call,prepare,state,now+305,retries)
             self.assertEqual(prepare.call_count,3)
 
     def test_errors_never_expose_credentials(self):
