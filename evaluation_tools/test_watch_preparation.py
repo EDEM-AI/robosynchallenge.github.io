@@ -3,6 +3,28 @@ from watch_preparation import transient, source_urls, audit_deadlines, maintain
 
 
 class MaintenanceTests(unittest.TestCase):
+    def test_retry_cache_recovery_and_atomic_writes(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+        from watch_preparation import load_maintenance_state, save_maintenance_state
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)/'state.json'
+            path.write_text('')
+            self.assertEqual(load_maintenance_state(path), {'retries':{}})
+            backups=list(path.parent.glob('*.corrupt-*'))
+            self.assertEqual(len(backups),1)
+            self.assertEqual(backups[0].read_text(),'')
+            saved={'retries':{'request':{'attempts':3,'next_at':123}}}
+            save_maintenance_state(path,saved)
+            self.assertEqual(load_maintenance_state(path),saved)
+            self.assertEqual(path.stat().st_mode & 0o777,0o600)
+            with patch('watch_preparation.os.replace',side_effect=OSError('interrupted')):
+                with self.assertRaises(OSError):save_maintenance_state(path,{'retries':{}})
+            self.assertEqual(json.loads(path.read_text()),saved)
+            self.assertEqual(len(list(path.parent.iterdir())),2)
+
     def test_completed_evaluations_skip_maintenance_without_changing_receipts(self):
         from copy import deepcopy
         import tempfile

@@ -77,12 +77,14 @@ function fcOverview_(who) {
   const requests=Object.values(latest).filter(r=>["admin","observer","supervisor"].includes(who.role) || fcMeta_(r.request_id).owner===who.email).map(r=>({
     ...finalsPublic_(r),team_name:(roster.find(t=>t.team_id===r.team_id)||{}).team_name||r.team_id,
     email:r.email,review:fcMeta_(r.request_id),progress:fcStages_(r.request_id),preparation:fcPrepared_(r.request_id),
+    preparation_status:fcGet_("preparation-status:"+r.request_id,null),
     runtimes:fcList_("runtime:"+r.request_id+":"),assignments:fcList_("assignment:"+r.request_id+":"),
     attempts:fcList_("attempt:").filter(a=>a.request_id===r.request_id).map(a=>({id:a.id,task:a.task,slot:a.slot,status:a.status,reviewer:a.reviewer,uploaded:a.outbox.operation==="complete",reason:a.reason||"",evidence:fcEvidenceFiles_(a)})),
     messages:fcList_("mail:").filter(m=>m.request_id===r.request_id).map(m=>({id:m.id,subject:m.subject,text:m.text,to:m.to,status:m.status,sent_at:m.sent_at||null}))
   }));
   // Endpoints and platform credentials are deliberately absent from browser responses.
   return {ok:true,viewer:{email:who.email,role:who.role},requests,platforms:FC_PLATFORMS.map(p=>({platform:p,enrolled:Boolean(fcGet_("platform:"+p,null)),part_registered:Boolean(fcGet_("part:"+p,null))})),worker:fcGet_("worker:runtime",null),
+    preparation_worker:fcGet_("worker:preparation",null),
     reviewers:who.role==="admin" ? reviewRows_("Reviewers").filter(r=>String(r.active)==="true" && ["admin","evaluator"].includes(r.role)).map(r=>({email:r.email,role:r.role})):[]};
 }
 function fcAssignment_(who,body) {
@@ -138,6 +140,32 @@ function fcRegisterPart_(platform,part,index) {
 }
 function fcAdmin_(who,action,b) {
   fcCheck_(who.role==="admin","Organizer access required.");
+  if (action==="preparation_heartbeat") {
+    return {worker:fcPut_("worker:preparation",{last_seen:now_(),status:"online"})};
+  }
+  if (action==="preparation_status") {
+    const row=fcRequest_(b.request_id);
+    fcCheck_(row.fingerprint===b.fingerprint,"Stale submission fingerprint.");
+    fcCheck_(!finalsRows_().some(r=>r.team_id===row.team_id && Number(r.revision)>Number(row.revision)),"Superseded submission.");
+    const states=["resolving_preview","composing_preview","preview_ready","preview_code_ready","preview_retry","freezing_versions","composing_final","prepared","retry","preparation_retry","backoff","preparation_backoff","awaiting_deadline","legacy_submission_unchanged"];
+    fcCheck_(states.includes(b.status),"Invalid preparation status.");
+    const old=fcGet_("preparation-status:"+b.request_id,{});
+    const value={request_id:b.request_id,fingerprint:b.fingerprint,status:b.status,updated_at:now_(),
+      attempts:Math.max(0,Math.min(100000,Number(b.attempts)||0)),
+      next_retry_at:typeof b.next_retry_at==="string"?b.next_retry_at.slice(0,40):null,
+      error_type:typeof b.error_type==="string"?b.error_type.slice(0,100):"",
+      note:typeof b.note==="string"?b.note.slice(0,1000):""};
+    if(old.fingerprint===b.fingerprint && old.preview)value.preview=old.preview;
+    if(b.preview){
+      const p=b.preview;
+      fcCheck_(["preview_ready","preview_code_ready"].includes(b.status) && p.branch.startsWith(b.request_id+"_preview_") && /^real_[A-Za-z0-9_]{1,80}$/.test(p.branch),"Invalid preview branch.");
+      fcCheck_(/^[a-f0-9]{64}$/.test(p.manifest_sha256),"Invalid preview manifest hash.");
+      value.preview={branch:p.branch,bundle_sha:finalsSha_(p.bundle_sha,"Preview SHA"),source_sha:finalsSha_(p.source_sha,"Source SHA"),
+        manifest_sha256:p.manifest_sha256,checked_at:finalsText_(p.checked_at,"Preview timestamp",40)};
+    }
+    // Provisional receipts never enter FinalsVersions/FinalsPreparations or unlock rollout gates.
+    fcPut_("preparation-status:"+b.request_id,value);return {recorded:true};
+  }
   if(action.startsWith("team_"))return fsAdmin_(who,action,b);
   if (action==="software_fixture") {
     fcCheck_(!b.version || /^[a-z0-9]{1,12}$/.test(b.version),"Invalid software fixture version.");

@@ -48,6 +48,13 @@ def publish_bundle(repository, source, submission, request_id, remote, base_sha)
 def prepare_remote(job, submission, settings, private_tools):
     repository = Path(settings['real_repository']).resolve()
     sys.path.insert(0, str(repository))
+    if not re.fullmatch(r'real_[A-Za-z0-9_]{1,80}', job['request_id']):
+        raise ValueError('Invalid request ID')
+    if git(repository, 'ls-remote', settings['real_remote'], 'refs/heads/' + job['request_id']).strip():
+        # Reconcile an already published immutable branch without downloading
+        # the participant tree again on every preview scan or backend retry.
+        return publish_bundle(repository, None, submission, job['request_id'],
+                              settings['real_remote'], settings['real_base_sha'])
     token_file = Path(settings['participant_token_file']).resolve()
     if token_file.stat().st_mode & 0o077:
         raise ValueError('Participant Git credential must be private')
@@ -64,7 +71,7 @@ def prepare_remote(job, submission, settings, private_tools):
             settings['real_remote'], settings['real_base_sha'])
 
 
-def prepare_queue(queue, freeze_results, call, prepare, now, retries):
+def prepare_queue(queue, freeze_results, call, prepare, now, retries, progress=lambda job, state: None):
     jobs = {job['request_id']:job for job in queue['requests']}
     results = []
     for frozen in freeze_results:
@@ -81,6 +88,7 @@ def prepare_queue(queue, freeze_results, call, prepare, now, retries):
             results.append({'request_id':identifier, 'status':'preparation_backoff'})
             continue
         try:
+            progress(job, 'composing_final')
             report = prepare(job, frozen['submission'])
             call('finals_admin_prepare_result', request_id=identifier, status='prepared',
                  version_fingerprint=frozen['submission']['version_fingerprint'],
@@ -90,5 +98,6 @@ def prepare_queue(queue, freeze_results, call, prepare, now, retries):
         except Exception as error:
             attempts = retries.get(identifier, {}).get('attempts', 0) + 1
             retries[identifier] = {'attempts':attempts, 'next_at':now + min(1800, 30 * 2 ** min(attempts, 6))}
-            results.append({'request_id':identifier, 'status':'preparation_retry', 'error_type':type(error).__name__})
+            from finals_preparation_status import error_note
+            results.append({'request_id':identifier, 'status':'preparation_retry', 'error_type':type(error).__name__, 'note':error_note(error)})
     return results

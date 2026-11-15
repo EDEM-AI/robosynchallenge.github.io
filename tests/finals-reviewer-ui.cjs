@@ -4,6 +4,7 @@ const job={request_id:'real_ui_fixture',team_name:'Evaluation interface fixture'
   submission:{method_name:'Method under review',repository:'https://github.com/example/repo',version_cutoff_at:'2026-11-16T12:00:00Z',dependency_notes:'pip install -r policy/act/requirements.txt',tasks:tasks.map(task=>({task,policy_path:'policy/act',checkpoint_ids:['act'],run_notes:'bash policy/act/eval.sh --task '+task}))},
   review:{owner:'reviewer@example.test',submission_checked:false,platform_checks:{},accepted:{}},progress:{steps:[false,false,false,false,false],completed:0,collected:1,ready:0},preparation:{bundle_sha:'a'.repeat(40)},runtimes:[],assignments:[],attempts:[{id:'fixture_attempt',task:'click_bell',slot:1,status:'success',uploaded:true,reviewer:'reviewer@example.test',evidence:[{target:'drive:RoboSynChallenge2026/real_stage/evidence/real_ui_fixture/click_bell/fixture_attempt/evidence.zip',size:1234,sha256:'b'.repeat(64),object_id:'private-object'}]}]};
 (async()=>{
+  job.preparation_status={status:'preview_code_ready',updated_at:new Date().toISOString(),note:'Code composed; checkpoint access pending.',preview:{branch:'real_ui_fixture_preview_0123456789abcdef',bundle_sha:'c'.repeat(40),source_sha:'d'.repeat(40)}};
   const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
   const dir='/tmp/rsc-finals-browser/screenshots';fs.mkdirSync(dir,{recursive:true});
   for(const width of [1440,390,320]){
@@ -18,6 +19,9 @@ const job={request_id:'real_ui_fixture',team_name:'Evaluation interface fixture'
     await page.goto('http://127.0.0.1:8098/eval_backend/finals/');
     await page.getByLabel('Reviewer email').fill('reviewer@example.test');await page.getByLabel('Access token').fill('fixture-only');
     await page.getByRole('button',{name:'Sign in',exact:true}).click();await page.locator('.reviewer-detail').waitFor();
+    assert.match(await page.locator('.finals-review-toolbar').textContent(),/Preparation worker: Not connected/);
+    assert.match(await page.locator('.finals-review-toolbar').textContent(),/Model worker: Stale/);
+    assert.equal(await page.locator('a[href*="real_ui_fixture_preview_"]').count(),1);
     for(let stage=0;stage<5;stage++){
       await page.locator('[data-stage="'+stage+'"]').click();
       if(stage===4){await page.getByText('Click Bell evidence',{exact:true}).click();await page.locator('.finals-evidence summary').click();assert.match(await page.locator('.finals-evidence').textContent(),/private-object/);assert.ok(await page.locator('.finals-evidence').evaluate(el=>el.scrollWidth<=el.clientWidth),'Evidence metadata overflows');}

@@ -29,7 +29,7 @@ def validate_job(job, now):
     return submission
 
 
-def resolve_from_checkout(job, checkout, code_branch, hf_api, hf_token, now):
+def resolve_from_checkout(job, checkout, code_branch, hf_api, hf_token, now, allow_unresolved=False):
     from version_selection import select_git, select_hf
     submission = validate_job(job, now)
     if submission.get('code_ref') and submission['code_ref'] != code_branch:
@@ -41,27 +41,41 @@ def resolve_from_checkout(job, checkout, code_branch, hf_api, hf_token, now):
     for source in submission['checkpoints']:
         key = (source['repo'], source['ref'])
         if key not in cache:
-            history = hf_api.list_repo_commits(source['repo'], revision=source['ref'], token=hf_token)
-            sha, committed = select_hf(history, cutoff)
-            info = hf_api.model_info(source['repo'], revision=sha, token=hf_token)
-            if info.sha != sha:
-                raise ValueError('HF metadata version mismatch')
-            cache[key] = sha, committed, [item.rfilename for item in info.siblings]
+            try:
+                history = hf_api.list_repo_commits(source['repo'], revision=source['ref'], token=hf_token)
+                sha, committed = select_hf(history, cutoff)
+                info = hf_api.model_info(source['repo'], revision=sha, token=hf_token)
+                if info.sha != sha:
+                    raise ValueError('HF metadata version mismatch')
+                cache[key] = sha, committed, [item.rfilename for item in info.siblings]
+            except Exception as error:
+                if not allow_unresolved:
+                    raise
+                cache[key] = {'error_type':type(error).__name__,
+                              'http_status':getattr(getattr(error, 'response', None), 'status_code', None)}
+        if isinstance(cache[key], dict):
+            checkpoints.append({**source, 'revision':None, 'unresolved':cache[key]})
+            continue
         sha, committed, files = cache[key]
         prefix = source['path']
         if not any(not prefix or name == prefix or name.startswith(prefix + '/') for name in files):
+            if allow_unresolved:
+                checkpoints.append({**source, 'revision':None, 'unresolved':{'error_type':'CheckpointPathMissing'}})
+                continue
             raise ValueError('Checkpoint path is absent at the selected revision')
         checkpoints.append({**source, 'revision':sha, 'committed_at':committed})
     return {'cutoff_at':cutoff, 'code':code, 'checkpoints':checkpoints}
 
 
-def resolve_remote(job, settings, private_tools):
+def resolve_remote(job, settings, private_tools, allow_unresolved=False):
     from hf_access import read_token
     from huggingface_hub import HfApi
     submission = validate_job(job, time.time())
     token_path = Path(settings['participant_token_file']).resolve()
     if not token_path.is_file() or token_path.stat().st_mode & 0o077:
         raise ValueError('GitHub read credential must be a private file')
+    from github_invitations import accept_for_repository
+    accept_for_repository(token_path, submission['repository'])
     environment = {**os.environ, 'GIT_TERMINAL_PROMPT':'0',
         'GIT_ASKPASS':str(private_tools / 'git_askpass.py'),
         'RSC_PARTICIPANT_TOKEN_FILE':str(token_path)}
@@ -75,8 +89,11 @@ def resolve_remote(job, settings, private_tools):
         subprocess.run(command, env=environment, capture_output=True, check=True, timeout=600)
         branch = subprocess.run(['git', '-C', str(checkout), 'symbolic-ref', '--short', 'HEAD'],
             capture_output=True, text=True, check=True, timeout=30).stdout.strip()
+        hf_file = Path(settings.get('hf_token_file',
+            Path(settings['organizer_token_file']).parent / 'huggingface-RoboSynChallenge.token'))
         return resolve_from_checkout(job, checkout, branch,
-            HfApi(endpoint='https://huggingface.co'), read_token(settings.get('hf_token_file')), time.time())
+            HfApi(endpoint='https://huggingface.co'), read_token(hf_file if hf_file.is_file() else None),
+            time.time(), allow_unresolved=allow_unresolved)
 
 
 def resolved_submission(job, receipt):
@@ -113,7 +130,7 @@ def private_json(path, value):
             os.unlink(temporary)
 
 
-def process_queue(queue, call, resolver, now, retry_state):
+def process_queue(queue, call, resolver, now, retry_state, progress=lambda job, state: None):
     from version_selection import cutoff_seconds
     results = []
     for job in queue['requests']:
@@ -134,6 +151,7 @@ def process_queue(queue, call, resolver, now, retry_state):
                 continue
             receipt = job.get('versions')
             if not receipt:
+                progress(job, 'freezing_versions')
                 report = resolver(job)
                 receipt = call('finals_admin_freeze_versions', request_id=identifier,
                     fingerprint=job['fingerprint'], versions=report)['versions']
@@ -143,7 +161,8 @@ def process_queue(queue, call, resolver, now, retry_state):
         except Exception as error:
             attempts = retry_state.get(identifier, {}).get('attempts', 0) + 1
             retry_state[identifier] = {'attempts':attempts, 'next_at':now + min(1800, 30 * 2 ** min(attempts, 6))}
-            results.append({'request_id':identifier, 'status':'retry', 'error_type':type(error).__name__})
+            from finals_preparation_status import error_note
+            results.append({'request_id':identifier, 'status':'retry', 'error_type':type(error).__name__, 'note':error_note(error)})
     return results
 
 
@@ -158,16 +177,39 @@ def main():
     settings = json.loads(args.settings.read_text())
     token = Path(settings['organizer_token_file']).read_text().strip()
     state_dir = Path(settings['state_dir'])
+    state_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+    import fcntl
+    lock = (state_dir / 'worker.lock').open('a')
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     state_path = state_dir / 'retry-state.json'
     retries = json.loads(state_path.read_text()) if state_path.exists() else {}
     preparation_path = state_dir / 'preparation-retry-state.json'
     preparation_retries = json.loads(preparation_path.read_text()) if preparation_path.exists() else {}
+    preview_path = state_dir / 'preview-retry-state.json'
+    preview_retries = json.loads(preview_path.read_text()) if preview_path.exists() else {}
     def call(action, **fields):
         return api(settings['api_url'], settings['organizer_email'], token, action, **fields)
+    from finals_preparation_status import preview_queue, publish, iso
+    from finals_preview import prepare_preview
+    import threading
+    stop = threading.Event()
+    def heartbeat():
+        while not stop.is_set():
+            try:
+                call('finals_admin_control_preparation_heartbeat')
+            except Exception as error:
+                print(json.dumps({'status':'heartbeat_retry','error_type':type(error).__name__}), flush=True)
+            stop.wait(60)
+    threading.Thread(target=heartbeat, daemon=True).start()
     while True:
         try:
             queue = call('finals_admin_queue')
-            results = process_queue(queue, call, lambda job:resolve_remote(job, settings, args.private_tools.resolve()), time.time(), retries)
+            previews = preview_queue(queue, call,
+                lambda job, progress:prepare_preview(job, settings, args.private_tools.resolve(), report_progress=progress),
+                state_dir, time.time(), preview_retries)
+            private_json(preview_path, preview_retries)
+            results = process_queue(queue, call, lambda job:resolve_remote(job, settings, args.private_tools.resolve()),
+                time.time(), retries, progress=lambda job, state:publish(call, job, state))
             for result in results:
                 if 'submission' in result:
                     private_json(state_dir / (result['request_id'] + '.json'), result['submission'])
@@ -175,10 +217,17 @@ def main():
                 from finals_preparation import prepare_queue, prepare_remote
                 results = prepare_queue(queue, results, call,
                     lambda job, submission:prepare_remote(job, submission, settings, args.private_tools.resolve()),
-                    time.time(), preparation_retries)
+                    time.time(), preparation_retries, progress=lambda job, state:publish(call, job, state))
                 private_json(preparation_path, preparation_retries)
             for result in results:
                 result.pop('submission', None)
+                if result['status'] != 'awaiting_deadline':
+                    job = next(j for j in queue['requests'] if j['request_id']==result['request_id'])
+                    retry = preparation_retries.get(job['request_id']) or retries.get(job['request_id']) or {}
+                    publish(call, job, result['status'], error_type=result.get('error_type',''), note=result.get('note',''),
+                            attempts=retry.get('attempts',0), next_retry_at=iso(retry['next_at']) if retry.get('next_at') else None)
+            preview_ids = {p['request_id'] for p in previews}
+            results = [r for r in results if r['request_id'] not in preview_ids] + previews
             private_json(state_path, retries)
             private_json(state_dir / 'status.json', {'checked_at':time.time(), 'requests':results})
             print(json.dumps({'requests':results}), flush=True)
@@ -187,6 +236,7 @@ def main():
             if args.once:
                 raise SystemExit(1)
         if args.once:
+            stop.set()
             break
         time.sleep(60)
 

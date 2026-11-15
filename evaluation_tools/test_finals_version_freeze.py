@@ -56,6 +56,17 @@ class FreezeTests(unittest.TestCase):
             self.job['submission']['checkpoints'][0]['path']='missing'
             with self.assertRaisesRegex(ValueError,'absent'):
                 resolve_from_checkout(self.job,directory,'main',api,False,self.now)
+            preview=resolve_from_checkout(self.job,directory,'main',api,False,self.now,allow_unresolved=True)
+            self.assertIsNone(preview['checkpoints'][0]['revision'])
+            self.assertEqual(preview['checkpoints'][0]['unresolved']['error_type'],'CheckpointPathMissing')
+            def denied(*args, **kwargs):
+                raise PermissionError('private credential must not appear in report')
+            api.list_repo_commits=denied
+            with self.assertRaises(PermissionError):
+                resolve_from_checkout(self.job,directory,'main',api,False,self.now)
+            preview=resolve_from_checkout(self.job,directory,'main',api,False,self.now,allow_unresolved=True)
+            self.assertIsNone(preview['checkpoints'][0]['revision'])
+            self.assertNotIn('credential',json.dumps(preview))
 
     def receipt(self):
         raw=json.dumps({'cutoff_at':CUTOFF,'code':{'repo':self.job['submission']['repository'],'revision':'a'*40},

@@ -152,3 +152,23 @@ ctx.fcNotify_('saved-receipt','Receipt','Saved request',persisted.email,
 ctx.finalsControlMailTick();assert.equal(sent,2);
 ctx.finalsControlMailTick();assert.equal(sent,2);
 console.log('Submission receipts: unsaved requests never send; saved requests deliver once.');
+
+// Preview receipts are visible remotely but never unlock official evaluation.
+const previewId='real_preview_test',fingerprint='f'.repeat(64);
+tables.FinalsRequests.push({request_id:previewId,team_id:'preview_team',fingerprint,revision:1,submission_json:'{}'});
+const preview={branch:previewId+'_preview_0123456789abcdef',bundle_sha:bundle,source_sha:'c'.repeat(40),manifest_sha256:hash,checked_at:new Date().toISOString()};
+admin('preparation_heartbeat');
+assert.throws(()=>admin('preparation_status',{request_id:previewId,fingerprint:'wrong',status:'preview_ready',preview}),/fingerprint/);
+assert.throws(()=>ctx.finalsControl_('finals_admin_control_preparation_status',{role:'evaluator',body:{request_id:previewId,fingerprint,status:'preview_ready',preview}}),/Organizer/);
+admin('preparation_status',{request_id:previewId,fingerprint,status:'preview_code_ready',preview});
+assert.equal(ctx.fcPrepared_(previewId),null);
+assert.equal(ctx.fcStages_(previewId).completed,0);
+assert.ok(!tables.FinalsVersions?.some(r=>r.request_id===previewId));
+admin('preparation_status',{request_id:previewId,fingerprint,status:'preview_retry',note:'Retrying'});
+assert.equal(ctx.fcGet_('preparation-status:'+previewId,{}).preview.bundle_sha,bundle);
+const overview=ctx.finalsControl_('finals_reviewer_list',{role:'admin'});
+assert.ok(overview.preparation_worker.last_seen);
+assert.equal(overview.requests.find(r=>r.request_id===previewId).preparation_status.status,'preview_retry');
+tables.FinalsRequests.push({request_id:'real_preview_new',team_id:'preview_team',fingerprint:'e'.repeat(64),revision:2,submission_json:'{}'});
+assert.throws(()=>admin('preparation_status',{request_id:previewId,fingerprint,status:'preview_ready',preview}),/Superseded/);
+console.log('Preparation telemetry: authenticated visibility, stale-revision rejection, retained preview and unchanged official gates passed.');

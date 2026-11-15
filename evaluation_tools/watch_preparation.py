@@ -7,8 +7,42 @@ import os
 from pathlib import Path
 import re
 import sys
+import tempfile
 import time
 from preparation_freeze import preservation_reason
+
+
+def save_maintenance_state(path, state):
+    descriptor, temporary = tempfile.mkstemp(dir=path.parent, prefix=path.name + '.')
+    try:
+        with os.fdopen(descriptor, 'w') as stream:
+            json.dump(state, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def load_maintenance_state(path):
+    if not path.exists():
+        return {}
+    try:
+        state = json.loads(path.read_text())
+        if not isinstance(state, dict) or not isinstance(state.get('retries', {}), dict):
+            raise ValueError('Invalid maintenance retry cache')
+        return state
+    except (ValueError, UnicodeDecodeError):
+        # This file stores retry timers only. Authoritative results and freeze
+        # receipts remain in the backend and are checked before every operation.
+        backup = path.with_name(path.name + '.corrupt-' + str(time.time_ns()))
+        path.replace(backup)
+        backup.chmod(0o600)
+        state = {'retries':{}}
+        save_maintenance_state(path, state)
+        print(json.dumps({'state':'retry_cache_recovered','backup':backup.name}),flush=True)
+        return state
 
 
 def preparation_blocked(job):
@@ -202,14 +236,14 @@ def main():
     original = importlib.import_module('watch_queue')
     os.umask(0o077)
     state_file = args.settings.parent / 'preparation-maintenance-state.json'
-    state = json.loads(state_file.read_text()) if state_file.exists() else {}
+    state = load_maintenance_state(state_file)
     while True:
         settings = json.loads(args.settings.read_text())
         try:
             maintenance = maintain(settings, state)
         except Exception as error:
             maintenance = {'state':'maintenance_retry', 'error_type':type(error).__name__}
-        state_file.write_text(json.dumps(state)); state_file.chmod(0o600)
+        save_maintenance_state(state_file, state)
         try:
             result = original.tick(settings)
         except Exception as error:
