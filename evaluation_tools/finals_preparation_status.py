@@ -40,6 +40,10 @@ def preview_fields(receipt):
         ('branch', 'bundle_sha', 'source_sha', 'manifest_sha256', 'checked_at')}}
     if receipt.get('unresolved_checkpoints'):
         fields['note'] = 'Code composed; %s checkpoint mappings remain unverified. Not ready for evaluation.' % receipt['unresolved_checkpoints']
+        failures = dict.fromkeys(v['repo'] + ': ' + v['unresolved']['error_type'] +
+            (' (HTTP %s)' % v['unresolved']['http_status'] if v['unresolved'].get('http_status') else '')
+            for v in receipt.get('versions', {}).get('checkpoints', []) if v.get('unresolved'))
+        fields['note'] += ' ' + '; '.join(list(failures)[:3])[:700]
     else:
         fields['note'] = 'Provisional code and checkpoint metadata checked. Runtime validation and final deadline freeze are still required.'
     return fields
