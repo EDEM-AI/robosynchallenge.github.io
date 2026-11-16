@@ -46,6 +46,7 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
     await page.screenshot({path:dir+'/login-'+width+'.png'});
     await page.getByRole('button',{name:'Sign in',exact:true}).click();
     await page.locator('#submission').waitFor({state:'visible'});
+    assert.ok((await page.locator('#finalist-content header').textContent()).includes('November 16, 2026, 22:00 Beijing time'));
     assert.equal(await page.locator('#tasks > details').count(),10);
     assert.equal(await page.locator('#tasks > details[open]').count(),0);
     assert.equal(await page.locator('#submission [name="commit"], #checkpoints [name="revision"]').count(),0);

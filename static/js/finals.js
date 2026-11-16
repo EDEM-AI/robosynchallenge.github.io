@@ -157,7 +157,7 @@
   window.ROBO_SYN_FINALS = {
     async mount(root, identity) {
       try {
-        const response = await fetch('static/templates/policy-submission.html?v=20261114-canonical-only');
+        const response = await fetch('static/templates/policy-submission.html?v=20261116-deadline-2200');
         if (!response.ok) throw new Error('Could not load the submission form. Please reload.');
         const document = new DOMParser().parseFromString(await response.text(), 'text/html');
         const main = document.querySelector('template')?.content.querySelector('main');
