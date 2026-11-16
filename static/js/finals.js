@@ -52,7 +52,7 @@
     const submission = Object.fromEntries(["method_name", "repository", "code_ref", "compute_notes", "description", "dependency_notes", "data_sources"].map(n => [n, get(form, n)]));
     submission.checkpoints = [...$("checkpoints").children].map(row => Object.fromEntries(["id", "repo", "ref", "path"].map(n => [n, get(row,n)])));
     submission.tasks = [...$("tasks").children].map(row => ({ task: row.dataset.task, policy_path: get(row,"policy_path"),
-      checkpoint_ids: get(row,"checkpoint_ids").split(/[\s,]+/).filter(Boolean),
+      checkpoint_ids: [...new Set(get(row,"checkpoint_ids").split(/[\s,，;；]+/).filter(Boolean))],
       no_weights_reason: get(row,"no_weights_reason"), run_notes: get(row,"run_notes") }));
     return submission;
   }
@@ -112,12 +112,11 @@
   }
   $("add-checkpoint").onclick = () => { checkpoint(); saveDraft(); };
   function updateTaskStatus() {
-    const sources = new Set([...$("checkpoints").children].map(row => get(row, "id")).filter(Boolean));
     let count = 0;
     for (const row of $("tasks").children) {
-      const ids = get(row, "checkpoint_ids").split(/[\s,]+/).filter(Boolean);
+      const ids = get(row, "checkpoint_ids").split(/[\s,，;；]+/).filter(Boolean);
       const complete = /^policy\/[A-Za-z0-9_]+$/.test(get(row, "policy_path")) && Boolean(get(row, "run_notes")) &&
-        (ids.length ? ids.every(id => sources.has(id)) && new Set(ids).size === ids.length : Boolean(get(row, "no_weights_reason")));
+        (ids.length > 0 || Boolean(get(row, "no_weights_reason")));
       row.dataset.complete = String(complete);
       row.querySelector(".finals-task-status").textContent = complete ? "Configured" : "Required";
       if (complete) count++;

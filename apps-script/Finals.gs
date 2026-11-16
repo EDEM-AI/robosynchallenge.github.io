@@ -82,9 +82,10 @@ function finalsValidate_(input) {
     seen.add(task.task);
     const entry = finalsPath_(task.policy_path, "Policy path");
     if (!/^policy\/[A-Za-z0-9_]+$/.test(entry)) throw new Error("Policy path must be policy/<module_name>.");
-    if (!Array.isArray(task.checkpoint_ids) || new Set(task.checkpoint_ids).size !== task.checkpoint_ids.length || task.checkpoint_ids.some(id => !ids.has(id))) throw new Error("Unknown or repeated checkpoint ID.");
-    const noWeights = task.checkpoint_ids.length ? "" : finalsText_(task.no_weights_reason, "Reason for no checkpoint", 1000);
-    return { task: task.task, policy_path: entry, checkpoint_ids: task.checkpoint_ids.slice().sort(),
+    const checkpointIds = [...new Set((Array.isArray(task.checkpoint_ids) ? task.checkpoint_ids : [task.checkpoint_ids || ""])
+      .flatMap(value => String(value).split(/[\s,，;；]+/)).filter(Boolean))];
+    const noWeights = checkpointIds.length ? "" : finalsText_(task.no_weights_reason, "Reason for no checkpoint", 1000);
+    return { task: task.task, policy_path: entry, checkpoint_ids: checkpointIds.sort(),
       no_weights_reason: noWeights, run_notes: finalsText_(task.run_notes, "Task parameters and run command", 2000) };
   }).sort((a, b) => a.task.localeCompare(b.task));
   const result = { method_name: finalsText_(input.method_name, "Method name", 200),

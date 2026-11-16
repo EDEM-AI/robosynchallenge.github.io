@@ -64,7 +64,6 @@ for(const bad of [
   {...submission,tasks:submission.tasks.slice(1)},
   {...submission,tasks:submission.tasks.map(t=>({...t,policy_path:'policy/../escape'}))},
   {...submission,checkpoints:[{...submission.checkpoints[0],ref:'b'.repeat(40)}]},
-  {...submission,tasks:submission.tasks.map(t=>({...t,checkpoint_ids:['missing']}))},
 ]) assert.throws(()=>call('finals_submit',{...payload,submission:bad}));
 assert.equal(call('finals_status',{session_id:'other@example.test'}).requests.length,0);
 config.FINALS_INTAKE_ENABLED='false';
@@ -137,3 +136,7 @@ assert.equal(call('finals_history',{session_id:'other@example.test'}).requests.l
 assert.equal(history.papers.length,1);assert.equal(history.papers[0].paper_id,'own');
 assert.throws(()=>call('finals_history',{}),/Session/);
 console.log('Repository URL normalization, conflicting fields, unsafe links and private history passed.');
+const permissive=ctx.finalsValidate_({...submission,tasks:submission.tasks.map(t=>({...t,checkpoint_ids:['encoder，encoder','unmatched']}))});
+assert.equal(JSON.stringify(permissive.tasks[0].checkpoint_ids),JSON.stringify(['encoder','unmatched']));
+assert.equal(JSON.stringify(ctx.finalsValidate_({...submission,tasks:submission.tasks.map(t=>({...t,checkpoint_ids:'encoder；encoder'}))}).tasks[0].checkpoint_ids),JSON.stringify(['encoder']));
+console.log('Task checkpoint references: duplicates normalized and unmatched IDs retained without blocking intake.');
