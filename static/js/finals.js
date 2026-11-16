@@ -35,7 +35,7 @@
     const title = document.createElement("strong"); title.textContent = "Checkpoint source"; heading.append(title);
     const grid = document.createElement("div"); grid.className = "form-grid";
     field(grid, "Checkpoint ID", "id", value.id || "").placeholder = "e.g. act_weights";
-    field(grid, "HF repository", "repo", value.repo || "").placeholder = "account/repository";
+    field(grid, "HF repository or link", "repo", value.repo || "").placeholder = "account/repository or https://huggingface.co/account/repository/tree/main/folder";
     const branch = field(grid, "HF branch (optional)", "ref", value.ref || "", false);
     branch.placeholder = "main"; branch.maxLength = 200; branch.spellcheck = false;
     field(grid, "Checkpoint path (optional)", "path", value.path || "", false).placeholder = "Subdirectory, or blank for repository root";
@@ -157,7 +157,7 @@
   window.ROBO_SYN_FINALS = {
     async mount(root, identity) {
       try {
-        const response = await fetch('static/templates/policy-submission.html?v=20261116-deadline-2200');
+        const response = await fetch('static/templates/policy-submission.html?v=20261116-history-links');
         if (!response.ok) throw new Error('Could not load the submission form. Please reload.');
         const document = new DOMParser().parseFromString(await response.text(), 'text/html');
         const main = document.querySelector('template')?.content.querySelector('main');

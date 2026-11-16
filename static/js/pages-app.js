@@ -1346,6 +1346,13 @@
       const data = await apiRequest("my_submissions", { session_id: state.session.session_id });
       state.submissions = (data.submissions || []).map(normalizeSubmission).filter(Boolean);
       state.evaluations = (data.evaluations || []).map(normalizeEvaluation).filter(Boolean);
+      remoteState.finalsHistoryError = "";
+      try {
+        remoteState.finalsHistory = await apiRequest("finals_history", { session_id: state.session.session_id });
+      } catch (error) {
+        remoteState.finalsHistory = null;
+        remoteState.finalsHistoryError = error.message || "Could not load finals and report records.";
+      }
       remoteState.submissionsLoaded = true;
     } catch (error) {
       const message = error.message || "Could not load submissions.";
@@ -2203,6 +2210,16 @@
     `;
   }
 
+  function renderFinalsHistory() {
+    if (remoteState.finalsHistoryError) return `<section class="section shell">${renderBackendErrorCard("Could not load finals and technical reports", remoteState.finalsHistoryError, "retry-submissions")}</section>`;
+    const history = remoteState.finalsHistory || {};
+    const sections = [
+      ["Finals policy submissions", (history.requests || []).slice().reverse().map(r => [r.submission?.method_name || r.request_id, r.request_id, `Revision ${r.revision}`, r.status, r.created_at])],
+      ["Technical reports", (history.papers || []).slice().reverse().map(r => [r.filename, r.paper_id, r.stage, r.status === "stored" ? "Received" : r.status, r.created_at])]
+    ];
+    return sections.map(([title, records]) => `<section class="section shell"><div class="section-heading"><h2>${escapeHtml(title)}</h2><p>${records.length} record${records.length === 1 ? "" : "s"}</p></div><div class="table-shell"><table class="leaderboard-table"><thead><tr><th>Submission</th><th>Reference</th><th>Version / stage</th><th>Status</th><th>Received</th></tr></thead><tbody>${records.length ? records.map(r => `<tr>${r.map((v,i) => `<td style="overflow-wrap:anywhere">${escapeHtml(i === 4 ? formatDateTime(v) : String(v || ""))}</td>`).join("")}</tr>`).join("") : '<tr><td colspan="5">No submissions yet.</td></tr>'}</tbody></table></div></section>`).join("");
+  }
+
   function renderDashboardPage() {
     const user = currentUser();
     if (!user) {
@@ -2275,9 +2292,10 @@
         </div>
       </section>
 
+      ${renderFinalsHistory()}
       <section class="section shell">
         <div class="section-heading">
-          <span class="eyebrow">Submissions</span>
+          <span class="eyebrow">Preliminary submissions</span>
           <h2>${submissions.length} record${submissions.length === 1 ? "" : "s"}</h2>
         </div>
         <div class="table-shell">

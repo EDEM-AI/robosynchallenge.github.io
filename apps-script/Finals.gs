@@ -30,20 +30,50 @@ function finalsBranch_(value, fallback) {
   return branch;
 }
 
+function finalsSource_(value, host, explicitRef, explicitPath) {
+  let source = finalsText_(value, host === "github.com" ? "GitHub repository" : "HF repository", 1500);
+  if (host === "huggingface.co" && /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/?$/.test(source)) source = "https://" + host + "/" + source;
+  if (source.startsWith(host + "/")) source = "https://" + source;
+  const match = source.match(/^https?:\/\/([^/]+)\/([^?#]*)(?:[?#].*)?$/i);
+  if (!match || match[1].toLowerCase() !== host) throw new Error("Use a " + host + " repository link without credentials.");
+  const parts = match[2].replace(/\/+$/, "").split("/");
+  const owner = parts.shift(), name = (parts.shift() || "").replace(/\.git$/, "");
+  if (![owner, name].every(x => /^[A-Za-z0-9_.-]+$/.test(x || "") && x !== "." && x !== "..")) throw new Error("Repository owner and name are required.");
+  let ref = finalsBranch_(explicitRef, ""), path = String(explicitPath || "").trim();
+  if (path === ".") path = "";
+  if (parts.length) {
+    if (!["tree", "blob", "resolve"].includes(parts.shift()) || !parts.length) throw new Error("Use a repository, branch, folder or file link.");
+    const tail = parts.map(x => decodeURIComponent(x)).join("/");
+    // An explicit ref disambiguates branch names containing slashes.
+    let linkedRef, linkedPath;
+    if (ref && (tail === ref || tail.startsWith(ref + "/"))) {
+      linkedRef = ref; linkedPath = tail.slice(ref.length).replace(/^\//, "");
+    } else {
+      linkedRef = decodeURIComponent(parts.shift()); linkedPath = parts.map(x => decodeURIComponent(x)).join("/");
+    }
+    if (ref && ref !== linkedRef) throw new Error("Branch field conflicts with the repository link; use the same branch or leave the field blank.");
+    ref = finalsBranch_(linkedRef, "");
+    if (linkedPath) finalsPath_(linkedPath, "Linked path");
+    if (host === "huggingface.co") {
+      if (path && linkedPath && path !== linkedPath) throw new Error("Checkpoint path conflicts with the HF link; use the same path or leave the field blank.");
+      path = path || linkedPath;
+    }
+  }
+  return {repo: owner + "/" + name, ref, path: path ? finalsPath_(path, "Checkpoint path") : ""};
+}
+
 function finalsValidate_(input) {
   if (!input || typeof input !== "object") throw new Error("Submission required.");
-  const repository = finalsText_(input.repository, "GitHub repository", 500).replace(/\/$/, "");
-  if (!/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) throw new Error("Use a GitHub repository URL without credentials, branch or query parameters.");
+  const code = finalsSource_(input.repository, "github.com", input.code_ref, "");
+  const repository = "https://github.com/" + code.repo;
   if (!Array.isArray(input.checkpoints) || input.checkpoints.length > 40) throw new Error("Provide at most 40 checkpoint sources.");
   const ids = new Set();
   const checkpoints = input.checkpoints.map(item => {
     const id = finalsText_(item.id, "Checkpoint ID", 64);
     if (!/^[A-Za-z0-9_-]+$/.test(id) || ids.has(id)) throw new Error("Checkpoint IDs must be unique identifiers.");
     ids.add(id);
-    const repo = finalsText_(item.repo, "HF repository", 300);
-    if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error("HF repository must be owner/repository.");
-    return { id, repo, ref: finalsBranch_(item.ref, "main"),
-      path: item.path === "" || item.path === "." ? "" : finalsPath_(item.path, "Checkpoint path") };
+    const source = finalsSource_(item.repo, "huggingface.co", item.ref, item.path);
+    return { id, repo:source.repo, ref:source.ref || "main", path:source.path };
   });
   if (!Array.isArray(input.tasks) || input.tasks.length !== FINALS_TASKS.length) throw new Error("Provide all ten tasks.");
   const seen = new Set();
@@ -59,7 +89,7 @@ function finalsValidate_(input) {
   }).sort((a, b) => a.task.localeCompare(b.task));
   const result = { method_name: finalsText_(input.method_name, "Method name", 200),
     description: finalsText_(input.description, "Detailed method description", 6000), repository,
-    code_ref: finalsBranch_(input.code_ref, ""), version_policy: FINALS_VERSION_POLICY,
+    code_ref: code.ref, version_policy: FINALS_VERSION_POLICY,
     dependency_notes: finalsText_(input.dependency_notes, "Dependency installation notes", 6000),
     data_sources: finalsText_(input.data_sources, "Training data sources", 4000),
     compute_notes: finalsText_(input.compute_notes, "Runtime and GPU requirements", 2000),
@@ -151,6 +181,9 @@ function handleFinalsAction_(action, payload) {
   if (action === "finals_platform_rpc" || action.startsWith("finals_reviewer_") || action.startsWith("finals_admin_control_")) return finalsControl_(action, payload);
   if (action.startsWith("finals_admin_")) return finalsAdmin_(action, payload);
   const identity = finalsIdentity_(payload);
+  if (action === "finals_history") return {ok:true,
+    requests: identity.team ? finalsRows_().filter(r => r.team_id === identity.team.team_id && normalizeEmail_(r.email) === identity.email).map(finalsPublic_) : [],
+    papers: paperRows_().filter(r => normalizeEmail_(r.email) === identity.email).map(paperPublic_)};
   const enabled = config_("FINALS_INTAKE_ENABLED", "false") === "true";
   const deadline = config_("FINALS_DEADLINE_AT", "");
   const deadlineMs = Date.parse(deadline);

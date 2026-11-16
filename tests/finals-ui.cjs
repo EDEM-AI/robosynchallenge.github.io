@@ -37,6 +37,7 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
         const request={request_id:'real_ui_test',revision:1,status:'test_submitted',created_at:'2026-11-12'};
         requests=[request]; result={ok:true,request};
       } else if(data.action==='my_submissions')result={ok:true,submissions:[],evaluations:[]};
+      else if(data.action==='finals_history')result={ok:true,requests:[{request_id:'real_history_test',revision:2,status:'submitted',created_at:'2026-11-16T12:00:00Z',submission:{method_name:'History method'}}],papers:[{paper_id:'paper_history_test',filename:'technical-report.pdf',stage:'finals',status:'stored',created_at:'2026-11-16T11:00:00Z'}]};
       else throw new Error('Unexpected API action: '+data.action);
       await route.fulfill({json:result});
     });
@@ -109,6 +110,12 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
       await row.scrollIntoViewIfNeeded();
       await page.screenshot({path:dir+'/task-open-'+width+'.png'});
     }
+    await page.evaluate(()=>{location.hash='#/dashboard';});
+    await page.getByRole('heading',{name:'Finals policy submissions',exact:true}).waitFor();
+    assert.equal(await page.getByText('real_history_test',{exact:true}).count(),1);
+    assert.equal(await page.getByText('paper_history_test',{exact:true}).count(),1);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+    await page.screenshot({path:dir+'/history-'+width+'.png',fullPage:true});
     assert.deepEqual(errors,[]);
     let apiCalls=0;
     page.on('request',request=>{if(request.url().includes('/api/finals')) apiCalls++;});
