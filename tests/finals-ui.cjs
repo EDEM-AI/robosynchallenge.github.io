@@ -23,13 +23,14 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
   for(const width of [1440,390,320]) {
     const context=await browser.newContext({viewport:{width,height:950}});
     const page=await context.newPage(); const errors=[]; page.on('pageerror',e=>errors.push(e.message));
-    let eligible=true, requests=[], retryKey;
+    let eligible=true, requests=[], retryKey, rejectSubmit=false;
     await page.route('**/static/config.js',route=>route.fulfill({contentType:'application/javascript',body:'window.ROBO_SYN_CONFIG={API_BASE_URL:"'+base+'/api/finals"};'}));
     await page.route('**/api/finals',async route=>{
       const data=route.request().postDataJSON(); let result;
       if(data.action==='login') result={ok:true,session_id:'ui-session'};
       else if(data.action==='finals_status') result={ok:true,eligible,intake_open:eligible,is_test:true,team_name:'Test team',tasks,requests};
       else if(data.action==='finals_submit') {
+        if(rejectSubmit) {await route.fulfill({json:{ok:false,error:'HF repository must be owner/repository.'}});return;}
         assert.equal(data.submission.tasks.length,10); assert.equal(data.submission.commit,undefined);
         assert.equal(data.submission.checkpoints[0].revision,undefined);
         retryKey=data.submission_key;
@@ -73,11 +74,19 @@ const tasks=['click_bell','drawer_open_place','handle_basket','item_assembly','i
       assert.equal(await page.locator('#submission [name="method_name"]').inputValue(),'Test method');
       await page.locator('#tasks > details').first().evaluate(el=>el.querySelector('[name="run_notes"]').value='');
       await page.locator('#submission').evaluate(form=>form.reportValidity());
+      assert.ok((await page.locator('#submit-notice').textContent()).includes('Task run command'));
       assert.equal(await page.locator('#tasks > details').first().getAttribute('open'),'');
       await page.locator('#tasks > details').first().locator('[name="run_notes"]').fill('bash policy/act/eval.sh --task click_bell');
       await page.locator('#tasks > details').first().locator('summary').click();
       await page.screenshot({path:dir+'/form-complete.png',fullPage:true});
       await page.locator('#submission [type=checkbox]').check();
+      rejectSubmit=true;
+      await page.getByRole('button',{name:'Submit finals request'}).click();
+      await page.waitForFunction(()=>document.querySelector('#submit-notice').textContent.includes('HF repository must'));
+      assert.equal(await page.getByRole('button',{name:'Submit finals request'}).isEnabled(),true);
+      await page.locator('#submit-notice').scrollIntoViewIfNeeded();
+      await page.screenshot({path:dir+'/submit-error-visible.png'});
+      rejectSubmit=false;
       await page.getByRole('button',{name:'Submit finals request'}).click();
       await page.waitForFunction(()=>document.querySelector('#notice').textContent.includes('Received'));
       assert.ok(retryKey);

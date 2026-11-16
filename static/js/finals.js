@@ -3,7 +3,11 @@
   function init(root, identity) {
   const $ = id => root.querySelector('#' + id);
   let session = identity, status = null, pending = null;
-  function message(text) { $("notice").textContent = text; }
+  const submitNotice = document.createElement("p");
+  submitNotice.id = "submit-notice"; submitNotice.className = "form-status";
+  submitNotice.setAttribute("role", "status"); submitNotice.setAttribute("aria-live", "polite");
+  $("submit-button").parentElement.after(submitNotice);
+  function message(text) { $("notice").textContent = text; submitNotice.textContent = text; }
   async function api(action, payload = {}) {
     const url = window.ROBO_SYN_CONFIG?.API_BASE_URL;
     if (!url) throw new Error("The finals backend is not configured.");
@@ -129,15 +133,19 @@
   $("submission").addEventListener("input", saveDraft);
   // Native validation must expose fields inside collapsed task sections.
   $("submission").addEventListener("invalid", e => {
+    const label = e.target.closest("label")?.querySelector("span")?.textContent || e.target.name || "Required field";
+    if (e.target === $("submission").querySelector(":invalid")) message(`${label}: ${e.target.validationMessage}`);
     for (let parent = e.target.parentElement; parent && parent !== $("submission"); parent = parent.parentElement) {
       if (parent.tagName === "DETAILS") parent.open = true;
     }
   }, true);
   $("submission").onsubmit = async e => {
-    e.preventDefault(); const submission = contents(); const content = JSON.stringify(submission);
-    if (!pending || pending.content !== content) pending = { content, key: crypto.randomUUID() };
-    saveDraft(); $("submit-button").disabled = true;
+    e.preventDefault(); $("submit-button").disabled = true;
+    message("Submitting your request. Please wait...");
     try {
+      const submission = contents(); const content = JSON.stringify(submission);
+      if (!pending || pending.content !== content) pending = { content, key: crypto.randomUUID() };
+      saveDraft();
       const result = await api("finals_submit", { submission, submission_key: pending.key });
       pending = null; saveDraft(); await refresh(); message(`Received ${result.request.request_id}, revision ${result.request.revision}.`);
     } catch (error) { message(error.name === "AbortError" ? "Outcome unknown. Your retry key is retained; retry the unchanged submission safely." : error.message); }
