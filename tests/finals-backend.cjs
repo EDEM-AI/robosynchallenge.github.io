@@ -130,7 +130,10 @@ assert.throws(()=>normalize('https://github.com/org/repo/tree/dev',{},'main'),/c
 assert.throws(()=>normalize(submission.repository,{repo:'https://huggingface.co/org/model/tree/main/one',path:'two'}),/conflicts/);
 ctx.paperRows_=()=>[{email:'finalist@example.test',paper_id:'own'},{email:'other@example.test',paper_id:'other'}];
 ctx.paperPublic_=x=>({paper_id:x.paper_id});
+config.FINALS_ROSTER_JSON=JSON.stringify([{email:'finalist@example.test',team_id:'team1',enabled:true}]);
 const history=call('finals_history',{session_id:'finalist@example.test'});
+assert.equal(history.requests.length,1);assert.equal(history.requests[0].request_id,result.request.request_id);
+assert.equal(call('finals_history',{session_id:'other@example.test'}).requests.length,0);
 assert.equal(history.papers.length,1);assert.equal(history.papers[0].paper_id,'own');
 assert.throws(()=>call('finals_history',{}),/Session/);
 console.log('Repository URL normalization, conflicting fields, unsafe links and private history passed.');
