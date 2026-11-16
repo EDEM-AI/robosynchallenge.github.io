@@ -7,7 +7,7 @@
         <span class="eyebrow">Technical reports &middot; RoboSynChallenge workshop</span>
         <h1>Submit your paper.</h1>
         <p class="lead">Share your team's work from the preliminary round or real-robot finals.</p>
-        <p class="helper-note">Submission deadline: <strong>November 15, 2026, 23:59 AoE</strong> (UTC&minus;12)</p>
+        <p class="helper-note">Extended submission deadline: <strong>November 16, 2026, 22:00 Beijing time</strong> (UTC+8)</p>
       </header>
       <section class="section shell paper-content">
         <div class="card paper-form">
