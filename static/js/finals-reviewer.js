@@ -17,6 +17,11 @@
   const options=(values,value)=>values.map(v=>`<option value="${esc(v)}" ${v===value?'selected':''}>${esc(label(v))}</option>`).join('');
   const taskSelect=(name='task')=>`<label>Task<select name="${name}">${options(tasks)}</select></label>`;
   const workerStatus=worker=>!worker?.last_seen?'Not connected':`${Date.now()-Date.parse(worker.last_seen)>180000?'Stale':'Online'} · ${worker.last_seen}`;
+  function correctionInbox(job) {
+    const replies=job.correction_intake||[];
+    if(!replies.length)return '';
+    return `<section class="finals-review-notes"><h4>Correction replies · ${replies.length}</h4><p>Automatically registered for organizer review. Receiving a reply does not approve or deploy the correction.</p>${replies.map(reply=>`<details><summary>${esc(label(reply.status))} · ${esc(reply.received_at)} · revision ${esc(reply.source_revision)}</summary><p>${esc(reply.subject)}</p><p>${esc(reply.note)}</p><p>Source request: ${esc(reply.request_id)} · Gmail message: ${esc(reply.gmail_message_id)}</p>${(reply.commit_candidates||[]).map(link=>`<p>Candidate commit: <code style="overflow-wrap:anywhere">${esc(link)}</code></p>`).join('')}${!(reply.commit_candidates||[]).length?'<p>No unambiguous commit link extracted. Review the original reply for mapping changes or missing details.</p>':''}<p>Registration: ${esc(reply.registered_at)}</p></details>`).join('')}</section>`;
+  }
   function preparationStatus(job) {
     const p=job.preparation_status,preview=p?.preview;
     return `<dl class="reviewer-meta"><div><dt>Code preparation</dt><dd>${esc(p?label(p.status):'Not yet checked')}</dd></div>
@@ -40,7 +45,7 @@
   }
   function content(job) {
     const submission=job.submission,review=job.review,locked=!editable(job);
-    if(stage===0)return `${preparationStatus(job)}<dl class="reviewer-meta"><div><dt>Final prepared commit</dt><dd>${esc(job.preparation?.bundle_sha||'Not finalized')}</dd></div><div><dt>Version cutoff</dt><dd>${esc(submission.version_cutoff_at)}</dd></div><div><dt>Repository</dt><dd>${esc(submission.repository)}</dd></div><div><dt>Assigned reviewer</dt><dd>${esc(review.owner||'Unassigned')}</dd></div></dl>
+    if(stage===0)return `${correctionInbox(job)}${preparationStatus(job)}<dl class="reviewer-meta"><div><dt>Final prepared commit</dt><dd>${esc(job.preparation?.bundle_sha||'Not finalized')}</dd></div><div><dt>Version cutoff</dt><dd>${esc(submission.version_cutoff_at)}</dd></div><div><dt>Repository</dt><dd>${esc(submission.repository)}</dd></div><div><dt>Assigned reviewer</dt><dd>${esc(review.owner||'Unassigned')}</dd></div></dl>
       ${admin()?`<form class="finals-review-form" data-form="owner"><label>Reviewer<select name="email" required><option value="">Select reviewer</option>${(data.reviewers||[]).map(r=>`<option ${r.email===review.owner?'selected':''}>${esc(r.email)}</option>`).join('')}</select></label><button class="button button-secondary">${icon('user-check')}Assign reviewer</button></form>`:''}
       ${table(['Task','Policy','Checkpoint IDs'],submission.tasks.map(t=>[esc(label(t.task)),esc(t.policy_path),esc(t.checkpoint_ids?.join(', ')||t.no_weights_reason||'None')]))}
       <details class="finals-review-notes"><summary>Participant commands and dependencies</summary><pre>${esc(submission.dependency_notes)}\n\n${esc(submission.tasks.map(t=>t.task+'\n'+t.run_notes).join('\n\n'))}</pre></details>
