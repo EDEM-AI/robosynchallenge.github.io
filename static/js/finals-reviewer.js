@@ -55,7 +55,7 @@
       ${tasks.filter(t=>job.attempts.some(a=>a.task===t&&a.uploaded&&a.status!=='deleted')).map(t=>`<details class="finals-review-notes"><summary>${esc(label(t))} evidence</summary>${job.attempts.filter(a=>a.task===t&&a.uploaded&&a.status!=='deleted').sort((a,b)=>a.slot-b.slot).map(a=>`<section class="finals-evidence-attempt"><h4>Slot ${esc(a.slot)} / ${esc(label(a.status))}</h4>${evidence(a)}</section>`).join('')}</details>`).join('')}`;
   }
   function render() {
-    const heading=`<header class="reviewer-heading"><div><h1>Real-finals evaluation</h1><a href="/eval_backend/">Preliminary workspace</a></div>${credentials?btn('logout','Sign out','log-out'):''}</header>`;
+    const heading=`<header class="reviewer-heading"><div><h1>Real-finals evaluation</h1></div>${credentials?btn('logout','Sign out','log-out'):''}</header>`;
     if(!data){root.innerHTML=heading+`<form class="finals-review-form finals-review-login" data-form="login"><label>Reviewer email<input type="email" name="email" autocomplete="username" required></label><label>Access token<input type="password" name="token" autocomplete="current-password" required></label><button class="button button-primary" ${busy?'disabled':''}>${icon('log-in')}Sign in</button><p role="alert">${esc(error)}</p></form>`;window.lucide?.createIcons();return;}
     const requests=data.requests.filter(r=>!r.is_test),units=requests.reduce((n,r)=>n+r.progress.completed,0),complete=requests.filter(r=>r.progress.completed===5).length;
     const job=current();
