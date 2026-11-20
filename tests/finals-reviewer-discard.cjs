@@ -4,7 +4,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(__dirname + '/../static/js/finals-reviewer.js', 'utf8');
 const wait = () => new Promise(resolve => setImmediate(resolve));
 
-async function scenario({role = 'evaluator', owner = 'reviewer@example.test', confirm = true, reject = false} = {}) {
+async function scenario({role = 'evaluator', owner = 'reviewer@example.test', confirm = true, reject = false, shared = false} = {}) {
   const listeners = {}, calls = [], confirmations = [];
   const attempts = ['success', 'failure', 'running', 'deleted'].map((status, i) => ({
     id: String(i + 1).repeat(32), task: 'handle_basket', slot: 1, status,
@@ -16,7 +16,7 @@ async function scenario({role = 'evaluator', owner = 'reviewer@example.test', co
     progress: {steps: [], completed: 0, collected: 2},
     runtimes: [], assignments: [], attempts};
   const root = {innerHTML: '', addEventListener: (name, fn) => listeners[name] = fn, querySelector: () => null};
-  const viewer = {email: 'reviewer@example.test', role};
+  const viewer = {email: 'reviewer@example.test', role, can_review_all_requests: shared};
   const sandbox = {
     document: {getElementById: () => root},
     sessionStorage: {getItem: () => JSON.stringify({...viewer, token: 'fixture'})},
@@ -38,7 +38,7 @@ async function scenario({role = 'evaluator', owner = 'reviewer@example.test', co
   await wait();
   const click = (selector, dataset) => listeners.click({target: {closest: query => query === selector ? {dataset} : null}});
   click('[data-stage]', {stage: '3'});
-  const editable = role === 'admin' || role === 'evaluator' && owner === viewer.email;
+  const editable = shared || role === 'admin' || role === 'evaluator' && owner === viewer.email;
   assert.equal((root.innerHTML.match(/data-action="discard-attempt"/g) || []).length, editable ? 2 : 0);
   for (const attempt of attempts.slice(2)) {
     click('[data-action]', {action: 'discard-attempt', attempt: attempt.id});
@@ -76,5 +76,8 @@ async function scenario({role = 'evaluator', owner = 'reviewer@example.test', co
   await scenario({owner: 'someone@example.test'});
   await scenario({confirm: false});
   await scenario({reject: true});
+  for (const role of ['admin', 'evaluator', 'observer', 'supervisor', 'tester']) {
+    await scenario({role, owner: 'someone@example.test', shared: true});
+  }
   console.log('Reviewer discard: exact attempt, both review stages, ownership, closed-only, cancellation, duplicate click, rejection and cleanup display passed.');
 })().catch(error => {console.error(error); process.exitCode = 1;});

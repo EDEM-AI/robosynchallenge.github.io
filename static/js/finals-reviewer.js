@@ -13,7 +13,7 @@
   const table=(headers,rows)=>`<div class="finals-table-scroll"><table class="finals-review-table"><thead><tr>${headers.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
   const current=()=>data?.requests.find(r=>r.request_id===selected);
   const admin=()=>data?.viewer.role==='admin';
-  const editable=job=>admin()||(data?.viewer.role==='evaluator'&&job.review.owner===data.viewer.email);
+  const editable=job=>data?.viewer.can_review_all_requests===true||admin()||(data?.viewer.role==='evaluator'&&job.review.owner===data.viewer.email);
   const options=(values,value)=>values.map(v=>`<option value="${esc(v)}" ${v===value?'selected':''}>${esc(label(v))}</option>`).join('');
   const taskSelect=(name='task')=>`<label>Task<select name="${name}">${options(tasks)}</select></label>`;
   const workerStatus=worker=>!worker?.last_seen?'Not connected':`${Date.now()-Date.parse(worker.last_seen)>180000?'Stale':'Online'} · ${worker.last_seen}`;
