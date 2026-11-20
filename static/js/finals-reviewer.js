@@ -27,12 +27,16 @@
       ${p?.next_retry_at?`<div><dt>Next retry</dt><dd>${esc(p.next_retry_at)} · attempt ${esc(p.attempts)}</dd></div>`:''}</dl>`;
   }
   const check=(name,text,checked,extra='')=>`<label class="finals-review-check"><input type="checkbox" data-check="${name}" ${checked?'checked':''} ${extra}>${text}</label>`;
-  const evidence=attempt=>attempt.status==='deleted'?'Discarded':!attempt.uploaded?'Pending':!attempt.evidence?.length?'Stored':
+  const cleanupDetail=attempt=>attempt.cleanup?.state==='complete'?` · ${esc(attempt.cleanup.archived)} archived`:attempt.cleanup?.state==='retry'?' · storage cleanup retrying':attempt.cleanup?.state==='pending'?' · storage cleanup queued':'';
+  const evidence=attempt=>attempt.status==='deleted'?'Discarded'+cleanupDetail(attempt):attempt.evidence_withdrawn?'Withdrawn'+cleanupDetail(attempt):!attempt.uploaded?'Pending':!attempt.evidence?.length?'Stored':
     `<details class="finals-evidence"><summary>Evidence (${attempt.evidence.length} files)</summary>${attempt.evidence.map(file=>`<dl><dt>Storage location</dt><dd><code>${esc(file.target)}</code></dd><dt>Size</dt><dd>${esc(Number(file.size).toLocaleString())} bytes</dd><dt>SHA256</dt><dd><code>${esc(file.sha256)}</code></dd>${file.object_id?`<dt>Object ID</dt><dd><code>${esc(file.object_id)}</code></dd>`:''}</dl>`).join('')}</details>`;
   async function api(action,body={}) {
     const response=await fetch(window.ROBO_SYN_CONFIG.API_BASE_URL,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action,body,reviewer_email:credentials.email,reviewer_token:credentials.token})});
     if(!response.ok)throw Error('Backend connection failed ('+response.status+').');
-    const result=await response.json();if(!result.ok)throw Error(result.error||'Request rejected.');return result;
+    const result=await response.json();if(!result.ok)throw Error(/\u9501\u8d85\u65f6/.test(result.error||'')?'The controller is busy. Please retry.':result.error||'Request rejected.');return result;
+  }
+  function discardButton(attempt,locked) {
+    return !locked&&['success','failure'].includes(attempt.status)?btn('discard-attempt','Discard','trash-2',`data-attempt="${esc(attempt.id)}" aria-label="Discard ${esc(label(attempt.task))} slot ${esc(attempt.slot)}"`):'';
   }
   function content(job) {
     const submission=job.submission,review=job.review,locked=!editable(job);
@@ -49,10 +53,9 @@
       ${admin()?`<form class="finals-review-form" data-form="route">${taskSelect()}<label>Platform<select name="platform">${options(['platform_1','platform_2','platform_3'])}</select></label><button class="button button-secondary">${icon('route')}Assign task</button></form>`:''}
       <fieldset class="reviewer-readonly" ${locked?'disabled':''}>${[...new Set(job.assignments.map(a=>a.platform))].map(p=>check('platform',esc(p)+': cameras, alignment, controls and emergency stop checked on site',review.platform_checks[p],`data-platform="${p}"`)).join('')}</fieldset>`;
     if(stage===3)return `${table(['Task','Platform','Finished','Uploaded'],tasks.map(t=>{const a=job.attempts.filter(a=>a.task===t&&a.status!=='deleted'),route=job.assignments.find(a=>a.task===t);return [esc(label(t)),esc(route?.platform||'-'),a.filter(a=>['success','failure'].includes(a.status)).length+' / 20',a.filter(a=>a.uploaded).length+' / 20'];}))}
-      ${table(['Task / slot','Reviewer','Status','Evidence'],job.attempts.map(a=>[esc(label(a.task))+' / '+a.slot,esc(a.reviewer),esc(a.status),evidence(a)]))}
-      <fieldset class="reviewer-readonly" ${locked?'disabled':''}><details class="finals-review-notes"><summary>Discard invalid experiment</summary><form class="finals-review-form" data-form="discard"><label>Attempt<select name="attempt_id" required>${job.attempts.filter(a=>a.status!=='deleted').map(a=>`<option value="${esc(a.id)}">${esc(label(a.task))} / ${a.slot} / ${a.id.slice(0,8)}</option>`).join('')}</select></label><label>Invalid experiment reason<textarea name="reason" required maxlength="2000"></textarea></label><button class="button button-secondary">${icon('trash-2')}Discard experiment</button></form></details></fieldset>`;
+      ${table(['Task / slot','Reviewer','Status','Evidence','Actions'],job.attempts.map(a=>[esc(label(a.task))+' / '+esc(a.slot)+'<br><small>'+esc(a.id.slice(0,8))+'</small>',esc(a.reviewer),esc(a.status),evidence(a),discardButton(a,locked)]))}`;
     return `<fieldset class="reviewer-readonly" ${locked?'disabled':''}>${tasks.map(t=>{const count=job.attempts.filter(a=>a.task===t&&a.uploaded&&a.status!=='deleted').length;return check('accept',esc(label(t))+' ('+count+'/20 uploaded)',review.accepted[t],`data-task="${t}" ${count===20?'':'disabled'}`);}).join('')}</fieldset>
-      ${tasks.filter(t=>job.attempts.some(a=>a.task===t&&a.uploaded&&a.status!=='deleted')).map(t=>`<details class="finals-review-notes"><summary>${esc(label(t))} evidence</summary>${job.attempts.filter(a=>a.task===t&&a.uploaded&&a.status!=='deleted').sort((a,b)=>a.slot-b.slot).map(a=>`<section class="finals-evidence-attempt"><h4>Slot ${esc(a.slot)} / ${esc(label(a.status))}</h4>${evidence(a)}</section>`).join('')}</details>`).join('')}`;
+      ${tasks.filter(t=>job.attempts.some(a=>a.task===t&&a.uploaded&&a.status!=='deleted')).map(t=>`<details class="finals-review-notes"><summary>${esc(label(t))} evidence</summary>${job.attempts.filter(a=>a.task===t&&a.uploaded&&a.status!=='deleted').sort((a,b)=>a.slot-b.slot).map(a=>`<section class="finals-evidence-attempt"><h4>Slot ${esc(a.slot)} / ${esc(label(a.status))}</h4>${evidence(a)}${discardButton(a,locked)}</section>`).join('')}</details>`).join('')}`;
   }
   function render() {
     const heading=`<header class="reviewer-heading"><div><h1>Real-finals evaluation</h1></div>${credentials?btn('logout','Sign out','log-out'):''}</header>`;
@@ -72,9 +75,15 @@
   }
   async function mutate(action,body){if(busy)return;busy=true;error='';try{await api(action,body);}catch(e){error=e.message;busy=false;render();return;}busy=false;await refresh();}
   root.addEventListener('click',event=>{
-    const request=event.target.closest('[data-request]'),step=event.target.closest('[data-stage]'),action=event.target.closest('[data-action]')?.dataset.action;
+    const request=event.target.closest('[data-request]'),step=event.target.closest('[data-stage]'),button=event.target.closest('[data-action]'),action=button?.dataset.action;
     if(request){selected=request.dataset.request;stage=0;render();}else if(step){stage=Number(step.dataset.stage);render();}
     else if(action==='refresh')refresh();else if(action==='previous'||action==='next'){stage+=action==='next'?1:-1;render();}
+    else if(action==='discard-attempt'&&!busy){
+      const job=current(),attempt=job?.attempts.find(a=>a.id===button.dataset.attempt);
+      if(!attempt||!editable(job)||!['success','failure'].includes(attempt.status))return;
+      if(!window.confirm(`Discard ${job.team_name} / ${label(attempt.task)} / episode ${attempt.slot} (${label(attempt.status)}, ${attempt.id.slice(0,8)})? This result will no longer count. The episode will reopen and evidence cleanup will be queued.`))return;
+      mutate('finals_reviewer_discard',{request_id:job.request_id,task:attempt.task,attempt_id:attempt.id,expected_status:attempt.status,reason:'Reviewer discarded this individual episode from the evaluation website.'});
+    }
     else if(action==='logout'){sessionStorage.removeItem(key);credentials=null;data=null;error='';render();}
   });
   root.addEventListener('input',event=>{if(event.target.matches('.reviewer-search')){search=event.target.value;const position=event.target.selectionStart;render();const input=root.querySelector('.reviewer-search');input.focus();input.setSelectionRange(position,position);}});
@@ -88,7 +97,6 @@
     if(kind==='recipe'){action='finals_admin_control_runtime_approve';try{body.recipe={...JSON.parse(values.recipe),transport:'chunk-v2'};}catch{error='Invalid recipe JSON.';render();return;}}
     if(kind==='rebuild')action='finals_reviewer_rebuild';
     if(kind==='issue'){action='finals_reviewer_issue';if(!window.confirm('Send this email to '+job.email+'?'))return;const fingerprint=JSON.stringify([selected,values.subject,values.text]);if(!mailKeys.has(fingerprint))mailKeys.set(fingerprint,crypto.randomUUID().replaceAll('-',''));body.retry_key=mailKeys.get(fingerprint);}
-    if(kind==='discard'){action='finals_reviewer_discard';body.task=job.attempts.find(a=>a.id===body.attempt_id)?.task;if(!window.confirm('Discard this invalid experiment and delete its evidence?'))return;}
     if(action)await mutate(action,body);
   });
   render();if(credentials)refresh();setInterval(()=>{if(credentials&&!document.hidden)refresh(true);},30000);
